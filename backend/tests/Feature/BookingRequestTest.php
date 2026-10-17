@@ -6,7 +6,9 @@ use App\Models\Accommodation;
 use App\Models\Booking;
 use App\Models\Property;
 use App\Models\User;
+use App\Notifications\NewBookingRequest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -118,5 +120,43 @@ class BookingRequestTest extends TestCase
         $this->postJson('/api/admin/bookings/'.Booking::first()->id.'/decline')->assertJsonPath('data.status', 'declined');
 
         $this->postJson('/api/properties/pousada/booking-requests', $this->payload())->assertCreated();
+    }
+
+    public function test_owner_is_notified_of_new_request(): void
+    {
+        Notification::fake();
+        $owner = User::factory()->create(['property_id' => $this->property->id]);
+        $stranger = User::factory()->create(['property_id' => Property::factory()->create()->id]);
+
+        $this->postJson('/api/properties/pousada/booking-requests', $this->payload())->assertCreated();
+
+        Notification::assertSentTo($owner, NewBookingRequest::class);
+        Notification::assertNotSentTo($stranger, NewBookingRequest::class);
+    }
+
+    public function test_notification_email_renders(): void
+    {
+        $this->postJson('/api/properties/pousada/booking-requests', $this->payload(['notes' => 'Chego tarde']))->assertCreated();
+        $owner = User::factory()->create(['property_id' => $this->property->id]);
+
+        $html = (string) (new NewBookingRequest(Booking::first()))->toMail($owner)->render();
+
+        $this->assertStringContainsString('Maria', $html);
+        $this->assertStringContainsString('Chego tarde', $html);
+    }
+
+    public function test_owner_login_and_me(): void
+    {
+        User::factory()->create(['property_id' => $this->property->id, 'email' => 'dono@x.com', 'password' => 'segredo123']);
+
+        $this->postJson('/api/admin/login', ['email' => 'dono@x.com', 'password' => 'errada'])->assertUnprocessable();
+
+        $token = $this->postJson('/api/admin/login', ['email' => 'dono@x.com', 'password' => 'segredo123'])
+            ->assertOk()->json('token');
+
+        $this->withToken($token)->getJson('/api/admin/me')
+            ->assertOk()
+            ->assertJsonPath('property.slug', 'pousada')
+            ->assertJsonCount(2, 'property.accommodations');
     }
 }

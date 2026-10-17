@@ -98,6 +98,11 @@ function unavailable(accId: number, from: string, to: string) {
   return [...taken].sort()
 }
 
+const withNights = (b: DemoBooking) => ({
+  ...b,
+  nights: Math.round((parse(b.check_out).getTime() - parse(b.check_in).getTime()) / 86400000),
+})
+
 function fail(field: string, message: string): never {
   throw { data: { message, errors: { [field]: [message] } } }
 }
@@ -142,6 +147,42 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
       return { data: created }
     },
   }
+
+  // Painel do dono (na prévia, qualquer e-mail e senha entram).
+  const bookingAction = route.match(/^\/admin\/bookings\/(\d+)\/(confirm|decline)$/)
+  if (method === 'POST' && bookingAction) {
+    const found = bookings.find(b => b.id === Number(bookingAction[1]))!
+    found.status = bookingAction[2] === 'confirm' ? 'confirmed' : (found.status === 'pending' ? 'declined' : 'cancelled')
+    return { data: withNights(found) } as T
+  }
+  const blockDelete = route.match(/^\/admin\/blocked-dates\/(\d+)$/)
+  if (method === 'DELETE' && blockDelete) {
+    blocks.splice(blocks.findIndex(b => b.id === Number(blockDelete[1])), 1)
+    return null as T
+  }
+
+  Object.assign(handlers, {
+    'POST /admin/login': () => ({ token: 'demo', user: { name: 'Dono da Pousada', email: body.email } }),
+    'POST /admin/logout': () => null,
+    'GET /admin/me': () => ({
+      user: { name: 'Dono da Pousada', email: 'dono@exemplo.com.br' },
+      property: { name: property.name, slug: property.slug, primary_color: property.primary_color, accommodations: accommodations.map(a => ({ id: a.id, name: a.name })) },
+    }),
+    'GET /admin/bookings': () => ({
+      data: bookings
+        .filter(b => !options.query?.status || b.status === options.query.status)
+        .filter(b => !options.query?.upcoming || b.check_out >= today)
+        .sort((a, b) => a.check_in.localeCompare(b.check_in))
+        .map(withNights),
+    }),
+    'GET /admin/blocked-dates': () => ({ data: [...blocks].sort((a, b) => a.starts_on.localeCompare(b.starts_on)) }),
+    'POST /admin/blocked-dates': () => {
+      if (!body.starts_on || !body.ends_on || body.ends_on < body.starts_on) fail('ends_on', 'A última noite precisa ser depois da primeira.')
+      const created = { id: nextId++, accommodation_id: body.accommodation_id, starts_on: body.starts_on, ends_on: body.ends_on, reason: body.reason }
+      blocks.push(created)
+      return { data: created }
+    },
+  })
 
   const handler = handlers[`${method} ${route}`]
   if (!handler) throw { data: { message: `Rota de demonstração não encontrada: ${method} ${route}` } }

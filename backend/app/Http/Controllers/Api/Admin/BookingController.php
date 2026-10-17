@@ -15,11 +15,12 @@ class BookingController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        $request->validate(['status' => ['nullable', 'string']]);
+        $request->validate(['status' => ['nullable', 'string'], 'upcoming' => ['nullable', 'boolean']]);
 
         $bookings = $request->user()->property->bookings()
             ->with('accommodations')
             ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
+            ->when($request->boolean('upcoming'), fn ($query) => $query->whereDate('check_out', '>=', today()))
             ->orderBy('check_in')
             ->paginate(30);
 

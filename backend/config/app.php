@@ -55,6 +55,11 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | Endereço do site público (Nuxt). Usado nos links dos e-mails.
+    */
+    'frontend_url' => explode(',', (string) env('FRONTEND_URL', 'http://localhost:3000'))[0],
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------

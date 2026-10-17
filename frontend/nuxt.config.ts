@@ -8,6 +8,10 @@ export default defineNuxtConfig({
   ssr: !demo,
   router: { options: { hashMode: demo } },
   devtools: { enabled: true },
+  // O painel do dono roda só no navegador e não aparece no Google.
+  routeRules: {
+    '/painel/**': { ssr: false, headers: { 'X-Robots-Tag': 'noindex' } },
+  },
   css: ['~/assets/main.css'],
   app: {
     head: {

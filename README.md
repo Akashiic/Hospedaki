@@ -11,10 +11,11 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - Preço por diária, com valor diferente para fim de semana (noites de sexta e sábado) e para temporadas (réveillon, feriados, férias).
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
 - Datas bloqueadas pelo dono (manutenção, uso próprio, reserva feita no Airbnb/Booking).
-- Painel do dono via API: entrar, ver pedidos, confirmar, recusar e bloquear datas.
+- Painel do dono em `/painel`: entrar, ver pedidos, confirmar, recusar, falar com o hóspede pelo WhatsApp e bloquear datas.
+- Aviso por e-mail para o dono a cada pedido novo.
 - Google Analytics 4 e Pixel do Meta: basta informar os IDs. O envio de um pedido conta como conversão ("Lead").
 
-Ficam para as próximas versões: pagamento por Pix, sincronização de calendário com Airbnb/Booking, telas do painel do dono e envio de e-mail/WhatsApp automático.
+Ficam para as próximas versões: pagamento por Pix, sincronização de calendário com Airbnb/Booking, cadastro de fotos e preços pelo painel e aviso automático por WhatsApp.
 
 ## Estrutura
 
@@ -49,7 +50,15 @@ npm install
 npm run dev                  # http://localhost:3000
 ```
 
+O painel fica em http://localhost:3000/painel.
+
 **Testes do backend:** `cd backend && php artisan test`
+
+**Prévia sem backend:** `cd frontend && npm run preview:demo` gera em `frontend/.output/public` uma versão estática do site e do painel com dados de exemplo, boa para mostrar o visual a alguém. Para abrir, sirva a pasta com qualquer servidor estático (por exemplo `npx serve .output/public`).
+
+## Aviso de pedido novo
+
+Cada pedido novo gera um e-mail para os usuários da pousada. Em desenvolvimento o e-mail vai para o log (`backend/storage/logs/laravel.log`). Em produção, configure `MAIL_MAILER`, `MAIL_HOST`, `MAIL_USERNAME`, `MAIL_PASSWORD` e `MAIL_FROM_ADDRESS` no `backend/.env` com os dados do seu provedor de e-mail. Se o envio falhar, o pedido continua salvo.
 
 ## Configuração por pousada
 
@@ -97,8 +106,9 @@ Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`)
 | Método | Rota | Uso |
 |---|---|---|
 | POST | `/api/admin/login` | Entrar (e-mail e senha) |
+| GET | `/api/admin/me` | Usuário e pousada logados |
 | POST | `/api/admin/logout` | Sair |
-| GET | `/api/admin/bookings?status=pending` | Listar pedidos |
+| GET | `/api/admin/bookings?status=pending&upcoming=1` | Listar pedidos |
 | POST | `/api/admin/bookings/{id}/confirm` | Confirmar pedido |
 | POST | `/api/admin/bookings/{id}/decline` | Recusar pedido (ou cancelar reserva confirmada) |
 | GET/POST | `/api/admin/blocked-dates` | Listar ou bloquear datas |

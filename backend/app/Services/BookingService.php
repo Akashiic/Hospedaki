@@ -6,9 +6,11 @@ use App\Enums\BookingStatus;
 use App\Models\Accommodation;
 use App\Models\Booking;
 use App\Models\Property;
+use App\Notifications\NewBookingRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -60,7 +62,7 @@ class BookingService
      */
     public function request(Property $property, array $data): Booking
     {
-        return DB::transaction(function () use ($property, $data) {
+        $booking = DB::transaction(function () use ($property, $data) {
             // Trava as acomodações para que dois pedidos simultâneos não peguem as mesmas datas.
             Accommodation::whereKey($data['accommodation_ids'])->lockForUpdate()->get();
 
@@ -84,6 +86,15 @@ class BookingService
 
             return $booking->load('accommodations');
         });
+
+        // Uma falha no envio do aviso não pode perder o pedido do hóspede.
+        try {
+            Notification::send($property->users, new NewBookingRequest($booking));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $booking;
     }
 
     public function confirm(Booking $booking): Booking

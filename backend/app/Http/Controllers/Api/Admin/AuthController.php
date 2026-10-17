@@ -30,6 +30,24 @@ class AuthController extends Controller
         ]);
     }
 
+    /**
+     * Usuário logado e a pousada que ele administra.
+     */
+    public function me(Request $request): JsonResponse
+    {
+        $user = $request->user()->load('property.accommodations');
+
+        return response()->json([
+            'user' => ['name' => $user->name, 'email' => $user->email],
+            'property' => [
+                'name' => $user->property->name,
+                'slug' => $user->property->slug,
+                'primary_color' => $user->property->primary_color,
+                'accommodations' => $user->property->accommodations->map->only(['id', 'name']),
+            ],
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();

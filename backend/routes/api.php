@@ -22,6 +22,7 @@ Route::prefix('admin')->group(function () {
     Route::post('login', [Admin\AuthController::class, 'login'])->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
+        Route::get('me', [Admin\AuthController::class, 'me']);
         Route::post('logout', [Admin\AuthController::class, 'logout']);
         Route::get('bookings', [Admin\BookingController::class, 'index']);
         Route::post('bookings/{booking}/confirm', [Admin\BookingController::class, 'confirm']);
