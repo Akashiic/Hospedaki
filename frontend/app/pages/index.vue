@@ -93,6 +93,7 @@ async function submit() {
 }
 
 const formatDate = (iso: string) => iso.split('-').reverse().join('/')
+const heroPhoto = computed(() => property.value?.accommodations[0]?.photos[0]?.url)
 const whatsappLink = computed(() => {
   const number = property.value?.whatsapp
   if (!number) return null
@@ -105,18 +106,31 @@ const whatsappLink = computed(() => {
 
 <template>
   <div v-if="property" :style="{ '--brand': property.primary_color }">
-    <header class="hero">
-      <div class="container">
+    <header class="hero" :style="heroPhoto ? { backgroundImage: `url(&quot;${heroPhoto}&quot;)` } : undefined">
+      <div class="shade" />
+      <div class="container hero-inner">
         <img v-if="property.logo_url" :src="property.logo_url" :alt="property.name" class="logo">
+        <p class="eyebrow light">{{ property.city }}<template v-if="property.state"> · {{ property.state }}</template></p>
         <h1>{{ property.name }}</h1>
-        <p>{{ property.description }}</p>
-        <a href="#reservar" class="btn">Ver datas e reservar</a>
+        <p class="lead">{{ property.description }}</p>
+        <div class="hero-actions">
+          <a href="#reservar" class="btn">Ver datas e reservar</a>
+          <a v-if="whatsappLink" :href="whatsappLink" class="btn btn-light" target="_blank" rel="noopener">WhatsApp</a>
+        </div>
       </div>
     </header>
 
+    <section class="facts container" aria-label="Informações">
+      <div><span class="eyebrow">Check-in</span><strong>a partir das {{ property.check_in_time }}</strong></div>
+      <div><span class="eyebrow">Check-out</span><strong>até {{ property.check_out_time }}</strong></div>
+      <div><span class="eyebrow">Reserva direta</span><strong>sem taxa de aplicativo</strong></div>
+    </section>
+
     <main class="container">
-      <section>
+      <section class="block">
+        <p class="eyebrow">Onde você vai ficar</p>
         <h2>Acomodações</h2>
+        <p class="hint">Selecione uma ou mais para ver as datas livres.</p>
         <div class="cards">
           <AccommodationCard
             v-for="accommodation in property.accommodations"
@@ -128,76 +142,99 @@ const whatsappLink = computed(() => {
         </div>
       </section>
 
-      <section id="reservar" class="booking">
-        <h2>Reservar</h2>
+      <section id="reservar" class="block">
+        <p class="eyebrow">Reserva</p>
+        <h2>Escolha suas datas</h2>
 
-        <div v-if="done" class="success">
+        <div v-if="done" class="panel success">
           <h3>Pedido enviado!</h3>
           <p>
             Seu código é <strong>{{ done.code }}</strong>. A pousada vai confirmar a disponibilidade
-            e entrar em contato com você.
+            e entrar em contato com você pelo WhatsApp.
           </p>
           <a v-if="whatsappLink" :href="whatsappLink" class="btn" target="_blank" rel="noopener">Falar no WhatsApp</a>
         </div>
 
-        <template v-else>
-          <p v-if="!selected.length" class="hint">Escolha uma acomodação acima.</p>
-          <AvailabilityCalendar v-model:check-in="checkIn" v-model:check-out="checkOut" :unavailable="unavailable" />
+        <div v-else class="booking">
+          <div class="panel">
+            <p v-if="!selected.length" class="notice">Selecione uma acomodação acima para começar.</p>
+            <AvailabilityCalendar v-model:check-in="checkIn" v-model:check-out="checkOut" :unavailable="unavailable" />
+            <p class="hint step">
+              <template v-if="checkIn && checkOut">Entrada <strong>{{ formatDate(checkIn) }}</strong> · Saída <strong>{{ formatDate(checkOut) }}</strong></template>
+              <template v-else-if="checkIn">Agora toque no dia da saída.</template>
+              <template v-else>Toque no dia da entrada.</template>
+            </p>
+          </div>
 
-          <p class="hint">
-            <template v-if="checkIn && checkOut">Entrada {{ formatDate(checkIn) }} · Saída {{ formatDate(checkOut) }}</template>
-            <template v-else-if="checkIn">Agora escolha o dia da saída.</template>
-            <template v-else>Escolha o dia da entrada.</template>
-            · Check-in {{ property.check_in_time }} · Check-out {{ property.check_out_time }}
-          </p>
+          <form class="panel form" @submit.prevent="submit">
+            <h3>Seus dados</h3>
+            <label for="guests">Hóspedes <input id="guests" v-model.number="guests" type="number" min="1" required></label>
+            <label for="name">Nome <input id="name" v-model="form.guest_name" required autocomplete="name"></label>
+            <label for="phone">WhatsApp <input id="phone" v-model="form.guest_phone" required type="tel" autocomplete="tel" placeholder="(11) 99999-9999"></label>
+            <label for="email"><span>E-mail <span class="opt">opcional</span></span> <input id="email" v-model="form.guest_email" type="email" autocomplete="email"></label>
+            <label for="notes"><span>Observações <span class="opt">opcional</span></span> <textarea id="notes" v-model="form.notes" rows="2" /></label>
 
-          <form class="form" @submit.prevent="submit">
-            <label>Hóspedes <input v-model.number="guests" type="number" min="1" required></label>
-            <label>Nome <input v-model="form.guest_name" required autocomplete="name"></label>
-            <label>WhatsApp <input v-model="form.guest_phone" required type="tel" autocomplete="tel"></label>
-            <label>E-mail (opcional) <input v-model="form.guest_email" type="email" autocomplete="email"></label>
-            <label class="full">Observações <textarea v-model="form.notes" rows="3" /></label>
-
-            <div v-if="quote" class="quote full">
-              <p v-for="item in quote.items" :key="item.accommodation_id">
-                {{ item.name }}: {{ formatMoney(item.subtotal) }}
+            <div v-if="quote" class="quote">
+              <p v-for="item in quote.items" :key="item.accommodation_id" class="line">
+                <span>{{ item.name }} · {{ quote.nights }} diária(s)</span><span>{{ formatMoney(item.subtotal) }}</span>
               </p>
-              <p class="total">{{ quote.nights }} diária(s) · Total {{ formatMoney(quote.total) }}</p>
-              <p class="hint">Sem pagamento agora. A pousada confirma o pedido e combina o pagamento com você.</p>
+              <p class="line total"><span>Total</span><span>{{ formatMoney(quote.total) }}</span></p>
+              <p class="hint">Nada é cobrado agora. A pousada confirma o pedido e combina o pagamento com você.</p>
             </div>
-            <p v-if="errorMessage" class="error full">{{ errorMessage }}</p>
+            <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
 
-            <button class="btn full" :disabled="!quote || sending">
+            <button class="btn" :disabled="!quote || sending">
               {{ sending ? 'Enviando...' : 'Enviar pedido de reserva' }}
             </button>
           </form>
-        </template>
+        </div>
       </section>
     </main>
 
-    <footer class="container footer">
-      <p>{{ property.name }}<template v-if="property.city"> · {{ property.city }}/{{ property.state }}</template></p>
-      <a v-if="whatsappLink && !done" :href="whatsappLink" target="_blank" rel="noopener">WhatsApp</a>
+    <footer class="footer">
+      <div class="container footer-inner">
+        <p><strong>{{ property.name }}</strong><template v-if="property.city"> · {{ property.city }}/{{ property.state }}</template></p>
+        <p v-if="property.email">{{ property.email }}</p>
+      </div>
     </footer>
   </div>
 </template>
 
 <style scoped>
-.hero { background: var(--brand); color: #fff; padding: 3rem 0; }
-.hero .btn { background: #fff; color: var(--brand); }
+.hero { position: relative; background: var(--brand) center / cover no-repeat; color: #fff; }
+.shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(20 28 22 / .25), rgb(20 28 22 / .7)); }
+.hero-inner { position: relative; padding-block: 5.5rem 3.5rem; max-width: 1080px; }
+.eyebrow.light { color: #ffffffcc; }
 .logo { height: 64px; }
-h1 { margin: .5rem 0; font-size: 2rem; }
-section { margin: 2.5rem 0; }
-.cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-.booking { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 1.25rem; }
-.form { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 1rem; }
-.form label { display: grid; gap: .25rem; font-weight: 600; font-size: .9rem; }
-.full { grid-column: 1 / -1; }
-.quote { background: var(--soft); border-radius: 8px; padding: .75rem 1rem; }
-.quote p { margin: .2rem 0; }
-.total { font-weight: 700; font-size: 1.1rem; }
-.hint { color: var(--muted); font-size: .9rem; }
-.error { color: #b42318; font-weight: 600; }
-.success { background: var(--soft); border-radius: 8px; padding: 1rem; }
-.footer { display: flex; justify-content: space-between; color: var(--muted); padding-bottom: 2rem; }
+h1 { margin: .3rem 0 .6rem; font-size: clamp(2.3rem, 6vw, 3.8rem); }
+.lead { max-width: 36rem; font-size: 1.1rem; margin: 0 0 1.6rem; color: #ffffffe6; }
+.hero-actions { display: flex; gap: .7rem; flex-wrap: wrap; }
+.hero .btn { background: #fff; color: var(--brand); }
+.hero .btn-light { background: transparent; color: #fff; border: 1.5px solid #ffffffb3; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-top: -1.8rem; position: relative; padding: 0; max-width: calc(1080px - 32px); width: calc(100% - 32px); }
+.facts div { background: var(--card); padding: 1rem 1.2rem; display: grid; gap: .15rem; }
+@media (max-width: 640px) { .facts { grid-template-columns: minmax(0, 1fr); } .facts div { grid-template-columns: 7rem 1fr; align-items: baseline; padding-block: .75rem; } }
+.block { margin: 3.5rem 0; }
+h2 { font-size: clamp(1.7rem, 4vw, 2.3rem); margin: .2rem 0 .4rem; }
+.hint { color: var(--muted); font-size: .92rem; margin: 0 0 1.2rem; }
+.cards { display: grid; gap: 1.2rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.booking { display: grid; gap: 1.2rem; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: start; }
+@media (max-width: 820px) { .booking { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; min-width: 0; }
+.notice { background: var(--soft); border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1rem; font-weight: 500; }
+.step { margin: 1rem 0 0; }
+.form { display: grid; gap: .85rem; position: sticky; top: 1rem; }
+.form h3 { margin: 0; font-size: 1.25rem; }
+.form label { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; }
+.opt { font-weight: 400; color: var(--muted); }
+.quote { background: var(--soft); border-radius: 10px; padding: .9rem 1rem; display: grid; gap: .35rem; }
+.line { display: flex; justify-content: space-between; gap: 1rem; margin: 0; font-variant-numeric: tabular-nums; }
+.line.total { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; border-top: 1px solid var(--line); padding-top: .5rem; margin-top: .2rem; }
+.quote .hint { margin: .3rem 0 0; font-size: .85rem; }
+.error { color: var(--danger); font-weight: 700; margin: 0; }
+.success { background: var(--soft); }
+.success h3 { margin-top: 0; font-size: 1.5rem; }
+.footer { border-top: 1px solid var(--line); color: var(--muted); }
+.footer-inner { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1.5rem; padding-block: 1.5rem 2.5rem; }
+.footer p { margin: 0; }
 </style>

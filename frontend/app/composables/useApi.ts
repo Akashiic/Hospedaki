@@ -1,3 +1,5 @@
+import { demoFetch } from '~/demo/demoApi'
+
 export interface Photo {
   url: string
   caption: string | null
@@ -43,6 +45,13 @@ export interface Quote {
 /** Cliente da API já apontado para a pousada configurada neste site. */
 export function useApi() {
   const config = useRuntimeConfig().public
+
+  // Prévia visual: responde com dados de exemplo, sem backend.
+  if (config.demo) {
+    const prefix = `/properties/${config.propertySlug}`
+    return (<T>(path: string, options?: Parameters<typeof demoFetch>[1]) =>
+      demoFetch<T>(`${prefix}${path}`, options)) as unknown as typeof $fetch
+  }
 
   return $fetch.create({
     baseURL: `${config.apiBase}/properties/${config.propertySlug}`,
