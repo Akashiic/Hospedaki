@@ -1,5 +1,3 @@
-import { demoFetch } from '~/demo/demoApi'
-
 export interface Photo {
   url: string
   caption: string | null
@@ -17,8 +15,15 @@ export interface Accommodation {
   photos: Photo[]
 }
 
+export interface PropertyPhoto extends Photo {
+  featured: boolean
+}
+
 export interface Property {
   name: string
+  tagline: string | null
+  highlights: { title: string, text: string }[]
+  photos: PropertyPhoto[]
   slug: string
   description: string | null
   email: string | null
@@ -49,8 +54,11 @@ export function useApi() {
   // Prévia visual: responde com dados de exemplo, sem backend.
   if (config.demo) {
     const prefix = `/properties/${config.propertySlug}`
-    return (<T>(path: string, options?: Parameters<typeof demoFetch>[1]) =>
-      demoFetch<T>(`${prefix}${path}`, options)) as unknown as typeof $fetch
+    // Carregado só na prévia, para não pesar no site de verdade.
+    return (async <T>(path: string, options?: Record<string, any>) => {
+      const { demoFetch } = await import('~/demo/demoApi')
+      return demoFetch<T>(`${prefix}${path}`, options)
+    }) as unknown as typeof $fetch
   }
 
   return $fetch.create({

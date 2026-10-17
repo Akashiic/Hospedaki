@@ -14,7 +14,7 @@ class PropertyController extends Controller
 {
     public function show(Property $property): PropertyResource
     {
-        $property->load(['accommodations' => fn ($query) => $query->where('active', true)->with('photos')]);
+        $property->load(['photos', 'accommodations' => fn ($query) => $query->where('active', true)->with('photos')]);
 
         return new PropertyResource($property);
     }

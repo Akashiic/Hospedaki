@@ -13,8 +13,15 @@ class PropertyResource extends JsonResource
     {
         return [
             'name' => $this->name,
+            'tagline' => $this->tagline,
             'slug' => $this->slug,
             'description' => $this->description,
+            'highlights' => $this->highlights ?? [],
+            'photos' => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($photo) => [
+                'url' => PhotoUrl::from($photo->path),
+                'caption' => $photo->caption,
+                'featured' => $photo->featured,
+            ])),
             'email' => $this->email,
             'phone' => $this->phone,
             'whatsapp' => $this->whatsapp,

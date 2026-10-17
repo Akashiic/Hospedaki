@@ -45,9 +45,16 @@ class BookingRequestTest extends TestCase
 
     public function test_public_property_page(): void
     {
+        $this->property->update(['tagline' => 'Desacelere', 'highlights' => [['title' => 'Silêncio', 'text' => 'Só natureza.']]]);
+        $this->property->photos()->create(['path' => 'https://exemplo.com/capa.jpg', 'featured' => true]);
+
         $this->getJson('/api/properties/pousada')
             ->assertOk()
-            ->assertJsonCount(2, 'data.accommodations');
+            ->assertJsonCount(2, 'data.accommodations')
+            ->assertJsonPath('data.tagline', 'Desacelere')
+            ->assertJsonPath('data.highlights.0.title', 'Silêncio')
+            ->assertJsonPath('data.photos.0.url', 'https://exemplo.com/capa.jpg')
+            ->assertJsonPath('data.photos.0.featured', true);
 
         $this->getJson('/api/properties/nao-existe')->assertNotFound();
     }

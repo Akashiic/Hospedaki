@@ -1,5 +1,3 @@
-import { demoFetch } from '~/demo/demoApi'
-
 export interface AdminBooking {
   id: number
   code: string
@@ -43,8 +41,11 @@ export function useAdminApi() {
   const token = useAdminToken()
 
   if (config.demo) {
-    return (<T>(path: string, options?: Parameters<typeof demoFetch>[1]) =>
-      demoFetch<T>(`/admin${path}`, options)) as unknown as typeof $fetch
+    // Carregado só na prévia, para não pesar no site de verdade.
+    return (async <T>(path: string, options?: Record<string, any>) => {
+      const { demoFetch } = await import('~/demo/demoApi')
+      return demoFetch<T>(`/admin${path}`, options)
+    }) as unknown as typeof $fetch
   }
 
   return $fetch.create({

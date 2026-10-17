@@ -16,7 +16,13 @@ class DatabaseSeeder extends Seeder
     {
         $property = Property::updateOrCreate(['slug' => 'pousada-exemplo'], [
             'name' => 'Pousada Exemplo',
-            'description' => 'Um chalé aconchegante e um espaço amplo, cercados de natureza.',
+            'tagline' => 'Desacelere no meio da mata',
+            'description' => 'Um chalé aconchegante e um espaço amplo, cercados de natureza. Reserve direto com a gente, sem taxas de aplicativo.',
+            'highlights' => [
+                ['title' => 'Silêncio de verdade', 'text' => 'Só o som do mato, dos pássaros e do fogo na lareira.'],
+                ['title' => 'Do seu jeito', 'text' => 'Chalé para casal ou espaço para a família inteira, ou os dois juntos.'],
+                ['title' => 'Reserva direta', 'text' => 'Você fala com a gente, sem intermediário e sem taxa de aplicativo.'],
+            ],
             'email' => 'contato@exemplo.com.br',
             'whatsapp' => '5500000000000',
             'city' => 'Cidade',

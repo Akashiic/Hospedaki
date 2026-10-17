@@ -1,7 +1,7 @@
 // API de mentira para a prévia visual: roda no navegador, sem servidor.
 // Imita as respostas do backend Laravel com dados de exemplo.
 import type { Accommodation, Property, Quote } from '~/composables/useApi'
-import { chaletPhoto, interiorPhoto, spacePhoto } from './illustrations'
+import { dawnScene, goldenScene, interiorScene, nightScene, porchScene, trailScene } from './illustrations'
 
 interface DemoSeason { accommodation_id: number, starts_on: string, ends_on: string, price: number }
 interface DemoBlock { id: number, accommodation_id: number, starts_on: string, ends_on: string, reason: string | null }
@@ -30,18 +30,31 @@ const accommodations: Accommodation[] = [
   {
     id: 1, name: 'Chalé', slug: 'chale', max_guests: 2, base_price: 35000, weekend_price: 45000, min_nights: 1,
     description: 'Chalé para casal com cama queen, cozinha equipada, lareira e varanda com rede de frente para a mata.',
-    photos: [{ url: chaletPhoto, caption: 'Chalé' }, { url: interiorPhoto, caption: 'Interior do chalé' }],
+    photos: [{ url: dawnScene, caption: 'O chalé ao amanhecer' }, { url: interiorScene, caption: 'Lareira acesa' }, { url: porchScene, caption: 'Rede na varanda' }],
   },
   {
     id: 2, name: 'Espaço', slug: 'espaco', max_guests: 6, base_price: 50000, weekend_price: 65000, min_nights: 1,
     description: 'Espaço amplo para famílias e grupos, com dois quartos, sala integrada, churrasqueira e quintal gramado.',
-    photos: [{ url: spacePhoto, caption: 'Espaço' }],
+    photos: [{ url: goldenScene, caption: 'O espaço no fim da tarde' }, { url: trailScene, caption: 'Trilha logo ao lado' }],
   },
 ]
 
 const property: Property = {
-  name: 'Pousada Exemplo', slug: 'pousada-exemplo',
+  name: 'Pousada Exemplo', slug: 'pousada-exemplo', tagline: 'Desacelere no meio da mata',
   description: 'Um chalé aconchegante e um espaço amplo, cercados de natureza. Reserve direto com a gente, sem taxas de aplicativo.',
+  highlights: [
+    { title: 'Silêncio de verdade', text: 'Só o som do mato, dos pássaros e do fogo na lareira.' },
+    { title: 'Do seu jeito', text: 'Chalé para casal ou espaço para a família inteira, ou os dois juntos.' },
+    { title: 'Reserva direta', text: 'Você fala com a gente, sem intermediário e sem taxa de aplicativo.' },
+  ],
+  photos: [
+    { url: dawnScene, caption: 'Amanhecer no chalé', featured: true },
+    { url: nightScene, caption: 'Noite de céu aberto', featured: true },
+    { url: goldenScene, caption: 'Fim de tarde no espaço', featured: true },
+    { url: interiorScene, caption: 'Lareira acesa', featured: false },
+    { url: trailScene, caption: 'Trilha na mata', featured: false },
+    { url: porchScene, caption: 'Rede na varanda', featured: false },
+  ],
   email: 'contato@exemplo.com.br', phone: null, whatsapp: '5500000000000', address: null,
   city: 'Cidade', state: 'SP', logo_url: null, primary_color: '#2f6f4f',
   check_in_time: '14:00', check_out_time: '12:00', accommodations,

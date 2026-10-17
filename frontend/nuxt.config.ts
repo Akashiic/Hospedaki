@@ -17,10 +17,10 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'pt-BR' },
       meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+      // Fontes servidas pelo próprio site (public/fonts, licença OFL), carregadas logo no início.
       link: [
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;700&display=swap' },
+        { rel: 'preload', as: 'font', type: 'font/woff2', href: '/fonts/instrument-serif-latin-400-normal.woff2', crossorigin: '' },
+        { rel: 'preload', as: 'font', type: 'font/woff2', href: '/fonts/figtree-latin-wght-normal.woff2', crossorigin: '' },
       ],
     },
   },

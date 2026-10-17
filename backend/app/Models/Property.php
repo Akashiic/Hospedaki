@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'name', 'slug', 'domain', 'description', 'email', 'phone', 'whatsapp',
+    'name', 'tagline', 'slug', 'domain', 'description', 'highlights', 'email', 'phone', 'whatsapp',
     'address', 'city', 'state', 'logo_path', 'primary_color', 'timezone',
     'check_in_time', 'check_out_time', 'settings', 'active',
 ])]
@@ -22,6 +22,7 @@ class Property extends Model
     {
         return [
             'settings' => 'array',
+            'highlights' => 'array',
             'active' => 'boolean',
         ];
     }
@@ -37,6 +38,11 @@ class Property extends Model
     public function accommodations(): HasMany
     {
         return $this->hasMany(Accommodation::class)->orderBy('sort_order')->orderBy('id');
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(PropertyPhoto::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function bookings(): HasMany

@@ -6,7 +6,7 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 
 ## O que já funciona (v1)
 
-- Página da pousada com as acomodações, rápida no celular e pronta para o Google.
+- Página da pousada no estilo landing page: capa em carrossel com transições suaves, menu fixo, seções "O lugar", acomodações, galeria, reserva e rodapé com contato. Animações leves (só opacidade e movimento), fontes servidas pelo próprio site e partes abaixo da capa carregadas sob demanda, para continuar rápida no celular.
 - Calendário separado por acomodação, com opção de reservar mais de uma ao mesmo tempo.
 - Preço por diária, com valor diferente para fim de semana (noites de sexta e sábado) e para temporadas (réveillon, feriados, férias).
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
@@ -79,7 +79,8 @@ Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.en
 
 | Tabela | O que guarda |
 |---|---|
-| `properties` | A pousada (cliente): nome, slug, contato, cor da marca, horários de check-in/out |
+| `properties` | A pousada (cliente): nome, frase de destaque (`tagline`), diferenciais (`highlights`), slug, contato, cor da marca, horários de check-in/out |
+| `property_photos` | Fotos da pousada; as marcadas como destaque (`featured`) vão para o carrossel da capa, as demais para a galeria |
 | `users` | Quem acessa o painel; cada usuário pertence a uma pousada |
 | `accommodations` | Chalé, espaço, quarto: capacidade, preço base, preço de fim de semana, mínimo de diárias |
 | `accommodation_photos` | Fotos de cada acomodação |

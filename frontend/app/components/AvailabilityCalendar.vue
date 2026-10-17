@@ -70,7 +70,7 @@ function state(day: string) {
           <span v-for="(w, i) in weekDays" :key="i" class="weekday">{{ w }}</span>
           <template v-for="(day, i) in month.days" :key="i">
             <span v-if="!day" />
-            <button v-else type="button" class="day" :class="state(day)" @click="pick(day)">
+            <button v-else type="button" class="day" :class="state(day)" :disabled="day < today" @click="pick(day)">
               {{ Number(day.slice(8)) }}
             </button>
           </template>
