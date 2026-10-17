@@ -6,7 +6,13 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 
 ## O que já funciona (v1)
 
-- Página da pousada no estilo landing page: capa em carrossel com transições suaves, menu fixo, seções "O lugar", acomodações, galeria, reserva e rodapé com contato. Animações leves (só opacidade e movimento), fontes servidas pelo próprio site e partes abaixo da capa carregadas sob demanda, para continuar rápida no celular.
+- Site da pousada em várias páginas, com transição suave entre elas e menu e rodapé fixos:
+  - **Início** (`/`): capa em carrossel, os diferenciais e as acomodações.
+  - **O lugar** (`/o-lugar`): apresentação, diferenciais e galeria de fotos.
+  - **Acomodações** (`/acomodacoes` e `/acomodacoes/{slug}`): lista e página de cada uma, com comodidades, fotos e preços.
+  - **Reservar** (`/reservar`): calendário e pedido de reserva.
+  - **Contato** (`/contato`): WhatsApp, telefone, e-mail e como funciona a reserva.
+- Animações leves (só opacidade e movimento), que respeitam quem pede menos movimento no celular. Fontes servidas pelo próprio site e partes abaixo da capa carregadas sob demanda, para continuar rápida no celular.
 - Calendário separado por acomodação, com opção de reservar mais de uma ao mesmo tempo.
 - Preço por diária, com valor diferente para fim de semana (noites de sexta e sábado) e para temporadas (réveillon, feriados, férias).
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
@@ -24,6 +30,8 @@ backend/   Laravel 13 (PHP 8.3+): API, regras de preço e disponibilidade, paine
 frontend/  Nuxt 4 (Node 22+): site público da pousada
 ```
 
+No site, os estilos são em SCSS (`frontend/app/assets/scss/`). As cores ficam em variáveis CSS, porque cada pousada tem a sua cor de marca. Tempos, curvas e distâncias das animações ficam juntos em `_motion.scss`, e a transição entre páginas usa o `pageTransition` do Nuxt.
+
 ## Como rodar no computador
 
 Pré-requisitos: PHP 8.3+, Composer, Node 22+.
@@ -39,7 +47,7 @@ php artisan migrate --seed
 php artisan serve            # http://localhost:8000
 ```
 
-O `--seed` cria uma pousada de exemplo (`pousada-exemplo`) com um Chalé e um Espaço, e o usuário do painel `dono@exemplo.com.br` com senha `password`. Esses dados são só para testes.
+O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com o Espaço Bela Vista e o Chalé Master, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`). Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias.
 
 **2. Site** (em outro terminal):
 
@@ -82,7 +90,7 @@ Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.en
 | `properties` | A pousada (cliente): nome, frase de destaque (`tagline`), diferenciais (`highlights`), slug, contato, cor da marca, horários de check-in/out |
 | `property_photos` | Fotos da pousada; as marcadas como destaque (`featured`) vão para o carrossel da capa, as demais para a galeria |
 | `users` | Quem acessa o painel; cada usuário pertence a uma pousada |
-| `accommodations` | Chalé, espaço, quarto: capacidade, preço base, preço de fim de semana, mínimo de diárias |
+| `accommodations` | Chalé, espaço, quarto: capacidade, comodidades (`amenities`), preço base, preço de fim de semana, mínimo de diárias |
 | `accommodation_photos` | Fotos de cada acomodação |
 | `seasonal_prices` | Preço de temporada por período (substitui o preço normal nessas datas) |
 | `bookings` | Pedido de reserva: hóspede, datas, total e status (`pending`, `confirmed`, `declined`, `cancelled`) |

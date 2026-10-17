@@ -26,56 +26,61 @@ const parse = (s: string) => { const [y, m, d] = s.split('-').map(Number); retur
 const addDays = (s: string, n: number) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d) }
 const today = iso(new Date())
 
+// Conteúdo real de ivoforti.com (Espaço Bela Vista e Chalé Master). Capacidade é estimada pelas camas:
+// o site deles não informa. As ilustrações ficam no lugar das fotos até recebermos as fotos reais.
 const accommodations: Accommodation[] = [
   {
-    id: 1, name: 'Chalé', slug: 'chale', max_guests: 2, base_price: 35000, weekend_price: 45000, min_nights: 1,
-    description: 'Chalé para casal com cama queen, cozinha equipada, lareira e varanda com rede de frente para a mata.',
-    photos: [{ url: dawnScene, caption: 'O chalé ao amanhecer' }, { url: interiorScene, caption: 'Lareira acesa' }, { url: porchScene, caption: 'Rede na varanda' }],
+    id: 1, name: 'Espaço Bela Vista', slug: 'espaco-bela-vista', max_guests: 6, base_price: 49700, weekend_price: 99700, min_nights: 1,
+    description: 'Apartamento de 30 m² com sala (sofá e TV 32" com Fire TV e streamings), quarto de casal, quarto com dois beliches e banheiro. Do lado de fora, pátio com palmeiras imperiais, deck com LED à noite, piscina com escadaria larga para as crianças, área de fogueira e salão de festas com cozinha, churrasqueira e sinuca. Valores para o casal; pessoas a mais têm acréscimo.',
+    amenities: ['Piscina familiar com escadaria larga', 'Salão de festas com cozinha e churrasqueira', 'Mesa de sinuca', 'Área de fogueira', 'Deck com iluminação de LED', 'TV 32" com Fire TV e streamings', 'Rampa de acesso', 'Café da manhã opcional'],
+    photos: [{ url: goldenScene, caption: 'Pátio com palmeiras imperiais' }, { url: nightScene, caption: 'Deck iluminado à noite' }, { url: trailScene, caption: 'Área de fogueira' }],
   },
   {
-    id: 2, name: 'Espaço', slug: 'espaco', max_guests: 6, base_price: 50000, weekend_price: 65000, min_nights: 1,
-    description: 'Espaço amplo para famílias e grupos, com dois quartos, sala integrada, churrasqueira e quintal gramado.',
-    photos: [{ url: goldenScene, caption: 'O espaço no fim da tarde' }, { url: trailScene, caption: 'Trilha logo ao lado' }],
+    id: 2, name: 'Chalé Master', slug: 'chale-master', max_guests: 4, base_price: 49700, weekend_price: 99700, min_nights: 1,
+    description: 'Chalé de 98 m² com vista para as montanhas. Suíte master com cama king, closet e TV com streamings; banheiro em porcelanato com banheira de hidromassagem extra grande para o casal. Sala com livros, cozinha completa compacta, sala de jantar, segundo quarto com duas camas de solteiro e varanda com cadeiras. Acesso por escada e ponte de madeira, perto do centro e dos espaços de casamento.',
+    amenities: ['Vista para as montanhas', 'Hidromassagem para casal', 'Cama king com closet', 'Cozinha completa', 'TV com streamings', 'Varanda', 'Perto do centro'],
+    photos: [{ url: dawnScene, caption: 'O chalé ao amanhecer' }, { url: interiorScene, caption: 'Suíte master' }, { url: porchScene, caption: 'Varanda com vista' }],
   },
 ]
 
 const property: Property = {
-  name: 'Pousada Exemplo', slug: 'pousada-exemplo', tagline: 'Desacelere no meio da mata',
-  description: 'Um chalé aconchegante e um espaço amplo, cercados de natureza. Reserve direto com a gente, sem taxas de aplicativo.',
+  name: 'Espaço Bela Vista', slug: 'espaco-bela-vista', tagline: 'Piscina, fogueira e vista para as montanhas em Mairiporã',
+  description: 'Um espaço com piscina e salão de festas para a família e um chalé de 98 m² com hidromassagem para o casal em Mairiporã. Reserve direto com a gente, sem taxa de aplicativo.',
   highlights: [
-    { title: 'Silêncio de verdade', text: 'Só o som do mato, dos pássaros e do fogo na lareira.' },
-    { title: 'Do seu jeito', text: 'Chalé para casal ou espaço para a família inteira, ou os dois juntos.' },
-    { title: 'Reserva direta', text: 'Você fala com a gente, sem intermediário e sem taxa de aplicativo.' },
+    { title: 'Para a família', text: 'Piscina com escadaria larga para as crianças, fogueira e salão com sinuca e churrasqueira.' },
+    { title: 'Para o casal', text: 'Chalé com cama king, banheira de hidromassagem e vista para as montanhas.' },
+    { title: 'Reserva direta', text: 'Você fala com a gente pelo WhatsApp, sem intermediário e sem taxa de aplicativo.' },
   ],
   photos: [
-    { url: dawnScene, caption: 'Amanhecer no chalé', featured: true },
-    { url: nightScene, caption: 'Noite de céu aberto', featured: true },
-    { url: goldenScene, caption: 'Fim de tarde no espaço', featured: true },
-    { url: interiorScene, caption: 'Lareira acesa', featured: false },
-    { url: trailScene, caption: 'Trilha na mata', featured: false },
-    { url: porchScene, caption: 'Rede na varanda', featured: false },
+    { url: goldenScene, caption: 'Pátio com palmeiras imperiais', featured: true },
+    { url: dawnScene, caption: 'Montanhas ao amanhecer', featured: true },
+    { url: nightScene, caption: 'Deck iluminado à noite', featured: true },
+    { url: interiorScene, caption: 'Suíte do Chalé Master', featured: false },
+    { url: trailScene, caption: 'Área de fogueira', featured: false },
+    { url: porchScene, caption: 'Varanda do chalé', featured: false },
   ],
-  email: 'contato@exemplo.com.br', phone: null, whatsapp: '5500000000000', address: null,
-  city: 'Cidade', state: 'SP', logo_url: null, primary_color: '#2f6f4f',
+  email: 'contato@ivoforti.com', phone: '1146043867', whatsapp: '5511950211636', address: 'R. Custódio, 180',
+  city: 'Mairiporã', state: 'SP', logo_url: null, primary_color: '#2f6f4f',
   check_in_time: '14:00', check_out_time: '12:00', accommodations,
 }
 
-const seasons: DemoSeason[] = accommodations.map(a => ({
-  accommodation_id: a.id,
+// Feriado do Chalé Master: R$ 1.297 por diária. Datas de exemplo (réveillon) até o dono informar as dele.
+const seasons: DemoSeason[] = [{
+  accommodation_id: 2,
   starts_on: `${new Date().getFullYear()}-12-26`,
   ends_on: `${new Date().getFullYear() + 1}-01-02`,
-  price: Math.round(a.base_price * 1.5),
-}))
+  price: 129700,
+}]
 
 const blocks: DemoBlock[] = [
-  { id: 1, accommodation_id: 2, starts_on: addDays(today, 20), ends_on: addDays(today, 22), reason: 'Reserva pelo Airbnb' },
+  { id: 1, accommodation_id: 1, starts_on: addDays(today, 20), ends_on: addDays(today, 22), reason: 'Reserva pelo Airbnb' },
 ]
 
 let nextId = 4
 const bookings: DemoBooking[] = [
-  booking(1, 'confirmed', 1, 5, 7, 'Ana Souza', 2, 'Aniversário de casamento.'),
-  booking(2, 'pending', 1, 12, 14, 'Carlos Lima', 2, null),
-  booking(3, 'pending', 2, 9, 12, 'Família Oliveira', 5, 'Vamos com um cachorro pequeno, pode?'),
+  booking(1, 'confirmed', 2, 5, 7, 'Ana Souza', 2, 'Aniversário de casamento.'),
+  booking(2, 'pending', 2, 12, 14, 'Carlos Lima', 2, null),
+  booking(3, 'pending', 1, 9, 12, 'Família Oliveira', 5, 'Vamos com um cachorro pequeno, pode?'),
 ]
 
 function booking(id: number, status: DemoBooking['status'], accId: number, inDays: number, outDays: number, name: string, guests: number, notes: string | null): DemoBooking {

@@ -1,0 +1,56 @@
+// Ferramentas de SCSS disponíveis em todos os componentes (injetadas pelo nuxt.config).
+// As cores continuam como variáveis CSS (--brand etc.) porque mudam por pousada em tempo real.
+
+// O sistema de movimento (tempos, curvas, distâncias, mixins) segue junto: veja _motion.scss.
+@forward 'motion';
+@use 'sass:map';
+@use 'motion' as *;
+
+$breakpoints: (
+  sm: 520px,
+  md: 720px,
+  lg: 860px,
+  xl: 1200px,
+);
+
+// Nomes antigos, mantidos como apelidos das curvas do sistema de movimento.
+$ease: $ease-enter;
+$ease-in-out: $ease-move;
+
+// Até a largura indicada (celular primeiro no CSS, ajustes para telas menores).
+@mixin below($size) {
+  @media (max-width: map.get($breakpoints, $size)) { @content; }
+}
+
+@mixin above($size) {
+  @media (min-width: map.get($breakpoints, $size) + 1px) { @content; }
+}
+
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) { @content; }
+}
+
+@mixin eyebrow($color: var(--brand)) {
+  display: inline-block;
+  margin: 0;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+  letter-spacing: .18em;
+  font-size: .72rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: $color;
+}
+
+@mixin display($size) {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+  font-size: $size;
+}
+
+@mixin section-pad($top: clamp(5rem, 10vw, 8rem), $bottom: $top) {
+  padding-block: $top $bottom;
+}

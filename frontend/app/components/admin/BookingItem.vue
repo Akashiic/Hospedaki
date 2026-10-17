@@ -71,7 +71,7 @@ const whatsapp = computed(() => {
   </article>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .item { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; min-width: 0; }
 .item.pending { border-left-color: #d99a1e; }
 .item.confirmed { border-left-color: var(--brand); }
@@ -82,7 +82,7 @@ h3 { margin: 0; font-size: 1.15rem; }
 .pending .status { background: #fbefd3; color: #7a5208; }
 .confirmed .status { background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand); }
 dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; margin: 0; }
-@media (max-width: 520px) { dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@include below(sm) { dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
 dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .accs { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; }

@@ -2,7 +2,11 @@
 import type { Property, Quote } from '~/composables/useApi'
 
 const props = defineProps<{ property: Property }>()
-const selected = defineModel<number[]>('selected', { required: true })
+
+// Começa com a acomodação vinda do link (?acomodacao=chale-master) ou com a primeira.
+const route = useRoute()
+const fromLink = props.property.accommodations.find(a => a.slug === route.query.acomodacao)
+const selected = ref<number[]>([(fromLink ?? props.property.accommodations[0])!.id].filter(Boolean))
 
 const api = useApi()
 const tracking = useTracking()
@@ -88,13 +92,8 @@ const whatsappLink = computed(() => {
 </script>
 
 <template>
-  <section id="reservar" class="booking-section">
+  <section class="booking-section">
     <div class="container">
-      <div class="head">
-        <p v-reveal class="eyebrow">Reserva</p>
-        <h2 v-reveal style="--d: .1s">Escolha suas datas</h2>
-        <p v-reveal class="hint" style="--d: .18s">Nada é cobrado agora. A pousada confirma o pedido e combina o pagamento com você.</p>
-      </div>
 
       <Transition name="swap" mode="out-in">
         <div v-if="done" key="done" class="panel success">
@@ -107,7 +106,7 @@ const whatsappLink = computed(() => {
           <a v-if="whatsappLink" :href="whatsappLink" class="btn" target="_blank" rel="noopener">Falar no WhatsApp</a>
         </div>
 
-        <div v-else key="form" v-reveal class="grid" style="--d: .2s">
+        <div v-else key="form" v-reveal class="grid" style="--i: 3">
           <div class="panel">
             <div class="choose" role="group" aria-label="Acomodações">
               <button
@@ -159,17 +158,15 @@ const whatsappLink = computed(() => {
   </section>
 </template>
 
-<style scoped>
-.booking-section { background: var(--soft); padding-block: clamp(5rem, 10vw, 8rem); }
-.head { margin-bottom: 2.5rem; }
-h2 { font-size: clamp(2.8rem, 7vw, 5.5rem); margin: .4rem 0 .8rem; }
+<style scoped lang="scss">
+.booking-section { background: var(--soft); @include section-pad(clamp(2.5rem, 6vw, 4rem), clamp(5rem, 10vw, 8rem)); }
 .hint { color: var(--muted); font-size: .95rem; margin: 0; }
 .grid { display: grid; gap: 1.2rem; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
-@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@include below(lg) { .grid { grid-template-columns: minmax(0, 1fr); } }
 .panel { background: var(--card); border-radius: var(--radius); padding: clamp(1.1rem, 2.5vw, 1.6rem); min-width: 0; box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 18px 40px -28px rgb(20 40 30 / .35); }
 .choose { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; }
-.chip { display: inline-flex; align-items: center; gap: .5rem; font: inherit; font-weight: 700; border: 1.5px solid var(--line); background: none; color: var(--text); border-radius: 999px; padding: .5rem 1rem; cursor: pointer; transition: border-color .2s, background-color .2s, color .2s; }
-.chip .tick { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; transition: background-color .2s, box-shadow .2s; }
+.chip { display: inline-flex; align-items: center; gap: .5rem; font: inherit; font-weight: 700; border: 1.5px solid var(--line); background: none; color: var(--text); border-radius: 999px; padding: .5rem 1rem; cursor: pointer; transition: border-color $dur-sm $ease-move, background-color $dur-sm $ease-move, color $dur-sm $ease-move; }
+.chip .tick { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; transition: background-color $dur-sm $ease-move, box-shadow $dur-sm $ease-move; }
 .chip[aria-pressed="true"] { border-color: var(--brand); background: var(--brand); color: var(--brand-ink); }
 .chip[aria-pressed="true"] .tick { background: currentColor; box-shadow: inset 0 0 0 2.5px var(--brand); }
 .notice { background: var(--soft); border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1rem; font-weight: 500; }
@@ -184,6 +181,8 @@ h2 { font-size: clamp(2.8rem, 7vw, 5.5rem); margin: .4rem 0 .8rem; }
 .error { color: var(--danger); font-weight: 700; margin: 0; }
 .success { max-width: 640px; }
 .success h3 { font-size: clamp(2.2rem, 5vw, 3.2rem); margin: .4rem 0 .8rem; }
-.swap-enter-active, .swap-leave-active { transition: opacity .45s var(--ease), transform .45s var(--ease); }
-.swap-enter-from, .swap-leave-to { opacity: 0; transform: translateY(10px); }
+.swap-enter-active { @include motion-enter; }
+.swap-leave-active { @include motion-exit; }
+.swap-enter-from { opacity: 0; transform: translateY($dist-sm); }
+.swap-leave-to { opacity: 0; transform: translateY(-$dist-xs); }
 </style>

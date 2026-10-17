@@ -81,7 +81,7 @@ function state(day: string) {
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .nav { display: flex; justify-content: flex-end; gap: .5rem; }
 .nav button { border: 1px solid var(--line); background: none; border-radius: 6px; width: 2rem; height: 2rem; cursor: pointer; }
 .months { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }

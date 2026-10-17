@@ -1,4 +1,6 @@
 <script setup lang="ts">
+definePageMeta({ layout: 'painel', pageTransition: { name: 'fade', mode: 'out-in' } })
+
 const api = useAdminApi()
 const token = useAdminToken()
 const demo = useRuntimeConfig().public.demo
@@ -42,7 +44,7 @@ async function submit() {
   </main>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .wrap { min-height: 100vh; display: grid; place-items: center; padding-block: 2rem; padding-inline: max(16px, env(safe-area-inset-left, 0px)) max(16px, env(safe-area-inset-right, 0px)); background: var(--soft); }
 .box { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.8rem; display: grid; gap: .9rem; }
 h1 { margin: 0; font-size: 1.8rem; }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AdminBlock, AdminBooking, AdminMe } from '~/composables/useAdminApi'
 
-definePageMeta({ middleware: 'admin' })
+definePageMeta({ middleware: 'admin', layout: 'painel', pageTransition: { name: 'fade', mode: 'out-in' } })
 useHead({ title: 'Painel da pousada', meta: [{ name: 'robots', content: 'noindex' }] })
 
 const api = useAdminApi()
@@ -166,7 +166,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
   </div>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .page { min-height: 100vh; background: var(--soft); }
 .top { background: var(--card); border-bottom: 1px solid var(--line); }
 .top-inner { display: flex; justify-content: space-between; align-items: end; gap: 1rem; padding-block: 1.2rem .6rem; }
@@ -182,7 +182,7 @@ h1 { margin: .1rem 0 0; font-size: 1.6rem; }
 .list { display: grid; gap: 1rem; }
 .empty { background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 2rem 1.2rem; text-align: center; color: var(--muted); margin: 0; }
 .blocks { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-@media (max-width: 720px) { .blocks { grid-template-columns: minmax(0, 1fr); } }
+@include below(md) { .blocks { grid-template-columns: minmax(0, 1fr); } }
 .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; min-width: 0; }
 .panel h2 { margin: 0 0 .3rem; font-size: 1.2rem; }
 .block-form { display: grid; gap: .8rem; }

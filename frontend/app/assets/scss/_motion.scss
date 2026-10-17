@@ -1,0 +1,219 @@
+// ════════════════════════════════════════════════════════════════════════════
+// Sistema de movimento — Espaço Bela Vista
+// Calmo, quente, sem pressa. Um único número base e uma única razão geram tudo.
+//
+// TEMPO   t(n) = 120ms × φⁿ   (φ = 1,618…, a razão áurea), arredondado a 5ms
+//         n:   -1    0    1    2    3    4     5     6     7     8
+//         ms:  75   120  195  315  510  820  1330  2155  3485  5635
+//         Cada degrau é φ vezes o anterior: a diferença entre dois tempos vizinhos
+//         é sempre perceptível, mas nunca brusca.
+//
+// SAÍDA   Saídas usam um degrau abaixo da entrada correspondente: saída = entrada ÷ φ
+//         (≈ 62%). O que sai não deve prender o olhar; o que entra tem tempo de pousar.
+//
+// CURVAS  enter  (desacelerar)  cubic-bezier(.22, .61, .36, 1)  — chega rápido e pousa devagar
+//         exit   (acelerar)     cubic-bezier(.64, 0, .78, .39)  — a curva de entrada girada 180°
+//                               em torno de (.5, .5): (x1,y1,x2,y2) → (1-x2, 1-y2, 1-x1, 1-y1)
+//         move   (padrão)       cubic-bezier(.65, 0, .35, 1)    — simétrica, para o que muda de
+//                               estado sem entrar nem sair (fusões, cortinas, hovers de cor)
+//         drift  (linear)       para o que mede o tempo (Ken Burns, barras de progresso)
+//
+// ESCALONAMENTO  passo = t(-1) = 75ms. Atraso do item n de uma cena: (n + 1) × 75ms.
+//         Ordem nas aberturas: eyebrow (0) → título (1) → texto (2) → ações/mídia (3).
+//         Tudo fica visível em < 0,9s; a cauda da desaceleração termina por volta de 1,1s,
+//         movendo menos de 2px no último terço. Nada bloqueia clique ou rolagem.
+//
+// DISTÂNCIA  d(n) = 10px × φⁿ, arredondado:  6 · 10 · 16 · 26 · 42 px
+// ZOOM       z(n) = 1 + φ⁻ⁿ:  1.09 (n=5, Ken Burns) · 1.056 (n=6, assentar) · 1.034 (n=7, hover)
+//            · 0.987 (1 − φ⁻⁹, recuo da página que sai)
+//
+// Regra: só opacity e transform. Com prefers-reduced-motion, nada se desloca: trocas
+// instantâneas ou fusões curtas de opacidade.
+// ════════════════════════════════════════════════════════════════════════════
+
+@use 'sass:math';
+@use 'sass:map';
+
+$phi: 1.6180339887;
+$motion-base: 120ms;
+$distance-base: 10px;
+
+@function dur($n) {
+  @return math.round(math.div($motion-base * math.pow($phi, $n), 5ms)) * 5ms;
+}
+
+@function dist($n) {
+  @return math.round($distance-base * math.pow($phi, $n));
+}
+
+@function zoom($n) {
+  @return math.div(math.round((1 + math.pow($phi, -$n)) * 1000), 1000);
+}
+
+// Saída correspondente a uma entrada de degrau n (um degrau abaixo, ÷ φ).
+@function exit-dur($n) {
+  @return dur($n - 1);
+}
+
+// ── Tempos ──────────────────────────────────────────────────────────────────
+$dur-instant: dur(-1); //   75ms  micro-reações, passo de escalonamento
+$dur-xs: dur(0);       //  120ms  saída rápida do painel
+$dur-sm: dur(1);       //  195ms  hovers de cor/opacidade, entrada do painel
+$dur-md: dur(2);       //  315ms  hovers com movimento, saída de página
+$dur-lg: dur(3);       //  510ms  opacidade das entradas
+$dur-xl: dur(4);       //  820ms  deslocamento das entradas
+$dur-2xl: dur(5);      // 1330ms  fusão entre fotos, cortina das imagens
+$dur-3xl: dur(6);      // 2155ms  imagem de abertura assentando, laço do indicador de rolar
+$dur-4xl: dur(8);      // 5635ms  deriva lenta (zoom das fotos em destaque)
+
+// ── Curvas ──────────────────────────────────────────────────────────────────
+$ease-enter: cubic-bezier(.22, .61, .36, 1);
+$ease-exit: cubic-bezier(.64, 0, .78, .39);
+$ease-move: cubic-bezier(.65, 0, .35, 1);
+$ease-drift: linear;
+
+// ── Escalonamento ───────────────────────────────────────────────────────────
+$stagger: $dur-instant;
+
+// ── Distâncias e zoom ───────────────────────────────────────────────────────
+$dist-xs: dist(-1); //  6px
+$dist-sm: dist(0);  // 10px
+$dist-md: dist(1);  // 16px
+$dist-lg: dist(2);  // 26px
+$dist-xl: dist(3);  // 42px
+
+$zoom-lg: zoom(5);  // 1.09
+$zoom-md: zoom(6);  // 1.056
+$zoom-sm: zoom(7);  // 1.034
+$zoom-recede: math.div(math.round((1 - math.pow($phi, -9)) * 1000), 1000); // .987
+
+// ── Funções e mixins ────────────────────────────────────────────────────────
+
+// Atraso do item n de uma cena (eyebrow = 0, título = 1, texto = 2, ações/mídia = 3).
+@function stagger-delay($index) {
+  @return ($index + 1) * $stagger;
+}
+
+@mixin stagger($index, $property: animation-delay) {
+  #{$property}: stagger-delay($index);
+}
+
+// Entrada por transição: opacidade em t(3), deslocamento em t(4), mesma curva.
+@mixin motion-enter($delay: 0s) {
+  transition: opacity $dur-lg $ease-enter $delay, transform $dur-xl $ease-enter $delay;
+}
+
+// Saída por transição: um degrau abaixo de cada componente da entrada.
+@mixin motion-exit($delay: 0s) {
+  transition: opacity exit-dur(3) $ease-exit $delay, transform exit-dur(4) $ease-exit $delay;
+}
+
+// Entrada por keyframes (aberturas que tocam no primeiro quadro, sem depender de JS).
+// $kind: 'fade' (opacidade + sobe) ou 'rise' (só sobe, para títulos que podem ser o LCP).
+@mixin motion-entrance($index: 0, $kind: fade) {
+  @if $kind == rise {
+    animation: motion-rise $dur-xl $ease-enter both;
+  } @else {
+    animation: motion-fade $dur-lg $ease-enter both, motion-lift $dur-xl $ease-enter both;
+  }
+  @include stagger($index);
+}
+
+// ── Estilos globais (incluídos uma única vez, em main.scss) ─────────────────
+// Ficam num mixin porque este arquivo é injetado em todos os componentes:
+// variáveis e mixins não geram CSS, então só main.scss emite as regras abaixo.
+@mixin motion-global-styles {
+  :root {
+    --dur-instant: #{$dur-instant};
+    --dur-xs: #{$dur-xs};
+    --dur-sm: #{$dur-sm};
+    --dur-md: #{$dur-md};
+    --dur-lg: #{$dur-lg};
+    --dur-xl: #{$dur-xl};
+    --dur-2xl: #{$dur-2xl};
+    --dur-3xl: #{$dur-3xl};
+    --dur-4xl: #{$dur-4xl};
+    --ease-enter: #{$ease-enter};
+    --ease-exit: #{$ease-exit};
+    --ease-move: #{$ease-move};
+    --ease: #{$ease-enter};
+    --stagger: #{$stagger};
+    --dist-xs: #{$dist-xs};
+    --dist-sm: #{$dist-sm};
+    --dist-md: #{$dist-md};
+    --dist-lg: #{$dist-lg};
+    --dist-xl: #{$dist-xl};
+  }
+
+  @keyframes motion-fade { from { opacity: 0; } }
+  @keyframes motion-lift { from { transform: translate3d(0, $dist-md, 0); } }
+  @keyframes motion-rise { from { transform: translate3d(0, $dist-lg, 0); } }
+
+  // ── Troca de página do site (pageTransition 'page', modo out-in) ─────────
+  // Corte de cinema: a cena que sai escurece e recua levemente em t(2); a que entra
+  // sobe d(0) e aparece (opacidade t(3), movimento t(4)). Menu e rodapé ficam no layout,
+  // fora da transição, então não piscam. Sem atraso extra: o out-in já faz a sequência,
+  // e a página nova aparece ~315ms após o clique.
+  .page-leave-active {
+    transition: opacity $dur-md $ease-exit, transform $dur-md $ease-exit;
+  }
+  .page-leave-to {
+    opacity: 0;
+    transform: translate3d(0, -$dist-xs, 0) scale($zoom-recede);
+  }
+  .page-enter-active { @include motion-enter; }
+  .page-enter-from {
+    opacity: 0;
+    transform: translate3d(0, $dist-sm, 0);
+  }
+
+  // ── Painel do dono: só opacidade, rápido (entra t(1), sai t(0)) ──────────
+  .fade-enter-active { transition: opacity $dur-sm $ease-move; }
+  .fade-leave-active { transition: opacity $dur-xs $ease-exit; }
+  .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+  // ── Revelação ao rolar (diretiva v-reveal) ───────────────────────────────
+  // Só esconde quando o JavaScript está ativo (.has-reveal), então sem JS — ou para
+  // robôs de busca — todo o conteúdo fica visível. Atraso: --d (segundos, legado) ou
+  // --i (índice na cena, multiplicado pelo passo de escalonamento).
+  .has-reveal {
+    .reveal {
+      opacity: 0;
+      transform: translate3d(0, $dist-lg, 0);
+      @include motion-enter;
+      transition-delay: var(--d, calc(var(--i, 0) * #{$stagger}));
+      &.is-in { opacity: 1; transform: none; }
+    }
+    .reveal-wipe::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      pointer-events: none;
+      background: var(--wipe, var(--paper));
+      transform-origin: bottom;
+      transition: transform $dur-2xl $ease-move;
+      transition-delay: var(--d, calc(var(--i, 0) * #{$stagger}));
+    }
+    .reveal-wipe.is-in::after { transform: scaleY(0); }
+  }
+  .reveal-wipe { position: relative; }
+
+  // ── Movimento reduzido ────────────────────────────────────────────────────
+  // Rede de segurança: tudo instantâneo. As trocas de página continuam como fusão
+  // curta de opacidade, sem deslocamento, para a mudança não parecer um salto.
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+      scroll-behavior: auto !important;
+    }
+    .page-enter-active, .page-leave-active, .fade-enter-active, .fade-leave-active {
+      transition: opacity $dur-sm linear !important;
+    }
+    .page-enter-from, .page-leave-to { transform: none; }
+    .has-reveal .reveal { opacity: 1; transform: none; }
+    .has-reveal .reveal-wipe::after { display: none; }
+  }
+}

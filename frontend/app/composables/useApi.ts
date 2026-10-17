@@ -12,6 +12,7 @@ export interface Accommodation {
   base_price: number
   weekend_price: number | null
   min_nights: number
+  amenities: string[]
   photos: Photo[]
 }
 
@@ -76,4 +77,12 @@ export function apiError(error: unknown) {
   const data = (error as { data?: { message?: string, errors?: Record<string, string[]> } }).data
   const first = data?.errors ? Object.values(data.errors)[0]?.[0] : undefined
   return first ?? data?.message ?? 'Não foi possível concluir. Tente novamente.'
+}
+
+/** Telefone brasileiro legível: 5511950211636 → (11) 95021-1636. */
+export function formatPhone(value: string | null | undefined) {
+  const d = (value ?? '').replace(/\D/g, '').replace(/^55(?=\d{10,11}$)/, '')
+  if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+  if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return value ?? ''
 }

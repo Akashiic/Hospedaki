@@ -5,14 +5,14 @@ defineProps<{ property: Property }>()
 </script>
 
 <template>
-  <section id="o-lugar" class="intro">
+  <section class="intro">
     <div class="container grid">
       <div class="lead">
         <h2 v-reveal class="eyebrow">O lugar</h2>
-        <p v-reveal class="statement" style="--d: .1s">{{ property.description }}</p>
+        <p v-reveal class="statement" style="--i: 1">{{ property.description }}</p>
       </div>
       <ul class="highlights">
-        <li v-for="(item, i) in property.highlights" :key="item.title" v-reveal :style="{ '--d': `${0.15 + i * 0.12}s` }">
+        <li v-for="(item, i) in property.highlights" :key="item.title" v-reveal :style="{ '--i': 2 + i * 2 }">
           <h3>{{ item.title }}</h3>
           <p>{{ item.text }}</p>
         </li>
@@ -27,10 +27,10 @@ defineProps<{ property: Property }>()
   </section>
 </template>
 
-<style scoped>
+<style scoped lang="scss">
 .intro { padding-block: clamp(5rem, 12vw, 9rem) clamp(3rem, 7vw, 5rem); }
 .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(2.5rem, 6vw, 6rem); align-items: end; }
-.eyebrow { margin: 0; font-family: var(--font-body); line-height: 1.4; }
+.eyebrow { @include eyebrow; }
 .statement { font-family: var(--font-display); font-size: clamp(2rem, 4.2vw, 3.4rem); line-height: 1.12; margin: 1.2rem 0 0; text-wrap: pretty; }
 .highlights { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.6rem; }
 .highlights li { border-top: 1px solid var(--line); padding-top: 1.1rem; }
@@ -40,5 +40,5 @@ defineProps<{ property: Property }>()
 .facts div { display: grid; gap: .2rem; border-left: 1px solid var(--line); padding-left: 1rem; }
 .facts span { text-transform: uppercase; letter-spacing: .16em; font-size: .7rem; font-weight: 700; color: var(--muted); }
 .facts strong { font-weight: 500; font-size: 1.05rem; }
-@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+@include below(lg) { .grid { grid-template-columns: minmax(0, 1fr); } }
 </style>
