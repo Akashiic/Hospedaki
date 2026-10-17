@@ -16,6 +16,7 @@ class AccommodationResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
+            'amenities' => $this->amenities ?? [],
             'max_guests' => $this->max_guests,
             'base_price' => $this->base_price,
             'weekend_price' => $this->weekend_price,

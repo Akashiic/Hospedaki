@@ -47,6 +47,7 @@ class BookingRequestTest extends TestCase
     {
         $this->property->update(['tagline' => 'Desacelere', 'highlights' => [['title' => 'Silêncio', 'text' => 'Só natureza.']]]);
         $this->property->photos()->create(['path' => 'https://exemplo.com/capa.jpg', 'featured' => true]);
+        $this->chale->update(['amenities' => ['Hidromassagem', 'Varanda']]);
 
         $this->getJson('/api/properties/pousada')
             ->assertOk()
@@ -54,7 +55,9 @@ class BookingRequestTest extends TestCase
             ->assertJsonPath('data.tagline', 'Desacelere')
             ->assertJsonPath('data.highlights.0.title', 'Silêncio')
             ->assertJsonPath('data.photos.0.url', 'https://exemplo.com/capa.jpg')
-            ->assertJsonPath('data.photos.0.featured', true);
+            ->assertJsonPath('data.photos.0.featured', true)
+            ->assertJsonPath('data.accommodations.0.amenities', ['Hidromassagem', 'Varanda'])
+            ->assertJsonPath('data.accommodations.1.amenities', []);
 
         $this->getJson('/api/properties/nao-existe')->assertNotFound();
     }
