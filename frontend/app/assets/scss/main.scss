@@ -1,0 +1,158 @@
+// Identidade "cinema na mata": noite de floresta, luz âmbar de lareira, papel claro levemente esverdeado.
+// A cor da marca vem do cadastro de cada pousada (--brand).
+
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/instrument-serif-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Figtree';
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url('/fonts/figtree-latin-wght-normal.woff2') format('woff2');
+}
+
+:root {
+  --brand: #2f6f4f;
+  --night: #0e1411;
+  --night-2: #17201b;
+  --amber: #e9b76b;
+  // Âmbar claro para letras pequenas sobre fotos (o âmbar cheio não alcança 4,5:1 ali).
+  --amber-soft: #f6dcb0;
+  --paper: #f3f4ef;
+  --card: #ffffff;
+  --soft: color-mix(in srgb, var(--brand) 8%, var(--paper));
+  --line: #dcdfd6;
+  --muted: #5a625a;
+  // Texto secundário sobre os céus claros de "Um dia aqui": --muted fica no limite (4,5:1) sobre o
+  // céu mais escuro do amanhecer; este cinza dá folga (≥ 5,7:1).
+  --ink-soft-day: #4a524a;
+  --text: #19201b;
+  --on-night: #eef0ea;
+  --on-night-muted: #a9b2a9;
+  // Letras e traços brancos sobre fotos (legendas, indicadores, rótulo da capa).
+  --on-photo: #ffffff;
+  --danger: #b42318;
+  // Letra sobre --danger: fixa em branco (6,6:1), sem depender da cor da marca.
+  --danger-ink: #ffffff;
+  // Pedidos aguardando resposta no painel.
+  --warn: #d99a1e;
+  --warn-soft: #fbefd3;
+  --warn-ink: #7a5208;
+  // Anel de foco: tinta escura nas superfícies claras; as superfícies escuras trocam para --focus-dark.
+  --focus: var(--text);
+  --focus-dark: #ffffff;
+  --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
+  --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --radius: 14px;
+  --gutter: max(16px, env(safe-area-inset-left, 0px));
+  --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  // Altura do menu fixo (com o recorte da câmera no iPhone): base de todos os elementos presos.
+  --nav-h: calc(60px + env(safe-area-inset-top, 0px));
+}
+
+// Cores derivadas da marca, recalculadas onde a cor da pousada é aplicada (style="--brand: …"),
+// para o contraste valer com qualquer cor cadastrada, sem JavaScript:
+//   --brand-ink: letra sobre a marca (branco nas marcas escuras, preto nas claras; corte em L* 49,5,
+//     onde branco e preto empatam em contraste);
+//   --brand-text: a marca como texto em fundo claro, escurecida até no máximo L 0,45 (≥ 4,5:1).
+// Os valores fixos valem para o verde padrão e para navegadores sem cor relativa: nesses navegadores
+// (Safari < 16.4, Chrome < 119) uma pousada com cor clara ficaria com verde escuro e branco fixos,
+// o que mantém o contraste mas não acompanha a marca. Revisar ao cadastrar a segunda pousada.
+:root, [style*="--brand"] {
+  --brand-ink: #ffffff;
+  --brand-text: #2d674a;
+}
+@supports (color: lch(from red l c h)) {
+  :root, [style*="--brand"] {
+    --brand-ink: lch(from var(--brand) calc((49.5 - l) * 1000) 0 0);
+    --brand-text: oklch(from var(--brand) min(l, .45) c h);
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: var(--font-body); font-size: 16px; color: var(--text); background: var(--paper); line-height: 1.6; overflow-x: hidden; }
+img { max-width: 100%; }
+h1, h2, h3 { @include display(inherit); }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+// Só para leitores de tela.
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.container { max-width: 1200px; margin: 0 auto; padding-inline: var(--gutter) var(--gutter-r); }
+.eyebrow { @include eyebrow; }
+
+// Pular para o conteúdo: primeiro Tab de cada página; aparece só com o foco do teclado, sem animação.
+.skip-link {
+  position: fixed; z-index: 60; top: calc(env(safe-area-inset-top, 0px) + .5rem); left: var(--gutter);
+  display: inline-flex; align-items: center; min-height: 44px; padding: .7rem 1.1rem;
+  background: var(--night); color: var(--on-night); border-radius: 999px; font-weight: 700; text-decoration: none;
+  transform: translateY(-200%);
+  &:focus-visible { transform: none; outline-color: var(--focus-dark); }
+}
+// O alvo do pulo recebe foco por programa; não precisa de anel.
+main:focus { outline: none; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .55rem;
+  background: var(--brand); color: var(--brand-ink);
+  border: 0; border-radius: 999px; padding: .85rem 1.6rem;
+  font: inherit; font-weight: 700; cursor: pointer; text-decoration: none;
+  // Só transform e opacity animam; cor e fundo trocam na hora (regra em _motion.scss).
+  transition: transform $dur-md $ease-enter, opacity $dur-sm $ease-move;
+
+  &:hover { transform: translateY(-2px); }
+  &:active { transform: translateY(0); transition-duration: $dur-instant; }
+  &:disabled { opacity: .45; cursor: default; transform: none; }
+  .arrow { transition: transform $dur-md $ease-enter; }
+  &:hover .arrow { transform: translateX(3px); }
+
+  &-ghost { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1.5px currentColor; }
+  &-light { background: #fff; color: var(--night); }
+  &-amber { background: var(--amber); color: var(--night); }
+  // Clareia no hover com uma camada que entra por opacidade (o fundo do botão não anima).
+  &-outline-light {
+    position: relative; isolation: isolate;
+    background: transparent; color: #fff; box-shadow: inset 0 0 0 1.5px rgb(255 255 255 / .6);
+    &::before {
+      content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+      background: rgb(255 255 255 / .1); opacity: 0; transition: opacity $dur-sm $ease-move;
+    }
+    &:hover::before { opacity: 1; }
+  }
+  // Botão menor (painel), ainda com 44px de altura para o dedo.
+  &-sm { padding: .5rem 1rem; font-size: .88rem; min-height: 44px; }
+}
+
+.text-link {
+  // 44px de altura para o toque; o sublinhado fica colado ao texto e cresce só com transform.
+  position: relative; min-height: 44px;
+  color: var(--text); font-weight: 700; text-decoration: none; display: inline-flex; gap: .45rem; align-items: center;
+  &::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: calc(50% - .8em); height: 1px;
+    background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform $dur-lg $ease-enter;
+  }
+  &:hover::after { transform: scaleX(1); transform-origin: left; }
+}
+
+// Campos usam o mesmo anel de foco dos botões (:focus-visible acima), mais justo à borda; a borda
+// troca para a marca na hora.
+input:not([type=checkbox]), textarea, select {
+  font: inherit; padding: .75rem .85rem; border: 1px solid var(--line); border-radius: 10px; width: 100%;
+  background: var(--card); color: var(--text);
+  &:focus { border-color: var(--brand); }
+  &:focus-visible { outline-offset: 1px; }
+}
+
+// Barra de carregamento do Nuxt (app.vue): o estilo dela é inline e traz "height" na transição e
+// tempos fora dos tokens. A altura nunca muda; aqui ela fica só com transform e opacity, nos tokens.
+.nuxt-loading-indicator { transition: transform $dur-xs $ease-move, opacity $dur-md $ease-move !important; }
+
+// ── Movimento: tokens em :root, trocas de página, v-reveal e movimento reduzido ──
+// Definidos em _motion.scss (injetado via _mixins); emitidos aqui uma única vez.
+@include motion-global-styles;
