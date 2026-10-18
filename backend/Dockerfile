@@ -2,7 +2,11 @@
 # FrankenPHP serve a pasta public/ com PHP 8.3, sem nginx nem php-fpm à parte.
 FROM dunglas/frankenphp:1-php8.3-bookworm
 
-RUN install-php-extensions pdo_pgsql intl opcache zip
+RUN install-php-extensions pdo_pgsql intl opcache zip \
+    # O binário vem com permissão para abrir portas baixas; o Render não aceita isso e a porta é 10000.
+    # Copiar o arquivo descarta essa permissão.
+    && cp /usr/local/bin/frankenphp /tmp/frankenphp && mv /tmp/frankenphp /usr/local/bin/frankenphp \
+    && chmod +x /usr/local/bin/frankenphp
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
