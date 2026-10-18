@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Accommodation;
 use App\Models\Property;
 use App\Services\BookingService;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -13,8 +14,9 @@ use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
 /**
- * Pedidos simultâneos para as mesmas datas, em processos separados e num arquivo
- * SQLite de verdade (o banco em memória dos outros testes não tem concorrência).
+ * Pedidos simultâneos para as mesmas datas, em processos separados. No SQLite usa um arquivo
+ * de verdade (o banco em memória dos outros testes não tem concorrência); no Postgres usa o
+ * banco configurado e o recria no fim.
  *
  * Sem pcntl ou posix o teste é pulado. Os atributos são checados antes do setUp, então
  * o tearDown não roda; um markTestSkipped no setUp rodaria o tearDown e viraria erro.
@@ -27,24 +29,35 @@ class ConcurrentBookingTest extends TestCase
 
     private string $dir;
 
+    private string $connection;
+
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->connection = DB::getDefaultConnection();
         $this->dir = sys_get_temp_dir().'/hospedaki-concorrencia-'.uniqid();
         mkdir($this->dir);
-        touch($this->dir.'/database.sqlite');
 
-        config(['database.connections.sqlite.database' => $this->dir.'/database.sqlite']);
-        DB::purge('sqlite');
-        Artisan::call('migrate', ['--force' => true]);
+        if ($this->connection === 'sqlite') {
+            touch($this->dir.'/database.sqlite');
+            config(['database.connections.sqlite.database' => $this->dir.'/database.sqlite']);
+            DB::purge('sqlite');
+        }
+
+        Artisan::call($this->connection === 'sqlite' ? 'migrate' : 'migrate:fresh', ['--force' => true]);
     }
 
     protected function tearDown(): void
     {
-        DB::purge('sqlite');
+        DB::purge($this->connection);
         array_map('unlink', glob($this->dir.'/*') ?: []);
         @rmdir($this->dir);
+
+        // Os pedidos daqui ficam gravados de verdade: os próximos testes recriam o banco.
+        if ($this->connection !== 'sqlite') {
+            RefreshDatabaseState::$migrated = false;
+        }
 
         parent::tearDown();
     }
@@ -64,7 +77,7 @@ class ConcurrentBookingTest extends TestCase
         ];
 
         // Nenhum processo filho pode herdar a conexão aberta do pai.
-        DB::disconnect('sqlite');
+        DB::disconnect($this->connection);
         $start = microtime(true) + 0.3;
         $pids = [];
 
@@ -99,7 +112,7 @@ class ConcurrentBookingTest extends TestCase
     private function runChild(int $i, float $start, Property $property, array $data): never
     {
         try {
-            DB::purge('sqlite');
+            DB::purge($this->connection);
             usleep(max(0, (int) (($start - microtime(true)) * 1_000_000)));
             app(BookingService::class)->request($property, $data);
             $result = 'criado';

@@ -81,7 +81,7 @@ class BookingService
             $accommodations = Accommodation::whereKey($data['accommodation_ids']);
             DB::connection()->getDriverName() === 'sqlite'
                 ? $accommodations->toBase()->update(['id' => DB::raw('id')])
-                : $accommodations->lockForUpdate()->get();
+                : $accommodations->orderBy('id')->lockForUpdate()->get(); // sempre na mesma ordem, sem deadlock
 
             $quote = $this->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'], $data['guests']);
 
