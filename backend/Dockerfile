@@ -2,7 +2,7 @@
 # FrankenPHP serve a pasta public/ com PHP 8.3, sem nginx nem php-fpm à parte.
 FROM dunglas/frankenphp:1-php8.3-bookworm
 
-RUN install-php-extensions pdo_pgsql intl opcache
+RUN install-php-extensions pdo_pgsql intl opcache zip
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
