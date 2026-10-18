@@ -110,11 +110,13 @@ $zoom-recede: math.div(math.round((1 - math.pow($phi, -9)) * 1000), 1000); // .9
 
 // Entrada por keyframes (aberturas que tocam no primeiro quadro, sem depender de JS).
 // $kind: 'fade' (opacidade + sobe) ou 'rise' (só sobe, para títulos que podem ser o LCP).
+// Preenchimento 'backwards': segura o estado inicial durante o atraso e, ao terminar, solta o
+// elemento — hovers e transições do próprio componente voltam a valer sem briga.
 @mixin motion-entrance($index: 0, $kind: fade) {
   @if $kind == rise {
-    animation: motion-rise $dur-xl $ease-enter both;
+    animation: motion-rise $dur-xl $ease-enter backwards;
   } @else {
-    animation: motion-fade $dur-lg $ease-enter both, motion-lift $dur-xl $ease-enter both;
+    animation: motion-fade $dur-lg $ease-enter backwards, motion-lift $dur-xl $ease-enter backwards;
   }
   @include stagger($index);
 }

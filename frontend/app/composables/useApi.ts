@@ -20,10 +20,22 @@ export interface PropertyPhoto extends Photo {
   featured: boolean
 }
 
+/** Um momento do dia contado na home; `couple` e `family` trocam o texto conforme quem vem. */
+export interface StoryMoment {
+  time: string
+  period: string
+  title: string
+  text: string
+  couple?: string
+  family?: string
+  image?: string
+}
+
 export interface Property {
   name: string
   tagline: string | null
   highlights: { title: string, text: string }[]
+  story: StoryMoment[]
   photos: PropertyPhoto[]
   slug: string
   description: string | null

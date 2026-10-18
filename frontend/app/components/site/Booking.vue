@@ -1,18 +1,23 @@
 <script setup lang="ts">
 import type { Property, Quote } from '~/composables/useApi'
+import { accommodationFor } from '~/composables/usePersona'
 
 const props = defineProps<{ property: Property }>()
 
-// Começa com a acomodação vinda do link (?acomodacao=chale-master) ou com a primeira.
+// Começa com a acomodação vinda do link (?acomodacao=chale-master), depois a da escolha
+// "a dois / com a família" feita na capa, e por fim a primeira.
 const route = useRoute()
 const fromLink = props.property.accommodations.find(a => a.slug === route.query.acomodacao)
+  ?? accommodationFor(props.property, usePersona().value)
 const selected = ref<number[]>([(fromLink ?? props.property.accommodations[0])!.id].filter(Boolean))
 
 const api = useApi()
 const tracking = useTracking()
 
-const checkIn = ref('')
-const checkOut = ref('')
+// Datas também podem vir do link (?entrada=2026-10-23&saida=2026-10-25), como no aviso de fim de semana livre da capa.
+const isoDate = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '')
+const checkIn = ref(isoDate(route.query.entrada))
+const checkOut = ref(isoDate(route.query.saida))
 const guests = ref(2)
 const form = reactive({ guest_name: '', guest_phone: '', guest_email: '', notes: '' })
 
@@ -41,6 +46,7 @@ const sending = ref(false)
 const done = ref<{ code: string } | null>(null)
 
 watch([selected, checkIn, checkOut, guests], async () => {
+  if (import.meta.server) return
   quote.value = null
   errorMessage.value = ''
   if (!selected.value.length || !checkIn.value || !checkOut.value) return
@@ -53,7 +59,7 @@ watch([selected, checkIn, checkOut, guests], async () => {
   catch (e) {
     errorMessage.value = apiError(e)
   }
-})
+}, { immediate: true })
 
 async function submit() {
   if (!quote.value) return

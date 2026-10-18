@@ -74,8 +74,10 @@ function onTouchEnd(e: TouchEvent) {
       </h1>
       <p v-if="subtitle" class="sub">{{ subtitle }}</p>
       <div class="actions">
-        <button type="button" class="btn btn-light" @click="emit('book')">Ver datas e reservar <span class="arrow">→</span></button>
-        <button type="button" class="btn btn-outline-light" @click="emit('explore')">Conhecer o lugar</button>
+        <slot name="actions">
+          <button type="button" class="btn btn-light" @click="emit('book')">Ver datas e reservar <span class="arrow">→</span></button>
+          <button type="button" class="btn btn-outline-light" @click="emit('explore')">Conhecer o lugar</button>
+        </slot>
       </div>
     </div>
 
@@ -102,7 +104,7 @@ function onTouchEnd(e: TouchEvent) {
 
 <style scoped lang="scss">
 // Coreografia da capa (tempos e curvas em assets/scss/_motion.scss):
-//   lugar (0) → palavras do título (1…n, uma por passo de 75ms) → subtítulo (n+1) → botões (n+2).
+//   lugar (0) → palavras do título (1…n, uma por passo de 75ms) → subtítulo (n+1) → ações/portas (n+1 ou n+2).
 //   n é limitado a 4 para a entrada caber em ~1s. As fotos fundem em t(5) com a curva
 //   simétrica e derivam em zoom linear (Ken Burns) durante todo o tempo em que estão à vista.
 .hero { position: relative; height: 100svh; min-height: 620px; max-height: 1100px; overflow: hidden; background: var(--night); color: #fff; display: flex; align-items: flex-end; isolation: isolate; --n: min(var(--words, 3), 4); }
@@ -118,15 +120,22 @@ function onTouchEnd(e: TouchEvent) {
 .grain { z-index: 3; opacity: .08; pointer-events: none; mix-blend-mode: overlay; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
 .content { position: relative; z-index: 4; width: 100%; max-width: 1200px; margin: 0 auto; padding-inline: var(--gutter) var(--gutter-r); padding-bottom: clamp(7rem, 16vh, 10rem); }
 .place { margin: 0 0 1rem; text-transform: uppercase; letter-spacing: .24em; font-size: .75rem; font-weight: 700; color: var(--amber); text-shadow: 0 1px 12px rgb(0 0 0 / .45); @include motion-entrance(0); }
-h1 { margin: 0; font-size: clamp(3rem, 9vw, 7.2rem); line-height: .98; max-width: 12ch; }
+// O título encolhe também pela altura da tela, para caber junto com as escolhas em notebooks baixos.
+h1 { margin: 0; font-size: clamp(2.8rem, min(9vw, 10.5vh), 7.2rem); line-height: .98; max-width: 15ch; text-wrap: balance; }
 .word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; }
 // Só transform (sem opacidade): o título costuma ser o maior texto da tela e não pode atrasar o LCP.
 .word > span { display: inline-block; animation: rise $dur-xl $ease-enter both; animation-delay: calc((min(var(--i), 3) + 2) * #{$stagger}); }
 .sub { max-width: 34rem; font-size: clamp(1rem, 1.6vw, 1.15rem); color: rgb(255 255 255 / .85); margin: 1.4rem 0 0; @include motion-entrance; animation-delay: calc((var(--n) + 2) * #{$stagger}); }
-.actions { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem; @include motion-entrance; animation-delay: calc((var(--n) + 3) * #{$stagger}); }
+// Ações: o contêiner não anima; cada filho entra no seu passo a partir de --enter-at
+// (logo após o título, ou após o subtítulo quando houver). As portas (SiteDoors) leem
+// --enter-at para escalonar a pergunta e os dois botões por dentro.
+.actions { display: flex; flex-wrap: wrap; gap: .8rem; margin-top: 2rem; --enter-at: calc((var(--n) + 2) * #{$stagger}); }
+.sub + .actions { --enter-at: calc((var(--n) + 3) * #{$stagger}); }
+.actions > .btn { @include motion-entrance; animation-delay: var(--enter-at); }
+.actions > .btn + .btn { animation-delay: calc(var(--enter-at) + #{$stagger}); }
 @keyframes rise { from { transform: translateY(105%); } to { transform: none; } }
 
-.controls { position: absolute; z-index: 4; right: var(--gutter-r); bottom: 2.2rem; display: grid; gap: .7rem; justify-items: end; width: min(320px, 60vw); @include motion-entrance; animation-delay: calc((var(--n) + 4) * #{$stagger}); }
+.controls { position: absolute; z-index: 4; right: var(--gutter-r); bottom: 2.2rem; display: grid; gap: .7rem; justify-items: end; width: min(320px, 60vw); @include motion-entrance; animation-delay: calc((var(--n) + 5) * #{$stagger}); }
 .caption { margin: 0; display: flex; gap: .8rem; align-items: baseline; font-size: .85rem; color: rgb(255 255 255 / .85); }
 .num { font-variant-numeric: tabular-nums; letter-spacing: .1em; color: rgb(255 255 255 / .6); }
 .bars { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .4rem; width: 100%; }
@@ -158,7 +167,7 @@ h1 { margin: 0; font-size: clamp(3rem, 9vw, 7.2rem); line-height: .98; max-width
 @include reduced-motion {
   .slide.active img, .slide.prev img { animation: none; }
   .slide img { transform: none; }
-  .place, .word > span, .sub, .actions, .controls { animation: none; }
+  .place, .word > span, .sub, .actions > .btn, .controls { animation: none; }
   .scroll span { animation: none; opacity: 1; }
 }
 </style>

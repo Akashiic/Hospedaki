@@ -7,12 +7,13 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 ## O que já funciona (v1)
 
 - Site da pousada em várias páginas, com transição suave entre elas e menu e rodapé fixos:
-  - **Início** (`/`): capa em carrossel, os diferenciais e as acomodações.
+  - **Início** (`/`): capa em carrossel com a pergunta "Com quem você vem?" (a dois ou com a família) e o próximo fim de semana livre; depois "Um dia aqui", em que rolar a página passa da manhã à noite na pousada (o céu muda de cor e um sol vira lua). A escolha da capa muda os textos, a ordem das acomodações e a acomodação já marcada em Reservar.
   - **O lugar** (`/o-lugar`): apresentação, diferenciais e galeria de fotos.
   - **Acomodações** (`/acomodacoes` e `/acomodacoes/{slug}`): lista e página de cada uma, com comodidades, fotos e preços.
   - **Reservar** (`/reservar`): calendário e pedido de reserva.
   - **Contato** (`/contato`): WhatsApp, telefone, e-mail e como funciona a reserva.
 - Animações leves (só opacidade e movimento), que respeitam quem pede menos movimento no celular. Fontes servidas pelo próprio site e partes abaixo da capa carregadas sob demanda, para continuar rápida no celular.
+- No celular, uma barra fixa com "Ver datas e reservar" e WhatsApp aparece depois da capa.
 - Calendário separado por acomodação, com opção de reservar mais de uma ao mesmo tempo.
 - Preço por diária, com valor diferente para fim de semana (noites de sexta e sábado) e para temporadas (réveillon, feriados, férias).
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
@@ -87,7 +88,7 @@ Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.en
 
 | Tabela | O que guarda |
 |---|---|
-| `properties` | A pousada (cliente): nome, frase de destaque (`tagline`), diferenciais (`highlights`), slug, contato, cor da marca, horários de check-in/out |
+| `properties` | A pousada (cliente): nome, frase de destaque (`tagline`), diferenciais (`highlights`), momentos do dia da home (`story`), slug, contato, cor da marca, horários de check-in/out |
 | `property_photos` | Fotos da pousada; as marcadas como destaque (`featured`) vão para o carrossel da capa, as demais para a galeria |
 | `users` | Quem acessa o painel; cada usuário pertence a uma pousada |
 | `accommodations` | Chalé, espaço, quarto: capacidade, comodidades (`amenities`), preço base, preço de fim de semana, mínimo de diárias |

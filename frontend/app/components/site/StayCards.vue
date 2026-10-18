@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import type { Accommodation } from '~/composables/useApi'
 
-// Cartões das acomodações na home: foto grande, nome e preço; levam para a página de cada uma.
-defineProps<{ accommodations: Accommodation[] }>()
+// Cartões das acomodações: foto grande, nome e preço; levam para a página de cada uma.
+// Com `highlight`, essa acomodação vem primeiro e ganha o selo "Para vocês".
+const props = defineProps<{ accommodations: Accommodation[], highlight?: number | null }>()
+const ordered = computed(() => props.highlight
+  ? [...props.accommodations].sort((a, b) => Number(b.id === props.highlight) - Number(a.id === props.highlight))
+  : props.accommodations)
 </script>
 
 <template>
   <div class="cards">
     <NuxtLink
-      v-for="(acc, i) in accommodations"
+      v-for="(acc, i) in ordered"
       :key="acc.id"
       v-reveal
       :to="`/acomodacoes/${acc.slug}`"
@@ -19,6 +23,7 @@ defineProps<{ accommodations: Accommodation[] }>()
         <img v-if="acc.photos[0]" :src="acc.photos[0].url" :alt="acc.photos[0].caption ?? acc.name" loading="lazy" decoding="async">
       </div>
       <div class="body">
+        <span v-if="acc.id === highlight" class="badge">Para vocês</span>
         <h3>{{ acc.name }}</h3>
         <p class="meta">até {{ acc.max_guests }} pessoas · a partir de {{ formatMoney(acc.base_price) }}/diária</p>
         <span class="more">Conhecer <span class="arrow">→</span></span>
@@ -39,6 +44,7 @@ defineProps<{ accommodations: Accommodation[] }>()
 .media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(8 12 10 / 0) 40%, rgb(8 12 10 / .82)); }
 .card:hover .media img { transform: scale($zoom-sm); }
 .body { position: absolute; inset: auto 0 0; padding: clamp(1.2rem, 3vw, 2rem); display: grid; gap: .3rem; }
+.badge { display: inline-block; margin-bottom: .6rem; padding: .3rem .65rem; border-radius: 999px; background: var(--amber); color: var(--night); font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 h3 { @include display(clamp(2.2rem, 4.5vw, 3.2rem)); margin: 0; }
 .meta { margin: 0; color: rgb(255 255 255 / .82); }
 .more { margin-top: .6rem; font-weight: 700; display: inline-flex; gap: .4rem; }

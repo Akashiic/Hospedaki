@@ -51,6 +51,26 @@ const property: Property = {
     { title: 'Para o casal', text: 'Chalé com cama king, banheira de hidromassagem e vista para as montanhas.' },
     { title: 'Reserva direta', text: 'Você fala com a gente pelo WhatsApp, sem intermediário e sem taxa de aplicativo.' },
   ],
+  story: [
+    {
+      time: '8h', period: 'Manhã', title: 'Acordar sem pressa', image: dawnScene,
+      text: 'Vista para as montanhas no chalé, pátio de palmeiras imperiais no espaço e café da manhã opcional.',
+      couple: 'Acordar na cama king da suíte master, com vista para as montanhas. O café da manhã é opcional.',
+      family: 'As crianças acordam com o pátio de palmeiras imperiais lá fora. O café da manhã é opcional.',
+    },
+    {
+      time: '15h', period: 'Tarde', title: 'A tarde inteira pela frente', image: goldenScene,
+      text: 'Piscina com escadaria larga, churrasqueira no salão de festas ou um livro na varanda do chalé.',
+      couple: 'Um livro da sala do chalé e a varanda com cadeiras para ver o dia passar.',
+      family: 'Piscina com escadaria larga para os pequenos entrarem com calma e churrasqueira pronta no salão de festas.',
+    },
+    {
+      time: '21h', period: 'Noite', title: 'Quando o deck acende', image: nightScene,
+      text: 'Fogueira, deck com LED, sinuca no salão ou a banheira de hidromassagem do chalé.',
+      couple: 'Jantar na cozinha do chalé e, para fechar, a banheira de hidromassagem extra grande.',
+      family: 'Roda de fogueira, deck iluminado e sinuca no salão para quem não quer dormir cedo.',
+    },
+  ],
   photos: [
     { url: goldenScene, caption: 'Pátio com palmeiras imperiais', featured: true },
     { url: dawnScene, caption: 'Montanhas ao amanhecer', featured: true },
