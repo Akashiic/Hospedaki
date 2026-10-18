@@ -130,7 +130,7 @@ const whatsappLink = computed(() => {
       <Transition name="swap" mode="out-in">
         <div v-if="done" key="done" class="panel success">
           <p class="eyebrow">Pedido enviado</p>
-          <h2>Obrigado, {{ form.guest_name.split(' ')[0] }}!</h2>
+          <h2>Obrigado, {{ form.guest_name.trim().split(/\s+/)[0] }}!</h2>
           <p>
             Seu código é <strong>{{ done.code }}</strong>. A pousada vai confirmar a disponibilidade
             e falar com você pelo WhatsApp.
