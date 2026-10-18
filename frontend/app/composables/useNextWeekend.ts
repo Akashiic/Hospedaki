@@ -5,7 +5,8 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 export interface FreeWeekend { checkIn: string, checkOut: string, accommodationIds: number[] }
 
 /**
- * Próximo fim de semana (noites de sexta e sábado) com pelo menos uma acomodação livre.
+ * Próximo fim de semana (noites de sexta e sábado) com pelo menos uma acomodação livre
+ * que aceite estadias de duas diárias (mínimo de diárias ≤ 2).
  * Busca só no navegador, depois que a página aparece, para não atrasar a capa.
  */
 export function useNextWeekend(property: Ref<Property>) {
@@ -20,11 +21,13 @@ export function useNextWeekend(property: Ref<Property>) {
       const res = await api<{ accommodations: { id: number, unavailable: string[] }[] }>('/availability', {
         query: { from: iso(from), to: iso(to) },
       })
+      // Acomodação que exige mais de 2 diárias daria erro logo ao abrir o link de reserva.
+      const fits = new Set(property.value.accommodations.filter(a => a.min_nights <= 2).map(a => a.id))
       const friday = new Date(from.getFullYear(), from.getMonth(), from.getDate() + ((5 - from.getDay() + 7) % 7))
       for (; friday < to; friday.setDate(friday.getDate() + 7)) {
         const sat = new Date(friday.getFullYear(), friday.getMonth(), friday.getDate() + 1)
         const nights = [iso(friday), iso(sat)]
-        const ids = res.accommodations.filter(a => nights.every(n => !a.unavailable.includes(n))).map(a => a.id)
+        const ids = res.accommodations.filter(a => fits.has(a.id) && nights.every(n => !a.unavailable.includes(n))).map(a => a.id)
         if (ids.length) {
           const sun = new Date(friday.getFullYear(), friday.getMonth(), friday.getDate() + 2)
           free.value = { checkIn: iso(friday), checkOut: iso(sun), accommodationIds: ids }

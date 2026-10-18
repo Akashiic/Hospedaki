@@ -48,7 +48,7 @@ php artisan migrate --seed
 php artisan serve            # http://localhost:8000
 ```
 
-O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com o Espaço Bela Vista e o Chalé Master, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`). Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias.
+O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com o Espaço Bela Vista e o Chalé Master, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). Rodar o seed de novo atualiza textos e preços, mas não mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias.
 
 **2. Site** (em outro terminal):
 
@@ -80,7 +80,7 @@ O site mostra a pousada indicada em `frontend/.env`:
 | `NUXT_PUBLIC_GA_ID` | ID do Google Analytics 4 (opcional) |
 | `NUXT_PUBLIC_META_PIXEL_ID` | ID do Pixel do Meta (opcional) |
 
-No backend, `FRONTEND_URL` lista os endereços dos sites autorizados a usar a API (separados por vírgula).
+No backend, `FRONTEND_URL` lista os endereços dos sites autorizados a usar a API (separados por vírgula). O login do painel vale 30 dias; para apagar os tokens vencidos, rode o agendador do Laravel (`php artisan schedule:run` a cada minuto no cron).
 
 Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.env`, que o Git ignora.
 

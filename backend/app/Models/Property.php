@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,15 @@ class Property extends Model
 {
     /** @use HasFactory<PropertyFactory> */
     use HasFactory;
+
+    public const DEFAULT_TIMEZONE = 'America/Sao_Paulo';
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'timezone' => self::DEFAULT_TIMEZONE,
+    ];
 
     protected function casts(): array
     {
@@ -34,6 +44,14 @@ class Property extends Model
     public function resolveRouteBinding($value, $field = null): ?Model
     {
         return $this->where($field ?? $this->getRouteKeyName(), $value)->where('active', true)->first();
+    }
+
+    /**
+     * Data de hoje no fuso da pousada. O servidor roda em UTC, e às 21h em Brasília lá já é amanhã.
+     */
+    public function today(): CarbonImmutable
+    {
+        return CarbonImmutable::now($this->timezone ?: self::DEFAULT_TIMEZONE)->startOfDay();
     }
 
     public function accommodations(): HasMany

@@ -64,7 +64,13 @@ class BookingService
     {
         $booking = DB::transaction(function () use ($property, $data) {
             // Trava as acomodações para que dois pedidos simultâneos não peguem as mesmas datas.
-            Accommodation::whereKey($data['accommodation_ids'])->lockForUpdate()->get();
+            // O SQLite ignora lockForUpdate(): lá a transação começa com uma escrita que não muda nada,
+            // o que pega a trava de escrita do arquivo antes da leitura e põe os pedidos em fila.
+            // Sem isso, dois pedidos leem juntos e o segundo a gravar cai em "database is locked" (500).
+            $accommodations = Accommodation::whereKey($data['accommodation_ids']);
+            DB::connection()->getDriverName() === 'sqlite'
+                ? $accommodations->toBase()->update(['id' => DB::raw('id')])
+                : $accommodations->lockForUpdate()->get();
 
             $quote = $this->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'], $data['guests']);
 

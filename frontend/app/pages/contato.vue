@@ -63,7 +63,7 @@ const steps = [
 .card {
   background: var(--card); border-radius: var(--radius); padding: 1.5rem; display: grid; gap: .6rem; align-content: start;
   box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 18px 40px -30px rgb(20 40 30 / .35);
-  &.main { background: var(--night); color: var(--on-night); .eyebrow { @include eyebrow(var(--amber)); } }
+  &.main { --focus: var(--focus-dark); background: var(--night); color: var(--on-night); .eyebrow { @include eyebrow(var(--amber)); } }
   .btn, .text-link { justify-self: start; margin-top: .4rem; }
 }
 .big { @include display(clamp(1.8rem, 3vw, 2.4rem)); margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; &.small { font-size: clamp(1.4rem, 2.4vw, 1.8rem); line-height: 1.2; } }

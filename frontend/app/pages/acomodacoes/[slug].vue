@@ -3,7 +3,8 @@ const route = useRoute()
 const { property } = await useProperty()
 
 const acc = computed(() => property.value.accommodations.find(a => a.slug === route.params.slug))
-if (!acc.value) throw createError({ statusCode: 404, statusMessage: 'Acomodação não encontrada' })
+// fatal: também na navegação dentro do site mostra a página de erro (sem isso, ficava em branco).
+if (!acc.value) throw createError({ statusCode: 404, statusMessage: 'Acomodação não encontrada', fatal: true })
 
 const others = computed(() => property.value.accommodations.filter(a => a.id !== acc.value!.id))
 
@@ -31,8 +32,9 @@ useSeoMeta({
       </div>
 
       <aside v-reveal class="facts" style="--i: 2">
-        <div><span>Diária (seg. a qui.)</span><strong>{{ formatMoney(acc.base_price) }}</strong></div>
-        <div v-if="acc.weekend_price"><span>Diária no fim de semana</span><strong>{{ formatMoney(acc.weekend_price) }}</strong></div>
+        <!-- Mesma regra do PricingService: só as noites de sexta e sábado são de fim de semana. -->
+        <div><span>Diária {{ acc.weekend_price ? '(dom. a qui.)' : '' }}</span><strong>{{ formatMoney(acc.base_price) }}</strong></div>
+        <div v-if="acc.weekend_price"><span>Diária (sex. e sáb.)</span><strong>{{ formatMoney(acc.weekend_price) }}</strong></div>
         <div><span>Hóspedes</span><strong>até {{ acc.max_guests }} pessoas</strong></div>
         <div v-if="acc.min_nights > 1"><span>Mínimo</span><strong>{{ acc.min_nights }} diárias</strong></div>
         <div><span>Entrada e saída</span><strong>{{ property.check_in_time }} · {{ property.check_out_time }}</strong></div>
@@ -67,10 +69,11 @@ useSeoMeta({
   li { padding: .8rem 0; border-top: 1px solid var(--line); }
 }
 .facts {
-  position: sticky; top: 84px; background: var(--card); border-radius: var(--radius); padding: 1.4rem; display: grid; gap: 1rem;
+  position: sticky; top: calc(var(--nav-h) + 1.5rem); background: var(--card); border-radius: var(--radius); padding: 1.4rem; display: grid; gap: 1rem;
   box-shadow: 0 1px 2px rgb(0 0 0 / .04), 0 18px 40px -28px rgb(20 40 30 / .35);
   div { display: grid; gap: .1rem; border-bottom: 1px solid var(--line); padding-bottom: .8rem; }
-  span { @include eyebrow(var(--muted)); font-size: .68rem; letter-spacing: .14em; }
+  // Só os rótulos das linhas (sem pegar a seta do botão "Ver datas").
+  div > span { @include eyebrow(var(--muted), sm); }
   strong { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
 }
 .photos {

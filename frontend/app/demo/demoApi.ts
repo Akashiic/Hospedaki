@@ -142,17 +142,32 @@ const withNights = (b: DemoBooking) => ({
 })
 
 function fail(field: string, message: string): never {
-  throw { data: { message, errors: { [field]: [message] } } }
+  throw { statusCode: 422, data: { message, errors: { [field]: [message] } } }
 }
 
+function notFound(): never {
+  throw { statusCode: 404, data: { message: 'Não encontrado.' } }
+}
+
+const isoDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+
+// Mesmas regras do backend (QuoteRequest e BookingService), na mesma ordem.
 function quote(body: { accommodation_ids: number[], check_in: string, check_out: string, guests: number }): Quote {
-  const accs = accommodations.filter(a => body.accommodation_ids.includes(a.id))
+  const ids = [...new Set(body.accommodation_ids ?? [])]
+  if (!ids.length) fail('accommodation_ids', 'Escolha pelo menos uma acomodação.')
+  if (!isoDate(body.check_in)) fail('check_in', 'Informe a data de entrada.')
+  if (body.check_in < iso(new Date())) fail('check_in', 'A data de entrada não pode ser no passado.')
+  if (!isoDate(body.check_out) || body.check_out <= body.check_in) fail('check_out', 'A data de saída precisa ser depois da entrada.')
+  if (!Number.isInteger(body.guests) || body.guests < 1) fail('guests', 'Informe quantos hóspedes vêm.')
+  const accs = accommodations.filter(a => ids.includes(a.id))
+  if (accs.length !== ids.length) fail('accommodation_ids', 'Acomodação não encontrada.')
+  const nights = Math.round((parse(body.check_out).getTime() - parse(body.check_in).getTime()) / 86400000)
   if (body.guests > accs.reduce((n, a) => n + a.max_guests, 0)) fail('guests', 'Número de hóspedes acima da capacidade.')
   for (const acc of accs) {
+    if (nights < acc.min_nights) fail('check_out', `${acc.name} exige no mínimo ${acc.min_nights} diária(s).`)
     if (unavailable(acc.id, body.check_in, body.check_out).length) fail('check_in', `${acc.name} não está disponível nessas datas.`)
   }
   const items = accs.map(a => ({ accommodation_id: a.id, name: a.name, subtotal: priceStay(a, body.check_in, body.check_out) }))
-  const nights = Math.round((parse(body.check_out).getTime() - parse(body.check_in).getTime()) / 86400000)
   return { check_in: body.check_in, check_out: body.check_out, nights, total: items.reduce((n, i) => n + i.subtotal, 0), items }
 }
 
@@ -189,13 +204,22 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
   // Painel do dono (na prévia, qualquer e-mail e senha entram).
   const bookingAction = route.match(/^\/admin\/bookings\/(\d+)\/(confirm|decline)$/)
   if (method === 'POST' && bookingAction) {
-    const found = bookings.find(b => b.id === Number(bookingAction[1]))!
-    found.status = bookingAction[2] === 'confirm' ? 'confirmed' : (found.status === 'pending' ? 'declined' : 'cancelled')
+    const found = bookings.find(b => b.id === Number(bookingAction[1])) ?? notFound()
+    if (bookingAction[2] === 'confirm') {
+      if (found.status !== 'pending') fail('status', 'Só é possível confirmar pedidos pendentes.')
+      found.status = 'confirmed'
+    }
+    else {
+      if (!['pending', 'confirmed'].includes(found.status)) fail('status', 'Este pedido já foi encerrado.')
+      found.status = found.status === 'pending' ? 'declined' : 'cancelled'
+    }
     return { data: withNights(found) } as T
   }
   const blockDelete = route.match(/^\/admin\/blocked-dates\/(\d+)$/)
   if (method === 'DELETE' && blockDelete) {
-    blocks.splice(blocks.findIndex(b => b.id === Number(blockDelete[1])), 1)
+    const index = blocks.findIndex(b => b.id === Number(blockDelete[1]))
+    if (index === -1) notFound()
+    blocks.splice(index, 1)
     return null as T
   }
 
@@ -209,12 +233,13 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
     'GET /admin/bookings': () => ({
       data: bookings
         .filter(b => !options.query?.status || b.status === options.query.status)
-        .filter(b => !options.query?.upcoming || b.check_out >= today)
+        .filter(b => !options.query?.upcoming || b.check_out >= iso(new Date()))
         .sort((a, b) => a.check_in.localeCompare(b.check_in))
         .map(withNights),
     }),
     'GET /admin/blocked-dates': () => ({ data: [...blocks].sort((a, b) => a.starts_on.localeCompare(b.starts_on)) }),
     'POST /admin/blocked-dates': () => {
+      if (!accommodations.some(a => a.id === body.accommodation_id)) fail('accommodation_id', 'Acomodação não encontrada.')
       if (!body.starts_on || !body.ends_on || body.ends_on < body.starts_on) fail('ends_on', 'A última noite precisa ser depois da primeira.')
       const created = { id: nextId++, accommodation_id: body.accommodation_id, starts_on: body.starts_on, ends_on: body.ends_on, reason: body.reason }
       blocks.push(created)

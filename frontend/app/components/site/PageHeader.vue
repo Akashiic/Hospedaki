@@ -25,7 +25,7 @@ defineProps<{ eyebrow: string, title: string, lead?: string | null, image?: stri
   position: relative; overflow: hidden; isolation: isolate;
   min-height: clamp(420px, 62svh, 640px);
   display: flex; align-items: flex-end;
-  background: var(--night); color: #fff;
+  background: var(--night); color: #fff; --focus: var(--focus-dark);
 
   &.compact { min-height: clamp(320px, 42svh, 440px); }
 }
@@ -34,9 +34,10 @@ defineProps<{ eyebrow: string, title: string, lead?: string | null, image?: stri
   position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 62% 50%;
   animation: settle $dur-3xl $ease-enter both;
 }
-.veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(8 12 10 / .6) 0%, rgb(8 12 10 / .25) 45%, rgb(8 12 10 / .82) 100%); }
+// O texto fica no terço de baixo: o véu escurece a partir dali, e a foto aparece mais no alto.
+.veil { position: absolute; inset: 0; background: linear-gradient(180deg, rgb(8 12 10 / .6) 0%, rgb(8 12 10 / .42) 25%, rgb(8 12 10 / .7) 50%, rgb(8 12 10 / .88) 100%); }
 .inner { position: relative; z-index: 1; width: 100%; padding-top: 7rem; padding-bottom: clamp(2.5rem, 6vw, 4rem); }
-.eyebrow { @include eyebrow(var(--amber)); @include motion-entrance(0); }
+.eyebrow { @include eyebrow(var(--amber-soft)); @include motion-entrance(0); }
 // Título: só sobe (sem opacidade), para não atrasar o LCP quando não há imagem.
 h1 { @include display(clamp(3rem, 8vw, 6rem)); margin: .5rem 0 0; max-width: 14ch; @include motion-entrance(1, rise); }
 .lead { max-width: 38rem; margin: 1.1rem 0 0; color: rgb(255 255 255 / .85); font-size: clamp(1rem, 1.5vw, 1.12rem); @include motion-entrance(2); }

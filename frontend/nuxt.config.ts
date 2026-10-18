@@ -25,7 +25,7 @@ export default defineNuxtConfig({
     pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       htmlAttrs: { lang: 'pt-BR' },
-      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
+      meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' }],
       // Fontes servidas pelo próprio site (public/fonts, licença OFL), carregadas logo no início.
       link: [
         { rel: 'preload', as: 'font', type: 'font/woff2', href: '/fonts/instrument-serif-latin-400-normal.woff2', crossorigin: '' },

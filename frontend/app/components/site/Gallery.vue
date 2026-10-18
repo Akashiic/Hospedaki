@@ -34,7 +34,7 @@ function slide(direction: 1 | -1) {
 </template>
 
 <style scoped lang="scss">
-.gallery { background: var(--night); color: var(--on-night); padding-block: clamp(5rem, 10vw, 8rem); overflow: hidden; }
+.gallery { --focus: var(--focus-dark); background: var(--night); color: var(--on-night); padding-block: clamp(5rem, 10vw, 8rem); overflow: hidden; }
 .eyebrow { @include eyebrow(var(--amber)); }
 .head { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 2.5rem; }
 h2 { font-size: clamp(2.8rem, 7vw, 5.5rem); margin: .4rem 0 0; }
@@ -45,8 +45,7 @@ h2 { font-size: clamp(2.8rem, 7vw, 5.5rem); margin: .4rem 0 0; }
 .track::-webkit-scrollbar { display: none; }
 .shot { flex: 0 0 auto; margin: 0; scroll-snap-align: start; width: min(78vw, 360px); position: relative; }
 .shot.wide { width: min(88vw, 620px); }
-.shot img { width: 100%; height: clamp(300px, 46vh, 520px); object-fit: cover; border-radius: 4px; display: block; filter: saturate(.92); transition: filter $dur-lg $ease-move, transform $dur-xl $ease-enter; }
-.shot:hover img { filter: saturate(1.05); }
+.shot img { width: 100%; height: clamp(300px, 46vh, 520px); object-fit: cover; border-radius: 4px; display: block; }
 figcaption { margin-top: .8rem; color: var(--on-night-muted); font-size: .9rem; }
 @include below(md) { .arrows { display: none; } }
 </style>

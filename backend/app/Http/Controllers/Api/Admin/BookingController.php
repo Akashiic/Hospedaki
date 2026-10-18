@@ -17,12 +17,16 @@ class BookingController extends Controller
     {
         $request->validate(['status' => ['nullable', 'string'], 'upcoming' => ['nullable', 'boolean']]);
 
-        $bookings = $request->user()->property->bookings()
+        $property = $request->user()->property;
+
+        $bookings = $property->bookings()
             ->with('accommodations')
             ->when($request->query('status'), fn ($query, $status) => $query->where('status', $status))
-            ->when($request->boolean('upcoming'), fn ($query) => $query->whereDate('check_out', '>=', today()))
+            ->when($request->boolean('upcoming'), fn ($query) => $query->whereDate('check_out', '>=', $property->today()->toDateString()))
             ->orderBy('check_in')
-            ->paginate(30);
+            // Sem paginação: o painel pede listas curtas (pendentes e próximas) e lê só "data";
+            // com paginate(30), a partir da 31ª reserva elas sumiam do painel sem aviso.
+            ->get();
 
         return BookingResource::collection($bookings);
     }

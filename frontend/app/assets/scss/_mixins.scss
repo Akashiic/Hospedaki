@@ -30,13 +30,19 @@ $ease-in-out: $ease-move;
   @media (prefers-reduced-motion: reduce) { @content; }
 }
 
-@mixin eyebrow($color: var(--brand)) {
+// Rótulo em maiúsculas. Dois tamanhos só: md (padrão) e sm (rótulos de fichas e listas).
+@mixin eyebrow($color: var(--brand-text), $size: md) {
   display: inline-block;
   margin: 0;
   font-family: var(--font-body);
   text-transform: uppercase;
-  letter-spacing: .18em;
-  font-size: .72rem;
+  @if $size == sm {
+    letter-spacing: .14em;
+    font-size: .68rem;
+  } @else {
+    letter-spacing: .18em;
+    font-size: .72rem;
+  }
   font-weight: 700;
   line-height: 1.4;
   color: $color;

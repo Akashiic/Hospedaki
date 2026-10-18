@@ -38,7 +38,7 @@ defineProps<{ property: Property }>()
 .highlights p { margin: 0; color: var(--muted); }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem 2rem; margin-top: clamp(3.5rem, 8vw, 6rem); }
 .facts div { display: grid; gap: .2rem; border-left: 1px solid var(--line); padding-left: 1rem; }
-.facts span { text-transform: uppercase; letter-spacing: .16em; font-size: .7rem; font-weight: 700; color: var(--muted); }
+.facts span { @include eyebrow(var(--muted), sm); }
 .facts strong { font-weight: 500; font-size: 1.05rem; }
 @include below(lg) { .grid { grid-template-columns: minmax(0, 1fr); } }
 </style>

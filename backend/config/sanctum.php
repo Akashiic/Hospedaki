@@ -50,7 +50,9 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Tokens do painel valem 30 dias, o mesmo prazo do cookie do frontend.
+    // Os vencidos são apagados pelo agendamento em routes/console.php.
+    'expiration' => 60 * 24 * 30,
 
     /*
     |--------------------------------------------------------------------------

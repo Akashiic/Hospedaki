@@ -60,9 +60,10 @@ const photoIndex = reactive<Record<number, number>>({})
 .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale($zoom-sm); transition: opacity $dur-2xl $ease-move, transform $dur-4xl $ease-enter; }
 .frame img.on { opacity: 1; transform: scale(1); }
 .frame:hover img.on { transform: scale($zoom-sm); }
-.thumbs { position: absolute; right: 1rem; bottom: 1rem; display: flex; gap: .4rem; z-index: 2; }
-.thumbs button { width: 28px; height: 3px; border: 0; padding: 8px 0; background: none; cursor: pointer; position: relative; }
-.thumbs button::before { content: ""; position: absolute; left: 0; right: 0; top: 7px; height: 2px; background: rgb(255 255 255 / .45); transition: background-color $dur-md $ease-move; }
+// Botões de 44 × 44px para o dedo; o traço de 28px continua desenhado pelo ::before.
+.thumbs { --focus: var(--focus-dark); position: absolute; right: calc(1rem - 8px); bottom: 0; display: flex; z-index: 2; }
+.thumbs button { width: 44px; height: 44px; border: 0; padding: 0; background: none; cursor: pointer; position: relative; }
+.thumbs button::before { content: ""; position: absolute; left: 8px; right: 8px; top: 21px; height: 2px; background: rgb(255 255 255 / .45); transition: background-color $dur-md $ease-move; }
 .thumbs button.on::before { background: #fff; }
 .cap { position: absolute; left: 1rem; bottom: .85rem; margin: 0; z-index: 2; color: #fff; font-size: .85rem; text-shadow: 0 1px 8px rgb(0 0 0 / .5); }
 h3 { font-size: clamp(2.6rem, 5vw, 4rem); margin: 0 0 1rem; }

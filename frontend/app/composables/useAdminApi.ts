@@ -32,7 +32,8 @@ export interface AdminMe {
 export function useAdminToken() {
   // Na prévia o login vale só enquanto a página estiver aberta.
   if (useRuntimeConfig().public.demo) return useState<string | null>('hospedaki_admin', () => null)
-  return useCookie<string | null>('hospedaki_admin', { maxAge: 60 * 60 * 24 * 30, sameSite: 'lax' })
+  // secure: o token só viaja em HTTPS (no `nuxt dev` local fica liberado).
+  return useCookie<string | null>('hospedaki_admin', { maxAge: 60 * 60 * 24 * 30, sameSite: 'lax', secure: !import.meta.dev })
 }
 
 /** Cliente da API do painel do dono. Sem login válido, volta para a tela de entrar. */

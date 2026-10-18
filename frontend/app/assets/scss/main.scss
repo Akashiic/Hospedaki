@@ -19,10 +19,11 @@
 
 :root {
   --brand: #2f6f4f;
-  --brand-ink: #ffffff;
   --night: #0e1411;
   --night-2: #17201b;
   --amber: #e9b76b;
+  // Âmbar claro para letras pequenas sobre fotos (o âmbar cheio não alcança 4,5:1 ali).
+  --amber-soft: #f6dcb0;
   --paper: #f3f4ef;
   --card: #ffffff;
   --soft: color-mix(in srgb, var(--brand) 8%, var(--paper));
@@ -32,11 +33,37 @@
   --on-night: #eef0ea;
   --on-night-muted: #a9b2a9;
   --danger: #b42318;
+  // Pedidos aguardando resposta no painel.
+  --warn: #d99a1e;
+  --warn-soft: #fbefd3;
+  --warn-ink: #7a5208;
+  // Anel de foco: tinta escura nas superfícies claras; as superfícies escuras trocam para --focus-dark.
+  --focus: var(--text);
+  --focus-dark: #ffffff;
   --font-display: 'Instrument Serif', 'Times New Roman', Georgia, serif;
   --font-body: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --radius: 14px;
   --gutter: max(16px, env(safe-area-inset-left, 0px));
   --gutter-r: max(16px, env(safe-area-inset-right, 0px));
+  // Altura do menu fixo (com o recorte da câmera no iPhone): base de todos os elementos presos.
+  --nav-h: calc(60px + env(safe-area-inset-top, 0px));
+}
+
+// Cores derivadas da marca, recalculadas onde a cor da pousada é aplicada (style="--brand: …"),
+// para o contraste valer com qualquer cor cadastrada, sem JavaScript:
+//   --brand-ink: letra sobre a marca (branco nas marcas escuras, preto nas claras; corte em L* 49,5,
+//     onde branco e preto empatam em contraste);
+//   --brand-text: a marca como texto em fundo claro, escurecida até no máximo L 0,45 (≥ 4,5:1).
+// Os valores fixos valem para o verde padrão e para navegadores sem cor relativa.
+:root, [style*="--brand"] {
+  --brand-ink: #ffffff;
+  --brand-text: #2d674a;
+}
+@supports (color: lch(from red l c h)) {
+  :root, [style*="--brand"] {
+    --brand-ink: lch(from var(--brand) calc((49.5 - l) * 1000) 0 0);
+    --brand-text: oklch(from var(--brand) min(l, .45) c h);
+  }
 }
 
 * { box-sizing: border-box; }
@@ -44,7 +71,9 @@ html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; font-family: var(--font-body); font-size: 16px; color: var(--text); background: var(--paper); line-height: 1.6; overflow-x: hidden; }
 img { max-width: 100%; }
 h1, h2, h3 { @include display(inherit); }
-:focus-visible { outline: 3px solid color-mix(in srgb, var(--amber) 70%, transparent); outline-offset: 3px; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+// Só para leitores de tela.
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 .container { max-width: 1200px; margin: 0 auto; padding-inline: var(--gutter) var(--gutter-r); }
 .eyebrow { @include eyebrow; }
@@ -62,7 +91,7 @@ h1, h2, h3 { @include display(inherit); }
   .arrow { transition: transform $dur-md $ease-enter; }
   &:hover .arrow { transform: translateX(3px); }
 
-  &-ghost { background: transparent; color: var(--brand); box-shadow: inset 0 0 0 1.5px currentColor; }
+  &-ghost { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1.5px currentColor; }
   &-light { background: #fff; color: var(--night); }
   &-amber { background: var(--amber); color: var(--night); }
   &-outline-light {
@@ -72,10 +101,14 @@ h1, h2, h3 { @include display(inherit); }
 }
 
 .text-link {
+  // 44px de altura para o toque; o sublinhado fica colado ao texto e cresce só com transform.
+  position: relative; min-height: 44px;
   color: var(--text); font-weight: 700; text-decoration: none; display: inline-flex; gap: .45rem; align-items: center;
-  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
-  transition: background-size $dur-lg $ease-enter;
-  &:hover { background-size: 100% 1px; }
+  &::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: calc(50% - .8em); height: 1px;
+    background: currentColor; transform: scaleX(0); transform-origin: right; transition: transform $dur-lg $ease-enter;
+  }
+  &:hover::after { transform: scaleX(1); transform-origin: left; }
 }
 
 input:not([type=checkbox]), textarea, select {

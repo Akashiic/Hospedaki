@@ -202,13 +202,16 @@ $zoom-recede: math.div(math.round((1 - math.pow($phi, -9)) * 1000), 1000); // .9
   .reveal-wipe { position: relative; }
 
   // ── Movimento reduzido ────────────────────────────────────────────────────
-  // Rede de segurança: tudo instantâneo. As trocas de página continuam como fusão
-  // curta de opacidade, sem deslocamento, para a mudança não parecer um salto.
+  // Rede de segurança: tudo instantâneo, sem esperas de escalonamento. As trocas de página
+  // continuam como fusão curta de opacidade, sem deslocamento, para a mudança não parecer um salto.
+  // Um componente que queira uma fusão curta própria declara a duração com !important.
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: .01ms !important;
       animation-iteration-count: 1 !important;
+      animation-delay: 0s !important;
       transition-duration: .01ms !important;
+      transition-delay: 0s !important;
       scroll-behavior: auto !important;
     }
     .page-enter-active, .page-leave-active, .fade-enter-active, .fade-leave-active {

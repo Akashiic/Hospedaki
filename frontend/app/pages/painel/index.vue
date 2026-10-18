@@ -18,19 +18,70 @@ const busyId = ref<number | null>(null)
 const message = ref('')
 watch(tab, () => { message.value = '' })
 
+// Estado da carga: os textos de "nenhum pedido" só aparecem depois de uma carga que deu certo,
+// e uma falha mostra o erro com "Tentar de novo" (em vez de ficar em "Carregando..." para sempre).
+const loaded = ref(false)
+const loadError = ref('')
+
+// Listas de reservas. Se a API voltar paginada (meta.last_page), o painel oferece "Carregar mais"
+// em vez de esconder o que passou da primeira página.
+type BookingPage = { data: AdminBooking[], meta?: { current_page: number, last_page: number, total?: number } }
+type BookingList = 'pending' | 'upcoming'
+const queries: Record<BookingList, Record<string, string | number>> = {
+  pending: { status: 'pending' },
+  upcoming: { status: 'confirmed', upcoming: 1 },
+}
+const lists = { pending, upcoming }
+const pages = reactive<Record<BookingList, { next: number | null, total: number | null, loading: boolean }>>({
+  pending: { next: null, total: null, loading: false },
+  upcoming: { next: null, total: null, loading: false },
+})
+function readPage(list: BookingList, res: BookingPage) {
+  const meta = res.meta
+  pages[list].next = meta && meta.current_page < meta.last_page ? meta.current_page + 1 : null
+  pages[list].total = meta?.total ?? null
+}
+const pendingCount = computed(() => pages.pending.total ?? pending.value.length)
+
 async function load() {
-  const [meRes, pendingRes, upcomingRes, blocksRes] = await Promise.all([
-    api<AdminMe>('/me'),
-    api<{ data: AdminBooking[] }>('/bookings', { query: { status: 'pending' } }),
-    api<{ data: AdminBooking[] }>('/bookings', { query: { status: 'confirmed', upcoming: 1 } }),
-    api<{ data: AdminBlock[] }>('/blocked-dates'),
-  ])
-  me.value = meRes
-  pending.value = pendingRes.data
-  upcoming.value = upcomingRes.data
-  blocks.value = blocksRes.data
+  loadError.value = ''
+  try {
+    const [meRes, pendingRes, upcomingRes, blocksRes] = await Promise.all([
+      api<AdminMe>('/me'),
+      api<BookingPage>('/bookings', { query: queries.pending }),
+      api<BookingPage>('/bookings', { query: queries.upcoming }),
+      api<{ data: AdminBlock[] }>('/blocked-dates'),
+    ])
+    me.value = meRes
+    pending.value = pendingRes.data
+    upcoming.value = upcomingRes.data
+    readPage('pending', pendingRes)
+    readPage('upcoming', upcomingRes)
+    blocks.value = blocksRes.data
+    loaded.value = true
+  }
+  catch (e) {
+    loadError.value = apiError(e)
+  }
 }
 onMounted(load)
+
+async function loadMore(list: BookingList) {
+  const page = pages[list].next
+  if (!page || pages[list].loading) return
+  pages[list].loading = true
+  try {
+    const res = await api<BookingPage>('/bookings', { query: { ...queries[list], page } })
+    lists[list].value = [...lists[list].value, ...res.data]
+    readPage(list, res)
+  }
+  catch (e) {
+    message.value = apiError(e)
+  }
+  finally {
+    pages[list].loading = false
+  }
+}
 
 async function act(booking: AdminBooking, action: 'confirm' | 'decline') {
   busyId.value = booking.id
@@ -67,9 +118,23 @@ async function addBlock() {
   }
 }
 
+// Um clique por vez: o botão fica desativado até a lista voltar (dois cliques seguidos não
+// mandam dois pedidos).
+const removingId = ref<number | null>(null)
 async function removeBlock(block: AdminBlock) {
-  await api(`/blocked-dates/${block.id}`, { method: 'DELETE' })
-  await load()
+  if (removingId.value) return
+  removingId.value = block.id
+  blockError.value = ''
+  try {
+    await api(`/blocked-dates/${block.id}`, { method: 'DELETE' })
+    await load()
+  }
+  catch (e) {
+    blockError.value = apiError(e)
+  }
+  finally {
+    removingId.value = null
+  }
 }
 
 async function logout() {
@@ -88,7 +153,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
       <div class="container top-inner">
         <div>
           <p class="eyebrow">Painel</p>
-          <h1>{{ me?.property.name ?? 'Carregando...' }}</h1>
+          <h1>{{ me?.property.name ?? (loadError ? 'Painel da pousada' : 'Carregando...') }}</h1>
         </div>
         <div class="top-actions">
           <NuxtLink to="/" class="link">Ver site</NuxtLink>
@@ -97,7 +162,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
       </div>
       <nav class="container tabs" aria-label="Seções">
         <button type="button" :aria-pressed="tab === 'pending'" @click="tab = 'pending'">
-          Pedidos <span v-if="pending.length" class="count">{{ pending.length }}</span>
+          Pedidos <span v-if="pendingCount" class="count">{{ pendingCount }}</span>
         </button>
         <button type="button" :aria-pressed="tab === 'upcoming'" @click="tab = 'upcoming'">Próximas reservas</button>
         <button type="button" :aria-pressed="tab === 'blocks'" @click="tab = 'blocks'">Datas bloqueadas</button>
@@ -107,7 +172,14 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
     <main class="container content">
       <p v-if="message" class="toast" role="status">{{ message }}</p>
 
-      <section v-if="tab === 'pending'" class="list">
+      <div v-if="loadError" class="load-error" role="alert">
+        <p>Não foi possível carregar o painel. {{ loadError }}</p>
+        <button type="button" class="btn small" @click="load">Tentar de novo</button>
+      </div>
+
+      <p v-else-if="!loaded" class="empty" aria-busy="true">Carregando...</p>
+
+      <section v-else-if="tab === 'pending'" class="list">
         <p v-if="!pending.length" class="empty">Nenhum pedido esperando resposta. Quando chegar um, você recebe um e-mail e ele aparece aqui.</p>
         <AdminBookingItem
           v-for="booking in pending"
@@ -117,6 +189,9 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
           @confirm="act(booking, 'confirm')"
           @decline="act(booking, 'decline')"
         />
+        <button v-if="pages.pending.next" type="button" class="btn btn-ghost more" :disabled="pages.pending.loading" @click="loadMore('pending')">
+          {{ pages.pending.loading ? 'Carregando...' : 'Carregar mais pedidos' }}
+        </button>
       </section>
 
       <section v-else-if="tab === 'upcoming'" class="list">
@@ -128,6 +203,9 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
           :busy="busyId === booking.id"
           @decline="act(booking, 'decline')"
         />
+        <button v-if="pages.upcoming.next" type="button" class="btn btn-ghost more" :disabled="pages.upcoming.loading" @click="loadMore('upcoming')">
+          {{ pages.upcoming.loading ? 'Carregando...' : 'Carregar mais reservas' }}
+        </button>
       </section>
 
       <section v-else class="blocks">
@@ -144,7 +222,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
             <label for="to">Última noite <input id="to" v-model="newBlock.ends_on" type="date" required :min="newBlock.starts_on"></label>
           </div>
           <label for="reason"><span>Motivo <span class="opt">opcional</span></span> <input id="reason" v-model="newBlock.reason" placeholder="Ex.: reserva pelo Airbnb"></label>
-          <p v-if="blockError" class="error">{{ blockError }}</p>
+          <p v-if="blockError" class="error" role="alert">{{ blockError }}</p>
           <button class="btn">Bloquear</button>
         </form>
 
@@ -157,7 +235,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
                 <strong>{{ accName(block.accommodation_id) }}</strong>
                 <span>{{ shortDate(block.starts_on) }} a {{ shortDate(block.ends_on) }}<template v-if="block.reason"> · {{ block.reason }}</template></span>
               </div>
-              <button type="button" class="link" @click="removeBlock(block)">Desbloquear</button>
+              <button type="button" class="link" :disabled="removingId !== null" @click="removeBlock(block)">{{ removingId === block.id ? 'Desbloqueando...' : 'Desbloquear' }}</button>
             </li>
           </ul>
         </div>
@@ -171,15 +249,20 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
 .top { background: var(--card); border-bottom: 1px solid var(--line); }
 .top-inner { display: flex; justify-content: space-between; align-items: end; gap: 1rem; padding-block: 1.2rem .6rem; }
 h1 { margin: .1rem 0 0; font-size: 1.6rem; }
-.top-actions { display: flex; gap: 1rem; }
-.link { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--brand); cursor: pointer; text-decoration: none; }
+.top-actions { display: flex; gap: .6rem; }
+.link { background: none; border: 0; padding: .6rem .2rem; font: inherit; font-weight: 700; color: var(--brand-text); cursor: pointer; text-decoration: none; }
+.link:disabled { opacity: .5; cursor: default; }
 .tabs { display: flex; gap: .3rem; overflow-x: auto; }
 .tabs button { font: inherit; font-weight: 700; background: none; border: 0; border-bottom: 3px solid transparent; padding: .7rem .6rem; color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: .4rem; }
 .tabs button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--brand); }
-.count { background: #d99a1e; color: #fff; border-radius: 999px; font-size: .75rem; padding: .05rem .5rem; }
+.count { background: var(--warn); color: var(--night); border-radius: 999px; font-size: .75rem; padding: .05rem .5rem; }
 .content { padding-block: 1.5rem 3rem; max-width: 860px; }
 .toast { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .75rem 1rem; font-weight: 500; margin: 0 0 1rem; }
 .list { display: grid; gap: 1rem; }
+.more { justify-self: center; }
+.small { padding: .5rem 1rem; font-size: .88rem; }
+.load-error { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
+.load-error p { margin: 0; font-weight: 500; }
 .empty { background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 2rem 1.2rem; text-align: center; color: var(--muted); margin: 0; }
 .blocks { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
 @include below(md) { .blocks { grid-template-columns: minmax(0, 1fr); } }

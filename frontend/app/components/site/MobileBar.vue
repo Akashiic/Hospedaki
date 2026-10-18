@@ -44,6 +44,7 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 // Entrada: a barra sobe em t(3) desacelerando; os botões aparecem por cima dela, um passo
 // de 75ms depois cada (reservar → WhatsApp). Saída: tudo junto, um degrau abaixo, t(2), acelerando.
 .mobile-bar {
+  --focus: var(--focus-dark);
   position: fixed; z-index: 40; left: 0; right: 0; bottom: 0;
   display: flex; gap: .6rem; align-items: center;
   padding: .7rem var(--gutter-r) calc(.7rem + env(safe-area-inset-bottom, 0px)) var(--gutter);
@@ -67,7 +68,8 @@ onBeforeUnmount(() => window.removeEventListener('scroll', onScroll))
 .book { flex: 1; }
 .wa { flex: none; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; color: #fff; background: #1f9d55; }
 @include reduced-motion {
-  .mobile-bar, .mobile-bar.shown { transition-duration: $dur-sm; }
+  // Fusão curta própria (o !important vence a rede de segurança global de _motion.scss).
+  .mobile-bar, .mobile-bar.shown { transition-duration: $dur-sm !important; }
   .mobile-bar > *, .mobile-bar.shown > * { transform: none; }
 }
 </style>

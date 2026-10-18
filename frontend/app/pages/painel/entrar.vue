@@ -38,7 +38,7 @@ async function submit() {
       <p v-if="demo" class="demo">Prévia: é só clicar em Entrar.</p>
       <label for="email">E-mail <input id="email" v-model="email" type="email" required autocomplete="username"></label>
       <label for="password">Senha <input id="password" v-model="password" type="password" required autocomplete="current-password"></label>
-      <p v-if="error" class="error">{{ error }}</p>
+      <p v-if="error" class="error" role="alert">{{ error }}</p>
       <button class="btn" :disabled="sending">{{ sending ? 'Entrando...' : 'Entrar' }}</button>
     </form>
   </main>

@@ -81,10 +81,26 @@ class DatabaseSeeder extends Seeder
             'weekend_price' => null,
         ]);
 
-        User::updateOrCreate(['email' => 'dono@exemplo.com.br'], [
+        // A senha só é definida quando o usuário é criado: rodar o seed de novo não pode
+        // trocar a senha do dono pela padrão, que está no README público.
+        User::firstOrCreate(['email' => 'dono@exemplo.com.br'], fn () => [
             'property_id' => $property->id,
             'name' => 'Dono da Pousada',
-            'password' => env('SEED_OWNER_PASSWORD', 'password'),
+            'password' => $this->ownerPassword(),
         ]);
+    }
+
+    /**
+     * Em produção não existe senha padrão: sem SEED_OWNER_PASSWORD o seed para.
+     */
+    private function ownerPassword(): string
+    {
+        $password = env('SEED_OWNER_PASSWORD');
+
+        if (! $password && app()->isProduction()) {
+            throw new \RuntimeException('Defina SEED_OWNER_PASSWORD para criar o dono da pousada em produção.');
+        }
+
+        return $password ?: 'password';
     }
 }

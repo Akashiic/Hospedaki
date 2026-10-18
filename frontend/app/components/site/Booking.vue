@@ -7,9 +7,11 @@ const props = defineProps<{ property: Property }>()
 // Começa com a acomodação vinda do link (?acomodacao=chale-master), depois a da escolha
 // "a dois / com a família" feita na capa, e por fim a primeira.
 const route = useRoute()
-const fromLink = props.property.accommodations.find(a => a.slug === route.query.acomodacao)
+// Sem nenhuma acomodação ativa (reforma, por exemplo), a página mostra um aviso em vez do formulário.
+const first = props.property.accommodations.find(a => a.slug === route.query.acomodacao)
   ?? accommodationFor(props.property, usePersona().value)
-const selected = ref<number[]>([(fromLink ?? props.property.accommodations[0])!.id].filter(Boolean))
+  ?? props.property.accommodations[0]
+const selected = ref<number[]>(first ? [first.id] : [])
 
 const api = useApi()
 const tracking = useTracking()
@@ -27,10 +29,15 @@ onMounted(async () => {
   const from = new Date()
   const to = new Date(from.getFullYear() + 1, from.getMonth(), from.getDate())
   const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  const res = await api<{ accommodations: { id: number, unavailable: string[] }[] }>('/availability', {
-    query: { from: iso(from), to: iso(to) },
-  })
-  unavailableById.value = Object.fromEntries(res.accommodations.map(a => [a.id, a.unavailable]))
+  try {
+    const res = await api<{ accommodations: { id: number, unavailable: string[] }[] }>('/availability', {
+      query: { from: iso(from), to: iso(to) },
+    })
+    unavailableById.value = Object.fromEntries(res.accommodations.map(a => [a.id, a.unavailable]))
+  }
+  catch {
+    // Sem a disponibilidade o calendário fica todo livre; o orçamento ainda confere as datas no servidor.
+  }
 })
 
 // Ao reservar mais de uma acomodação, o dia precisa estar livre em todas.
@@ -45,20 +52,32 @@ const errorMessage = ref('')
 const sending = ref(false)
 const done = ref<{ code: string } | null>(null)
 
-watch([selected, checkIn, checkOut, guests], async () => {
+// Orçamento: espera o hóspede parar de mexer (300ms, digitar "10" em hóspedes não pede o "1")
+// e descarta a resposta de qualquer pedido que já ficou velho, para o valor mostrado ser sempre
+// o da seleção atual (que é a que vai no pedido).
+watch([selected, checkIn, checkOut, guests], (_, __, onCleanup) => {
   if (import.meta.server) return
   quote.value = null
   errorMessage.value = ''
   if (!selected.value.length || !checkIn.value || !checkOut.value) return
-  try {
-    quote.value = await api<Quote>('/quote', {
-      method: 'POST',
-      body: { accommodation_ids: selected.value, check_in: checkIn.value, check_out: checkOut.value, guests: guests.value },
-    })
-  }
-  catch (e) {
-    errorMessage.value = apiError(e)
-  }
+  const controller = new AbortController()
+  const timer = setTimeout(async () => {
+    try {
+      const result = await api<Quote>('/quote', {
+        method: 'POST',
+        body: { accommodation_ids: selected.value, check_in: checkIn.value, check_out: checkOut.value, guests: guests.value },
+        signal: controller.signal,
+      })
+      if (!controller.signal.aborted) quote.value = result
+    }
+    catch (e) {
+      if (!controller.signal.aborted) errorMessage.value = apiError(e)
+    }
+  }, 300)
+  onCleanup(() => {
+    clearTimeout(timer)
+    controller.abort()
+  })
 }, { immediate: true })
 
 async function submit() {
@@ -112,8 +131,14 @@ const whatsappLink = computed(() => {
           <a v-if="whatsappLink" :href="whatsappLink" class="btn" target="_blank" rel="noopener">Falar no WhatsApp</a>
         </div>
 
+        <div v-else-if="!property.accommodations.length" key="empty" class="panel empty">
+          <h3>Reservas pelo site pausadas</h3>
+          <p>No momento não há acomodações disponíveis para reservar por aqui. Fale com a pousada para saber das próximas datas.</p>
+          <a v-if="whatsappLink" :href="whatsappLink" class="btn" target="_blank" rel="noopener">Falar no WhatsApp</a>
+        </div>
+
         <div v-else key="form" v-reveal class="grid" style="--i: 3">
-          <div class="panel">
+          <div class="panel dates">
             <div class="choose" role="group" aria-label="Acomodações">
               <button
                 v-for="acc in property.accommodations"
@@ -144,17 +169,20 @@ const whatsappLink = computed(() => {
             <label for="email"><span>E-mail <span class="opt">opcional</span></span> <input id="email" v-model="form.guest_email" type="email" autocomplete="email"></label>
             <label for="notes"><span>Observações <span class="opt">opcional</span></span> <textarea id="notes" v-model="form.notes" rows="2" /></label>
 
-            <Transition name="swap">
-              <div v-if="quote" class="quote">
-                <p v-for="item in quote.items" :key="item.accommodation_id" class="line">
-                  <span>{{ item.name }} · {{ quote.nights }} diária(s)</span><span>{{ formatMoney(item.subtotal) }}</span>
-                </p>
-                <p class="line total"><span>Total</span><span>{{ formatMoney(quote.total) }}</span></p>
-              </div>
-            </Transition>
-            <p v-if="errorMessage" class="error">{{ errorMessage }}</p>
+            <!-- Orçamento e erros são anunciados por leitores de tela quando chegam. -->
+            <div aria-live="polite">
+              <Transition name="swap">
+                <div v-if="quote" class="quote">
+                  <p v-for="item in quote.items" :key="item.accommodation_id" class="line">
+                    <span>{{ item.name }} · {{ quote.nights }} diária(s)</span><span>{{ formatMoney(item.subtotal) }}</span>
+                  </p>
+                  <p class="line total"><span>Total</span><span>{{ formatMoney(quote.total) }}</span></p>
+                </div>
+              </Transition>
+            </div>
+            <p v-if="errorMessage" id="booking-error" class="error" role="alert">{{ errorMessage }}</p>
 
-            <button class="btn" :disabled="!quote || sending">
+            <button class="btn" :disabled="!quote || sending" :aria-describedby="errorMessage ? 'booking-error' : undefined">
               {{ sending ? 'Enviando...' : 'Enviar pedido de reserva' }}
             </button>
           </form>
@@ -177,7 +205,7 @@ const whatsappLink = computed(() => {
 .chip[aria-pressed="true"] .tick { background: currentColor; box-shadow: inset 0 0 0 2.5px var(--brand); }
 .notice { background: var(--soft); border-radius: 10px; padding: .7rem .9rem; margin: 0 0 1rem; font-weight: 500; }
 .step { margin: 1rem 0 0; }
-.form { display: grid; gap: .85rem; position: sticky; top: 76px; }
+.form { display: grid; gap: .85rem; position: sticky; top: calc(var(--nav-h) + 1rem); }
 .form h3 { margin: 0; font-size: 1.9rem; }
 .form label { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; }
 .opt { font-weight: 400; color: var(--muted); }
@@ -185,7 +213,15 @@ const whatsappLink = computed(() => {
 .line { display: flex; justify-content: space-between; gap: 1rem; margin: 0; font-variant-numeric: tabular-nums; }
 .line.total { font-family: var(--font-display); font-size: 1.7rem; border-top: 1px solid var(--line); padding-top: .5rem; margin-top: .2rem; }
 .error { color: var(--danger); font-weight: 700; margin: 0; }
-.success { max-width: 640px; }
+.success, .empty { max-width: 640px; }
+.empty h3 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin: 0 0 .6rem; }
+.empty p { margin: 0 0 1.2rem; color: var(--muted); }
+// Celular estreito: o calendário usa quase toda a largura para os dias terem 44px; o resto
+// do painel mantém o respiro de antes.
+@include below(sm) {
+  .dates { padding-inline: .4rem; }
+  .dates > :not(.calendar) { margin-inline: .7rem; }
+}
 .success h3 { font-size: clamp(2.2rem, 5vw, 3.2rem); margin: .4rem 0 .8rem; }
 .swap-enter-active { @include motion-enter; }
 .swap-leave-active { @include motion-exit; }

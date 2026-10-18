@@ -51,8 +51,9 @@ useHead({
 </template>
 
 <style scoped lang="scss">
-.where { margin-bottom: clamp(2rem, 5vw, 3rem); }
-.where .eyebrow { color: var(--amber); }
+// Dentro de "Um dia aqui": a cor segue o céu da seção e o texto deixa livre a coluna do relógio.
+.where { margin-bottom: clamp(2rem, 5vw, 3rem); margin-right: var(--dial-room, 0px); }
+.where .eyebrow { color: var(--ink-accent, var(--amber)); }
 .where h2 { @include display(clamp(2.4rem, 6vw, 4.6rem)); line-height: 1; margin: .5rem 0 0; max-width: 16ch; }
 .stays { padding-block: clamp(4rem, 9vw, 7rem); }
 .title { @include display(clamp(2.8rem, 7vw, 5.5rem)); margin: 0 0 2rem; }
