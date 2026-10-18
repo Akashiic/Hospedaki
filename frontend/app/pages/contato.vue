@@ -1,7 +1,19 @@
 <script setup lang="ts">
 const { property, whatsappLink, gallery } = await useProperty()
 
-useSeoMeta({ title: `Contato · ${property.value.name}` })
+// Só os canais que a pousada cadastrou.
+const channels = [
+  property.value.whatsapp && 'WhatsApp',
+  property.value.phone && 'telefone',
+  property.value.email && 'e-mail',
+  (property.value.address || property.value.city) && 'endereço',
+].filter(Boolean) as string[]
+useSeoMeta({
+  title: `Contato · ${property.value.name}`,
+  description: channels.length
+    ? `${property.value.name}: ${channels.length > 1 ? `${channels.slice(0, -1).join(', ')} e ${channels.at(-1)}` : channels[0]}. Fale com a gente e reserve direto.`
+    : undefined,
+})
 
 const mapsLink = computed(() => {
   const q = [property.value.address, property.value.city, property.value.state].filter(Boolean).join(', ')
@@ -10,7 +22,7 @@ const mapsLink = computed(() => {
 
 // Como funciona a reserva, na ordem em que acontece.
 const steps = [
-  { title: 'Você escolhe as datas', text: 'No calendário aparecem só os dias livres de cada acomodação, com o valor na hora.' },
+  { title: 'Você escolhe as datas', text: 'No calendário você vê os dias livres de cada acomodação (os ocupados aparecem riscados) e o valor na hora.' },
   { title: 'Envia o pedido', text: 'Sem pagar nada ainda. As datas ficam seguras para você enquanto a pousada responde.' },
   { title: 'A pousada confirma', text: 'Você recebe a confirmação pelo WhatsApp e combina a forma de pagamento.' },
 ]

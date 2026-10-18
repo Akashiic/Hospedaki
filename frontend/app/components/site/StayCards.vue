@@ -25,7 +25,7 @@ const ordered = computed(() => props.highlight
       <div class="body">
         <span v-if="acc.id === highlight" class="badge">Para vocês</span>
         <h3>{{ acc.name }}</h3>
-        <p class="meta">até {{ acc.max_guests }} pessoas · a partir de {{ formatMoney(acc.base_price) }}/diária</p>
+        <p class="meta">{{ guestCopy.card(acc) }}</p>
         <span class="more">Conhecer <span class="arrow">→</span></span>
       </div>
     </NuxtLink>

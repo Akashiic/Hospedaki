@@ -18,8 +18,11 @@ class AccommodationResource extends JsonResource
             'description' => $this->description,
             'amenities' => $this->amenities ?? [],
             'max_guests' => $this->max_guests,
+            // Pessoas incluídas na diária e acréscimo por pessoa a mais, por diária (centavos); nulo = não informado.
+            'included_guests' => $this->included_guests,
             'base_price' => $this->base_price,
             'weekend_price' => $this->weekend_price,
+            'extra_guest_price' => $this->extra_guest_price,
             'min_nights' => $this->min_nights,
             'photos' => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($photo) => [
                 'url' => PhotoUrl::from($photo->path),

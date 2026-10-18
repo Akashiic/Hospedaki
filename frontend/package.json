@@ -9,7 +9,8 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "typecheck": "nuxt typecheck",
-    "preview:demo": "node scripts/build-demo.mjs"
+    "preview:demo": "node scripts/build-demo.mjs",
+    "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
     "nuxt": "^4.6.2",

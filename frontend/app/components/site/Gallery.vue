@@ -39,7 +39,8 @@ function slide(direction: 1 | -1) {
 .head { display: flex; justify-content: space-between; align-items: end; gap: 1rem; margin-bottom: 2.5rem; }
 h2 { font-size: clamp(2.8rem, 7vw, 5.5rem); margin: .4rem 0 0; }
 .arrows { display: flex; gap: .5rem; }
-.arrows button { width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgb(255 255 255 / .25); background: none; color: #fff; font-size: 1.1rem; cursor: pointer; transition: background-color $dur-sm $ease-move, border-color $dur-sm $ease-move; }
+.arrows button { width: 52px; height: 52px; border-radius: 50%; border: 1px solid rgb(255 255 255 / .25); background: none; color: #fff; font-size: 1.1rem; cursor: pointer; }
+// Hover troca fundo e borda na hora (cor não anima).
 .arrows button:hover { background: rgb(255 255 255 / .08); border-color: rgb(255 255 255 / .5); }
 .track { display: flex; gap: 1rem; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding-inline: max(var(--gutter), calc((100vw - 1200px) / 2 + 16px)); scroll-padding-inline: max(var(--gutter), calc((100vw - 1200px) / 2 + 16px)); }
 .track::-webkit-scrollbar { display: none; }

@@ -73,20 +73,28 @@ const freeLink = computed(() => {
 .ask, .doors > .btn { @include motion-entrance; animation-delay: var(--enter-at, 0ms); }
 .choices { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
 .door {
-  position: relative;
+  position: relative; isolation: isolate;
   display: grid; gap: .15rem; text-align: left; cursor: pointer; font: inherit; color: #fff;
   padding: .85rem 1rem .9rem; border-radius: 14px; min-height: 4.6rem;
   // Fundo escuro translúcido no lugar do desfoque: lê bem sobre qualquer foto e não refaz o
   // desfoque a cada quadro do zoom da capa.
   background: rgb(8 12 10 / .5); border: 1px solid rgb(255 255 255 / .38);
-  transition: background-color $dur-sm $ease-move, color $dur-sm $ease-move, border-color $dur-sm $ease-move, opacity $dur-md $ease-move, transform $dur-md $ease-enter;
+  // Só opacidade e transform animam; escolher troca as cores na hora.
+  transition: opacity $dur-md $ease-move, transform $dur-md $ease-enter;
   @include motion-entrance;
   animation-delay: calc(var(--enter-at, 0ms) + #{$stagger});
   & + & { animation-delay: calc(var(--enter-at, 0ms) + 2 * #{$stagger}); }
-  &:hover { background: rgb(8 12 10 / .62); transform: translateY(-2px); }
+  &:hover { transform: translateY(-2px); }
+  // Escurecer no hover: camada por baixo do texto que entra por opacidade (.5 + .25 ≈ .62 de fundo).
+  &::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background: rgb(8 12 10 / .25); opacity: 0; transition: opacity $dur-sm $ease-move;
+  }
+  &:hover::before { opacity: 1; }
   // Aperto: responde no mesmo instante e solta com a curva de entrada.
   &:active { transform: scale($zoom-recede); transition-duration: $dur-instant; }
   &[aria-pressed="true"] { background: #fff; color: var(--night); border-color: #fff; .who { color: var(--muted); } }
+  &[aria-pressed="true"]::before { opacity: 0; }
   // Anel de confirmação: só existe no instante da escolha.
   &::after {
     content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
@@ -96,7 +104,7 @@ const freeLink = computed(() => {
 }
 // A porta não escolhida recua, sem sumir: dá para trocar de ideia.
 .choices:has(.door[aria-pressed="true"]) .door[aria-pressed="false"]:not(:hover) { opacity: .618; }
-.who { @include eyebrow(var(--amber-soft)); transition: color $dur-sm $ease-move; }
+.who { @include eyebrow(var(--amber-soft)); }
 .where { font-family: var(--font-display); font-size: clamp(1.25rem, 2.4vw, 1.55rem); line-height: 1.1; }
 .arrow { display: inline-block; font-family: var(--font-body); font-size: .8em; transition: transform $dur-md $ease-enter; }
 .door:hover .arrow { transform: translateY(3px); }

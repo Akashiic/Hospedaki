@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'name', 'tagline', 'slug', 'domain', 'description', 'highlights', 'story', 'email', 'phone', 'whatsapp',
+    'name', 'tagline', 'slug', 'domain', 'description', 'highlights', 'story', 'story_title', 'email', 'phone', 'whatsapp',
     'address', 'city', 'state', 'logo_path', 'primary_color', 'timezone',
     'check_in_time', 'check_out_time', 'settings', 'active',
 ])]

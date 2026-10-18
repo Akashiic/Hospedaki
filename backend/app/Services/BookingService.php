@@ -24,8 +24,12 @@ class BookingService
     ) {}
 
     /**
+     * O subtotal de cada acomodação já inclui extra_guests_subtotal (o acréscimo das pessoas a mais
+     * com valor informado). Pessoas a mais sem valor informado não entram no total e somam em
+     * extra_guests_unpriced, para o site e o dono saberem que esse acréscimo fica a combinar.
+     *
      * @param  list<int>  $accommodationIds
-     * @return array{check_in: string, check_out: string, nights: int, total: int, items: list<array{accommodation_id: int, name: string, subtotal: int, nights: list<array{date: string, price: int}>}>}
+     * @return array{check_in: string, check_out: string, nights: int, total: int, extra_guests_unpriced: int, items: list<array{accommodation_id: int, name: string, subtotal: int, extra_guests: int, extra_guests_subtotal: int, nights: list<array{date: string, price: int}>}>}
      */
     public function quote(Property $property, array $accommodationIds, string $checkIn, string $checkOut, int $guests): array
     {
@@ -35,13 +39,19 @@ class BookingService
 
         $this->assertRules($accommodations, $checkIn, $checkOut, $guests);
 
-        $items = $accommodations->map(function (Accommodation $accommodation) use ($checkIn, $checkOut) {
-            $quote = $this->pricing->quote($accommodation, $checkIn, $checkOut);
+        $extraGuests = $this->allocateExtraGuests($accommodations, $guests);
+        $unpriced = 0;
+
+        $items = $accommodations->map(function (Accommodation $accommodation) use ($checkIn, $checkOut, $extraGuests, &$unpriced) {
+            $quote = $this->pricing->quote($accommodation, $checkIn, $checkOut, $extraGuests[$accommodation->id]);
+            $unpriced += $quote['extra_guests_unpriced'];
 
             return [
                 'accommodation_id' => $accommodation->id,
                 'name' => $accommodation->name,
                 'subtotal' => $quote['total'],
+                'extra_guests' => $quote['extra_guests'],
+                'extra_guests_subtotal' => $quote['extra_guests_subtotal'],
                 'nights' => $quote['nights'],
             ];
         })->values()->all();
@@ -51,6 +61,7 @@ class BookingService
             'check_out' => $checkOut->toDateString(),
             'nights' => (int) $checkIn->diffInDays($checkOut),
             'total' => array_sum(array_column($items, 'subtotal')),
+            'extra_guests_unpriced' => $unpriced,
             'items' => $items,
         ];
     }
@@ -79,6 +90,7 @@ class BookingService
                 'check_in' => $quote['check_in'],
                 'check_out' => $quote['check_out'],
                 'guests' => $data['guests'],
+                'extra_guests_unpriced' => $quote['extra_guests_unpriced'],
                 'guest_name' => $data['guest_name'],
                 'guest_email' => $data['guest_email'] ?? null,
                 'guest_phone' => $data['guest_phone'],
@@ -147,6 +159,34 @@ class BookingService
     }
 
     /**
+     * Quantas pessoas a mais (além das incluídas na diária) ficam em cada acomodação.
+     *
+     * Um pedido com várias acomodações não diz quem dorme onde; esta divisão serve só para
+     * calcular o orçamento. Os hóspedes enchem primeiro as vagas incluídas de todas as
+     * acomodações; quem sobra vai para as vagas extras, na ordem do site (sort_order, id).
+     * Sem included_guests, a diária vale para a capacidade toda e não há pessoa a mais.
+     * A checagem de capacidade em assertRules garante que todos cabem.
+     *
+     * @param  Collection<int, Accommodation>  $accommodations
+     * @return array<int, int> id da acomodação => pessoas a mais
+     */
+    private function allocateExtraGuests(Collection $accommodations, int $guests): array
+    {
+        $included = $accommodations->mapWithKeys(fn (Accommodation $accommodation) => [
+            $accommodation->id => min($accommodation->included_guests ?? $accommodation->max_guests, $accommodation->max_guests),
+        ]);
+        $left = max(0, $guests - $included->sum());
+        $extra = [];
+
+        foreach ($accommodations as $accommodation) {
+            $extra[$accommodation->id] = min($left, $accommodation->max_guests - $included[$accommodation->id]);
+            $left -= $extra[$accommodation->id];
+        }
+
+        return $extra;
+    }
+
+    /**
      * @param  Collection<int, Accommodation>  $accommodations
      */
     private function assertRules(Collection $accommodations, CarbonImmutable $checkIn, CarbonImmutable $checkOut, int $guests): void
@@ -160,7 +200,7 @@ class BookingService
         foreach ($accommodations as $accommodation) {
             if ($nights < $accommodation->min_nights) {
                 throw ValidationException::withMessages([
-                    'check_out' => "{$accommodation->name} exige no mínimo {$accommodation->min_nights} diária(s).",
+                    'check_out' => "{$accommodation->name} exige no mínimo {$accommodation->min_nights} ".($accommodation->min_nights === 1 ? 'diária.' : 'diárias.'),
                 ]);
             }
 

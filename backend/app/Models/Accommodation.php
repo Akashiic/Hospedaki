@@ -11,8 +11,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'property_id', 'name', 'slug', 'description', 'amenities', 'max_guests', 'base_price',
-    'weekend_price', 'min_nights', 'sort_order', 'active',
+    'property_id', 'name', 'slug', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
+    'weekend_price', 'extra_guest_price', 'min_nights', 'sort_order', 'active',
 ])]
 class Accommodation extends Model
 {
@@ -24,8 +24,10 @@ class Accommodation extends Model
         return [
             'amenities' => 'array',
             'max_guests' => 'integer',
+            'included_guests' => 'integer',
             'base_price' => 'integer',
             'weekend_price' => 'integer',
+            'extra_guest_price' => 'integer',
             'min_nights' => 'integer',
             'active' => 'boolean',
         ];

@@ -1,94 +1,59 @@
 <script setup lang="ts">
-// Calendário de diárias: o hóspede clica no dia de entrada e depois no de saída.
-// Dias marcados como indisponíveis são noites ocupadas ou bloqueadas.
-const props = defineProps<{ unavailable: string[] }>()
+import { dayNotes, dayState, isSelectable, maxMonthOffset, monthGrid, pickDay, type CalendarState } from '~/utils/calendar'
+import { formatIso, todayIn } from '~/utils/dates'
+
+// Calendário de diárias: o hóspede toca no dia de entrada e depois no de saída.
+// As regras (o que pode ser entrada ou saída, rótulos) ficam em utils/calendar.ts.
+// `unavailable` traz as noites ocupadas ou bloqueadas; `maxDate` é o fim (exclusivo) da janela de
+// disponibilidade buscada, e o calendário não passa dela.
+const props = defineProps<{ unavailable: string[], timezone: string, maxDate?: string }>()
 const checkIn = defineModel<string>('checkIn', { default: '' })
 const checkOut = defineModel<string>('checkOut', { default: '' })
 
 const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
 const offset = ref(0)
 
-function toIso(date: Date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
+// "Hoje" no fuso da pousada, o mesmo dia que o backend valida. Calculado no servidor, vai junto
+// no HTML e vale igual na hidratação. Uma aba esquecida aberta virando a meia-noite é conferida
+// quando volta a ficar visível.
+const today = useState('calendar-today', () => todayIn(props.timezone))
+function refreshToday() {
+  if (document.visibilityState === 'visible') today.value = todayIn(props.timezone)
 }
-const fromIso = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return new Date(y!, m! - 1, d!) }
-
-// "Hoje" do servidor vai junto no HTML e é o mesmo na hidratação (sem divergir entre o relógio
-// e o fuso do servidor e os do navegador); depois de montado, vale o dia do navegador do hóspede.
-const today = useState('calendar-today', () => toIso(new Date()))
-onMounted(() => { today.value = toIso(new Date()) })
+onMounted(() => document.addEventListener('visibilitychange', refreshToday))
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', refreshToday))
 
 const blocked = computed(() => new Set(props.unavailable))
+const calendar = computed<CalendarState>(() => ({
+  today: today.value,
+  checkIn: checkIn.value,
+  checkOut: checkOut.value,
+  blocked: blocked.value,
+  maxDate: props.maxDate,
+}))
 
-const months = computed(() => {
-  const base = fromIso(today.value)
-  return [0, 1].map((i) => {
-    const first = new Date(base.getFullYear(), base.getMonth() + offset.value + i, 1)
-    const total = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate()
-    const days: (string | null)[] = Array(first.getDay()).fill(null)
-    for (let d = 1; d <= total; d++) days.push(toIso(new Date(first.getFullYear(), first.getMonth(), d)))
-    return { label: first.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }), days }
-  })
-})
+const lastOffset = computed(() => maxMonthOffset(today.value, props.maxDate))
+watch(lastOffset, (max) => { if (offset.value > max) offset.value = max })
 
-// Há alguma noite ocupada entre a entrada e o dia anterior à saída?
-function rangeIsFree(start: string, end: string) {
-  for (const night of blocked.value) {
-    if (night >= start && night < end) return false
-  }
-  return true
-}
-
-// Escolhendo a saída: um dia depois da entrada, sem noite ocupada no meio.
-const choosingCheckOut = computed(() => !!checkIn.value && !checkOut.value)
-const canCheckOut = (day: string) => choosingCheckOut.value && day > checkIn.value && rangeIsFree(checkIn.value, day)
-
-// Dá para tocar no dia? Como saída válida, ou como nova entrada (noite livre).
-function selectable(day: string) {
-  if (day < today.value) return false
-  return canCheckOut(day) || !blocked.value.has(day)
-}
+const months = computed(() => [0, 1].map(i => monthGrid(today.value, offset.value + i)))
 
 function pick(day: string) {
-  if (!selectable(day)) return
-  if (canCheckOut(day)) {
-    checkOut.value = day
-    return
-  }
-  checkIn.value = day
-  checkOut.value = ''
-}
-
-function state(day: string) {
-  if (day < today.value) return 'past'
-  if (day === checkIn.value || day === checkOut.value) return 'selected'
-  if (checkIn.value && checkOut.value && day > checkIn.value && day < checkOut.value) return 'range'
-  if (blocked.value.has(day)) return 'blocked'
-  return 'free'
+  const next = pickDay(day, calendar.value)
+  if (!next) return
+  checkIn.value = next.checkIn
+  checkOut.value = next.checkOut
 }
 
 // Nome completo para leitores de tela: "sexta-feira, 23 de outubro, entrada".
-function label(day: string) {
-  const date = fromIso(day).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
-  const notes: string[] = []
-  if (day === checkIn.value) notes.push('entrada')
-  else if (day === checkOut.value) notes.push('saída')
-  else if (state(day) === 'range') notes.push('dentro da estadia')
-  if (day < today.value) notes.push('data passada')
-  else if (blocked.value.has(day)) notes.push(canCheckOut(day) ? 'ocupado, disponível só para saída' : 'indisponível')
-  else if (choosingCheckOut.value && day > checkIn.value && !canCheckOut(day)) notes.push('há noites ocupadas antes')
-  return [date, ...notes].join(', ')
-}
+const label = (day: string) =>
+  [formatIso(day, { weekday: 'long', day: 'numeric', month: 'long' }), ...dayNotes(day, calendar.value)].join(', ')
 </script>
 
 <template>
   <div class="calendar">
     <div class="nav">
       <button type="button" :disabled="offset === 0" aria-label="Mês anterior" @click="offset--">‹</button>
-      <button type="button" aria-label="Próximo mês" @click="offset++">›</button>
+      <button type="button" :disabled="offset >= lastOffset" aria-label="Próximo mês" @click="offset++">›</button>
     </div>
     <p class="sr-only" aria-live="polite">{{ months.map(m => m.label).join(' e ') }}</p>
     <div class="months">
@@ -102,8 +67,8 @@ function label(day: string) {
               v-else
               type="button"
               class="day"
-              :class="state(day)"
-              :disabled="!selectable(day)"
+              :class="dayState(day, calendar)"
+              :disabled="!isSelectable(day, calendar)"
               :aria-pressed="day === checkIn || day === checkOut"
               :aria-label="label(day)"
               @click="pick(day)"
@@ -131,7 +96,7 @@ function label(day: string) {
 .day { border: 0; background: none; min-height: 44px; padding: 0; border-radius: 8px; cursor: pointer; font: inherit; color: var(--text); }
 .day.free:not(:disabled):hover { background: var(--soft); }
 .day:disabled { cursor: default; }
-.day.past { color: var(--line); }
+.day.past, .day.closed { color: var(--line); }
 .day.blocked { color: var(--muted); text-decoration: line-through; }
 .day.blocked:disabled { cursor: not-allowed; }
 .day.range { background: var(--soft); }

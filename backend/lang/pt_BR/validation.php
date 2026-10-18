@@ -22,7 +22,7 @@ return [
         'string' => 'O campo :attribute pode ter no máximo :max caracteres.',
     ],
     'min' => [
-        'array' => 'O campo :attribute deve ter pelo menos :min item(ns).',
+        'array' => 'O campo :attribute deve ter pelo menos :min itens.',
         'numeric' => 'O campo :attribute deve ser pelo menos :min.',
         'string' => 'O campo :attribute deve ter pelo menos :min caracteres.',
     ],
@@ -33,6 +33,9 @@ return [
     | Mensagens mais claras para os casos que o hóspede encontra no formulário.
     */
     'custom' => [
+        'accommodation_ids' => [
+            'min' => 'Escolha pelo menos uma acomodação.',
+        ],
         'check_in' => [
             'after_or_equal' => 'A data de entrada não pode ser no passado.',
         ],

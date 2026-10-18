@@ -48,7 +48,7 @@ php artisan migrate --seed
 php artisan serve            # http://localhost:8000
 ```
 
-O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com o Espaço Bela Vista e o Chalé Master, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). Rodar o seed de novo atualiza textos e preços, mas não mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias.
+O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com o Espaço Bela Vista e o Chalé Master, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). Rodar o seed de novo atualiza textos e preços, mas não mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias. As diárias valem para 2 pessoas (no Chalé Master isso também é provisório); o acréscimo por pessoa a mais ainda não foi informado e fica vazio em `extra_guest_price`, então o site e o e-mail avisam que esse valor é combinado na confirmação. Em produção, com `php artisan config:cache`, o `backend/.env` não é lido pelo seed: passe a senha no próprio comando, por exemplo `SEED_OWNER_PASSWORD='…' php artisan db:seed --force`.
 
 **2. Site** (em outro terminal):
 

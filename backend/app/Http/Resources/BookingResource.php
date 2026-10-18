@@ -26,6 +26,8 @@ class BookingResource extends JsonResource
             'guest_phone' => $this->when($isOwner, $this->guest_phone),
             'notes' => $this->when($isOwner, $this->notes),
             'total' => $this->total,
+            // Pessoas a mais cujo acréscimo não está no total e ainda vai ser combinado.
+            'extra_guests_unpriced' => $this->extra_guests_unpriced,
             'accommodations' => $this->whenLoaded('accommodations', fn () => $this->accommodations->map(fn ($accommodation) => [
                 'id' => $accommodation->id,
                 'name' => $accommodation->name,

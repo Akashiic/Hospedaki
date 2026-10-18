@@ -10,6 +10,10 @@ use Illuminate\Database\Seeder;
  * Pousada inicial (tenant #1): Espaço Bela Vista, em Mairiporã/SP.
  * Textos e preços vêm de ivoforti.com. A capacidade foi estimada pelas camas,
  * porque o site não informa; as datas de feriado são de exemplo.
+ *
+ * Provisório: as diárias valem para 2 pessoas (o site diz "valores para o casal" no Espaço;
+ * no Chalé é suposição nossa) e a pousada ainda não informou o acréscimo por pessoa a mais.
+ * Por isso extra_guest_price fica nulo: o site avisa que esse valor é combinado na confirmação.
  */
 class DatabaseSeeder extends Seeder
 {
@@ -24,6 +28,7 @@ class DatabaseSeeder extends Seeder
                 ['title' => 'Para o casal', 'text' => 'Chalé com cama king, banheira de hidromassagem e vista para as montanhas.'],
                 ['title' => 'Reserva direta', 'text' => 'Você fala com a gente pelo WhatsApp, sem intermediário e sem taxa de aplicativo.'],
             ],
+            'story_title' => 'Do café da manhã à fogueira',
             'story' => [
                 [
                     'time' => '8h', 'period' => 'Manhã', 'title' => 'Acordar sem pressa',
@@ -57,6 +62,9 @@ class DatabaseSeeder extends Seeder
             'description' => 'Apartamento de 30 m² com sala (sofá e TV 32" com Fire TV e streamings), quarto de casal, quarto com dois beliches e banheiro. Do lado de fora, pátio com palmeiras imperiais, deck com LED à noite, piscina com escadaria larga para as crianças, área de fogueira e salão de festas com cozinha, churrasqueira e sinuca. Valores para o casal; pessoas a mais têm acréscimo.',
             'amenities' => ['Piscina familiar com escadaria larga', 'Salão de festas com cozinha e churrasqueira', 'Mesa de sinuca', 'Área de fogueira', 'Deck com iluminação de LED', 'TV 32" com Fire TV e streamings', 'Rampa de acesso', 'Café da manhã opcional'],
             'max_guests' => 6,
+            // Provisório: acréscimo por pessoa a mais ainda não informado pela pousada.
+            'included_guests' => 2,
+            'extra_guest_price' => null,
             'base_price' => 49700,
             'weekend_price' => 99700,
             'min_nights' => 1,
@@ -68,6 +76,9 @@ class DatabaseSeeder extends Seeder
             'description' => 'Chalé de 98 m² com vista para as montanhas. Suíte master com cama king, closet e TV com streamings; banheiro em porcelanato com banheira de hidromassagem extra grande para o casal. Sala com livros, cozinha completa compacta, sala de jantar, segundo quarto com duas camas de solteiro e varanda com cadeiras. Acesso por escada e ponte de madeira, perto do centro e dos espaços de casamento.',
             'amenities' => ['Vista para as montanhas', 'Hidromassagem para casal', 'Cama king com closet', 'Cozinha completa', 'TV com streamings', 'Varanda', 'Perto do centro'],
             'max_guests' => 4,
+            // Provisório: 2 pessoas na diária é suposição, e o acréscimo ainda não foi informado.
+            'included_guests' => 2,
+            'extra_guest_price' => null,
             'base_price' => 49700,
             'weekend_price' => 99700,
             'min_nights' => 1,

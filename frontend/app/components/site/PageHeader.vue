@@ -40,7 +40,9 @@ defineProps<{ eyebrow: string, title: string, lead?: string | null, image?: stri
 .eyebrow { @include eyebrow(var(--amber-soft)); @include motion-entrance(0); }
 // Título: só sobe (sem opacidade), para não atrasar o LCP quando não há imagem.
 h1 { @include display(clamp(3rem, 8vw, 6rem)); margin: .5rem 0 0; max-width: 14ch; @include motion-entrance(1, rise); }
-.lead { max-width: 38rem; margin: 1.1rem 0 0; color: rgb(255 255 255 / .85); font-size: clamp(1rem, 1.5vw, 1.12rem); @include motion-entrance(2); }
+// Texto de abertura também só sobe: em páginas curtas (como /reservar) ele é o LCP, e um fade a
+// partir de opacidade 0 atrasava a primeira pintura dele.
+.lead { max-width: 38rem; margin: 1.1rem 0 0; color: rgb(255 255 255 / .85); font-size: clamp(1rem, 1.5vw, 1.12rem); @include motion-entrance(2, rise); }
 .inner > :deep(:not(.eyebrow, h1, .lead)) { @include motion-entrance(3); }
 @keyframes settle { from { transform: scale($zoom-md); } to { transform: scale(1); } }
 

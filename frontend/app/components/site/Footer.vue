@@ -2,9 +2,8 @@
 import type { Property } from '~/composables/useApi'
 
 const props = defineProps<{ property: Property, showCall?: boolean }>()
-// O ano vem do servidor na hidratação (mesmo HTML dos dois lados) e é conferido no navegador.
-const year = useState('footer-year', () => new Date().getFullYear())
-onMounted(() => { year.value = new Date().getFullYear() })
+// Ano no fuso da pousada: o mesmo no servidor e na hidratação, sem depender do relógio do navegador.
+const year = useState('footer-year', () => todayIn(props.property.timezone).slice(0, 4))
 
 const whatsappLink = computed(() => props.property.whatsapp
   ? `https://wa.me/${props.property.whatsapp}?text=${encodeURIComponent('Olá! Gostaria de informações sobre hospedagem.')}`

@@ -3,7 +3,8 @@ import type { Photo, StoryMoment } from '~/composables/useApi'
 
 // "Um dia aqui": rolar a página é passar o dia na pousada. O céu de fundo muda de cor
 // conforme o momento que está no meio da tela, e um sol (que vira lua) percorre um arco.
-const props = defineProps<{ moments: StoryMoment[], fallbackPhotos: Photo[] }>()
+// `title` vem do cadastro da pousada (story_title); sem ele, um título que serve para qualquer uma.
+const props = defineProps<{ moments: StoryMoment[], fallbackPhotos: Photo[], title?: string | null }>()
 
 const persona = usePersona()
 const root = ref<HTMLElement>()
@@ -105,7 +106,7 @@ onBeforeUnmount(() => {
 
     <header class="intro container">
       <p v-reveal class="eyebrow">Um dia aqui</p>
-      <h2 v-reveal style="--i: 1">Do café da manhã<br>à fogueira</h2>
+      <h2 v-reveal style="--i: 1">{{ title || 'Um dia por aqui' }}</h2>
       <p v-if="persona" v-reveal class="for" style="--i: 2">
         Contado para quem vem {{ persona === 'casal' ? 'a dois' : 'com a família' }}.
         <button type="button" @click="persona = persona === 'casal' ? 'familia' : 'casal'">Ver {{ persona === 'casal' ? 'com a família' : 'a dois' }}</button>
@@ -157,6 +158,8 @@ onBeforeUnmount(() => {
 $sky-fade: $dur-lg;
 
 // Registradas como cor para poderem trocar com atraso (degrau, sem animar) e serem herdadas já trocadas.
+// O initial-value de @property só aceita cor literal (var() não vale ali): repete --night,
+// --ink-soft-day e o --brand-text padrão; o valor real vem logo abaixo, dos tokens.
 @property --ink { syntax: '<color>'; inherits: true; initial-value: #0e1411; }
 @property --ink-soft { syntax: '<color>'; inherits: true; initial-value: #4a524a; }
 @property --ink-accent { syntax: '<color>'; inherits: true; initial-value: #2d674a; }
@@ -164,7 +167,7 @@ $sky-fade: $dur-lg;
 
 .story {
   --ink: var(--night);
-  --ink-soft: #4a524a;
+  --ink-soft: var(--ink-soft-day);
   --ink-accent: var(--brand-text);
   --chip: rgb(246 238 226 / .82);
   --wipe: #f3e3cf;

@@ -1,6 +1,5 @@
 import type { Property } from '~/composables/useApi'
-
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+import { addDaysIso, formatIso, todayIn, weekdayOf } from '~/utils/dates'
 
 export interface FreeWeekend { checkIn: string, checkOut: string, accommodationIds: number[] }
 
@@ -15,22 +14,20 @@ export function useNextWeekend(property: Ref<Property>) {
 
   onMounted(async () => {
     if (free.value) return
-    const from = new Date()
-    const to = new Date(from.getFullYear(), from.getMonth(), from.getDate() + 120)
+    // "Hoje" no fuso da pousada, o mesmo que o backend usa para recusar datas passadas.
+    const from = todayIn(property.value.timezone)
+    const to = addDaysIso(from, 120)
     try {
       const res = await api<{ accommodations: { id: number, unavailable: string[] }[] }>('/availability', {
-        query: { from: iso(from), to: iso(to) },
+        query: { from, to },
       })
       // Acomodação que exige mais de 2 diárias daria erro logo ao abrir o link de reserva.
       const fits = new Set(property.value.accommodations.filter(a => a.min_nights <= 2).map(a => a.id))
-      const friday = new Date(from.getFullYear(), from.getMonth(), from.getDate() + ((5 - from.getDay() + 7) % 7))
-      for (; friday < to; friday.setDate(friday.getDate() + 7)) {
-        const sat = new Date(friday.getFullYear(), friday.getMonth(), friday.getDate() + 1)
-        const nights = [iso(friday), iso(sat)]
+      for (let friday = addDaysIso(from, (5 - weekdayOf(from) + 7) % 7); friday < to; friday = addDaysIso(friday, 7)) {
+        const nights = [friday, addDaysIso(friday, 1)]
         const ids = res.accommodations.filter(a => fits.has(a.id) && nights.every(n => !a.unavailable.includes(n))).map(a => a.id)
         if (ids.length) {
-          const sun = new Date(friday.getFullYear(), friday.getMonth(), friday.getDate() + 2)
-          free.value = { checkIn: iso(friday), checkOut: iso(sun), accommodationIds: ids }
+          free.value = { checkIn: friday, checkOut: addDaysIso(friday, 2), accommodationIds: ids }
           return
         }
       }
@@ -45,9 +42,9 @@ export function useNextWeekend(property: Ref<Property>) {
 
 /** "24 a 26 de out" */
 export function formatRange(checkIn: string, checkOut: string) {
-  const [a, b] = [checkIn, checkOut].map((s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y!, m! - 1, d!) })
-  const month = (d: Date) => d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')
-  return a!.getMonth() === b!.getMonth()
-    ? `${a!.getDate()} a ${b!.getDate()} de ${month(b!)}`
-    : `${a!.getDate()} de ${month(a!)} a ${b!.getDate()} de ${month(b!)}`
+  const month = (iso: string) => formatIso(iso, { month: 'short' }).replace('.', '')
+  const day = (iso: string) => Number(iso.slice(8))
+  return checkIn.slice(0, 7) === checkOut.slice(0, 7)
+    ? `${day(checkIn)} a ${day(checkOut)} de ${month(checkOut)}`
+    : `${day(checkIn)} de ${month(checkIn)} a ${day(checkOut)} de ${month(checkOut)}`
 }

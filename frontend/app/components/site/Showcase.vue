@@ -2,6 +2,7 @@
 import type { Accommodation } from '~/composables/useApi'
 
 // Acomodações em quadros grandes, alternando lados, com troca de fotos em fusão.
+// Quando a diária vale para menos gente que a capacidade, o preço diz para quantas pessoas é.
 defineProps<{ accommodations: Accommodation[] }>()
 const photoIndex = reactive<Record<number, number>>({})
 </script>
@@ -34,17 +35,20 @@ const photoIndex = reactive<Record<number, number>>({})
       </div>
 
       <div class="text">
-        <h3 v-reveal>{{ acc.name }}</h3>
+        <h2 v-reveal>{{ acc.name }}</h2>
         <p v-reveal class="desc" style="--i: 2">{{ acc.description }}</p>
         <ul v-reveal class="tags" style="--i: 3">
-          <li>até {{ acc.max_guests }} pessoas</li>
+          <li>até {{ acc.max_guests }} pessoas<template v-if="guestPricing(acc)"> (valor {{ guestCopy.forPeople(guestPricing(acc)!.included) }})</template></li>
           <li v-if="acc.min_nights > 1">mínimo {{ acc.min_nights }} diárias</li>
           <li v-if="acc.weekend_price">fim de semana {{ formatMoney(acc.weekend_price) }}</li>
         </ul>
         <div v-reveal class="buy" style="--i: 4">
-          <p class="price"><small>diárias a partir de</small><strong>{{ formatMoney(acc.base_price) }}</strong></p>
+          <p class="price">
+            <small>{{ guestPricing(acc) ? `diária ${guestCopy.forPeople(guestPricing(acc)!.included)}, a partir de` : 'diárias a partir de' }}</small>
+            <strong>{{ formatMoney(acc.base_price) }}</strong>
+          </p>
           <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver datas <span class="arrow">→</span></NuxtLink>
-          <NuxtLink :to="`/acomodacoes/${acc.slug}`" class="text-link">Conhecer o {{ acc.name }}</NuxtLink>
+          <NuxtLink :to="`/acomodacoes/${acc.slug}`" class="text-link">Ver detalhes <span class="sr-only">de {{ acc.name }}</span></NuxtLink>
         </div>
       </div>
     </article>
@@ -63,10 +67,11 @@ const photoIndex = reactive<Record<number, number>>({})
 // Botões de 44 × 44px para o dedo; o traço de 28px continua desenhado pelo ::before.
 .thumbs { --focus: var(--focus-dark); position: absolute; right: calc(1rem - 8px); bottom: 0; display: flex; z-index: 2; }
 .thumbs button { width: 44px; height: 44px; border: 0; padding: 0; background: none; cursor: pointer; position: relative; }
-.thumbs button::before { content: ""; position: absolute; left: 8px; right: 8px; top: 21px; height: 2px; background: rgb(255 255 255 / .45); transition: background-color $dur-md $ease-move; }
-.thumbs button.on::before { background: #fff; }
+// O traço da foto atual acende por opacidade (cor não anima).
+.thumbs button::before { content: ""; position: absolute; left: 8px; right: 8px; top: 21px; height: 2px; background: var(--on-photo); opacity: .45; transition: opacity $dur-md $ease-move; }
+.thumbs button.on::before { opacity: 1; }
 .cap { position: absolute; left: 1rem; bottom: .85rem; margin: 0; z-index: 2; color: #fff; font-size: .85rem; text-shadow: 0 1px 8px rgb(0 0 0 / .5); }
-h3 { font-size: clamp(2.6rem, 5vw, 4rem); margin: 0 0 1rem; }
+h2 { font-size: clamp(2.6rem, 5vw, 4rem); margin: 0 0 1rem; }
 .desc { color: var(--muted); font-size: 1.05rem; margin: 0 0 1.3rem; max-width: 34rem; }
 .tags { list-style: none; padding: 0; margin: 0 0 1.8rem; display: flex; flex-wrap: wrap; gap: .5rem; }
 .tags li { border: 1px solid var(--line); border-radius: 999px; padding: .3rem .8rem; font-size: .85rem; }

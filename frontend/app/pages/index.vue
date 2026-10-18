@@ -35,7 +35,7 @@ useHead({
       </template>
     </SiteHero>
 
-    <SiteDayStory v-if="property.story.length" :moments="property.story" :fallback-photos="gallery">
+    <SiteDayStory v-if="property.story.length" :moments="property.story" :fallback-photos="gallery" :title="property.story_title">
       <div class="where">
         <p v-reveal class="eyebrow">Onde esse dia acontece</p>
         <h2 v-reveal style="--i: 1">{{ chosen ? `${chosen.name} espera por vocês` : 'Escolha o seu canto' }}</h2>

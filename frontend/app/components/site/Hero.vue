@@ -146,7 +146,7 @@ function onTouchEnd(e: TouchEvent) {
 .grain { z-index: 3; opacity: .035; pointer-events: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
 .content { position: relative; z-index: 4; width: 100%; max-width: 1200px; margin: 0 auto; padding-inline: var(--gutter) var(--gutter-r); padding-bottom: clamp(7rem, 16vh, 10rem); }
 // Branco, e não âmbar: é a primeira linha, na parte mais clara do véu.
-.place { @include eyebrow(#fff); display: block; margin: 0 0 1rem; text-shadow: 0 1px 12px rgb(0 0 0 / .45); @include motion-entrance(0); }
+.place { @include eyebrow(var(--on-photo)); display: block; margin: 0 0 1rem; text-shadow: 0 1px 12px rgb(0 0 0 / .45); @include motion-entrance(0); }
 // O título encolhe também pela altura da tela, para caber junto com as escolhas em notebooks baixos.
 h1 { margin: 0; font-size: clamp(2.8rem, min(9vw, 10.5vh), 7.2rem); line-height: .98; max-width: 15ch; text-wrap: balance; }
 .word { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: .08em; }

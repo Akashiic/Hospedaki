@@ -15,7 +15,7 @@
 //         exit   (acelerar)     cubic-bezier(.64, 0, .78, .39)  — a curva de entrada girada 180°
 //                               em torno de (.5, .5): (x1,y1,x2,y2) → (1-x2, 1-y2, 1-x1, 1-y1)
 //         move   (padrão)       cubic-bezier(.65, 0, .35, 1)    — simétrica, para o que muda de
-//                               estado sem entrar nem sair (fusões, cortinas, hovers de cor)
+//                               estado sem entrar nem sair (fusões, cortinas e trocas de estado)
 //         drift  (linear)       para o que mede o tempo (Ken Burns, barras de progresso)
 //
 // ESCALONAMENTO  passo = t(-1) = 75ms. Atraso do item n de uma cena: (n + 1) × 75ms.
@@ -27,8 +27,11 @@
 // ZOOM       z(n) = 1 + φ⁻ⁿ:  1.09 (n=5, Ken Burns) · 1.056 (n=6, assentar) · 1.034 (n=7, hover)
 //            · 0.987 (1 − φ⁻⁹, recuo da página que sai)
 //
-// Regra: só opacity e transform. Com prefers-reduced-motion, nada se desloca: trocas
-// instantâneas ou fusões curtas de opacidade.
+// Regra: só opacity e transform. Cor, fundo, borda e sombra trocam na hora (nenhuma transition
+// nessas propriedades); para suavizar, uma camada (::before/::after) com a cor final entra por
+// opacidade. Troca de cor em degrau com atraso (transition de 0s, como a tinta de "Um dia aqui")
+// não é animação e vale. Com prefers-reduced-motion, nada se desloca: trocas instantâneas ou
+// fusões curtas de opacidade.
 // ════════════════════════════════════════════════════════════════════════════
 
 @use 'sass:math';
@@ -58,7 +61,7 @@ $distance-base: 10px;
 // ── Tempos ──────────────────────────────────────────────────────────────────
 $dur-instant: dur(-1); //   75ms  micro-reações, passo de escalonamento
 $dur-xs: dur(0);       //  120ms  saída rápida do painel
-$dur-sm: dur(1);       //  195ms  hovers de cor/opacidade, entrada do painel
+$dur-sm: dur(1);       //  195ms  hovers de opacidade, entrada do painel
 $dur-md: dur(2);       //  315ms  hovers com movimento, saída de página
 $dur-lg: dur(3);       //  510ms  opacidade das entradas
 $dur-xl: dur(4);       //  820ms  deslocamento das entradas

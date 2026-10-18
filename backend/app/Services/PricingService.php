@@ -16,16 +16,19 @@ use Carbon\CarbonPeriod;
  *   2. preço de fim de semana da acomodação
  *   3. preço base
  *
- * Noites de sexta e sábado contam como fim de semana.
+ * Noites de sexta e sábado contam como fim de semana. Pessoas além das incluídas na diária
+ * somam o acréscimo por pessoa (extra_guest_price) em cada noite. Se a pousada não informou
+ * esse valor, ele não entra no total e as pessoas voltam em "extra_guests_unpriced".
  */
 class PricingService
 {
     public const WEEKEND_NIGHTS = [CarbonInterface::FRIDAY, CarbonInterface::SATURDAY];
 
     /**
-     * @return array{total: int, nights: list<array{date: string, price: int}>}
+     * @param  int  $extraGuests  pessoas além das incluídas na diária, já distribuídas para esta acomodação
+     * @return array{total: int, nights: list<array{date: string, price: int}>, extra_guests: int, extra_guests_subtotal: int, extra_guests_unpriced: int}
      */
-    public function quote(Accommodation $accommodation, CarbonInterface $checkIn, CarbonInterface $checkOut): array
+    public function quote(Accommodation $accommodation, CarbonInterface $checkIn, CarbonInterface $checkOut, int $extraGuests = 0): array
     {
         $checkIn = CarbonImmutable::parse($checkIn)->startOfDay();
         $checkOut = CarbonImmutable::parse($checkOut)->startOfDay();
@@ -36,19 +39,31 @@ class PricingService
             ->orderByDesc('starts_on')
             ->get();
 
+        $extraGuests = max(0, $extraGuests);
+        $priced = $accommodation->extra_guest_price !== null;
+        $extraPerNight = $priced ? $extraGuests * $accommodation->extra_guest_price : 0;
+
         $nights = [];
         $total = 0;
+        $extraTotal = 0;
 
         foreach (CarbonPeriod::create($checkIn, $checkOut->subDay()) as $night) {
             $price = $this->priceForNight($accommodation, $seasons->first(
                 fn (SeasonalPrice $season) => $night->betweenIncluded($season->starts_on, $season->ends_on)
-            ), $night);
+            ), $night) + $extraPerNight;
 
             $nights[] = ['date' => $night->toDateString(), 'price' => $price];
             $total += $price;
+            $extraTotal += $extraPerNight;
         }
 
-        return ['total' => $total, 'nights' => $nights];
+        return [
+            'total' => $total,
+            'nights' => $nights,
+            'extra_guests' => $extraGuests,
+            'extra_guests_subtotal' => $extraTotal,
+            'extra_guests_unpriced' => $priced ? 0 : $extraGuests,
+        ];
     }
 
     private function priceForNight(Accommodation $accommodation, ?SeasonalPrice $season, CarbonInterface $night): int

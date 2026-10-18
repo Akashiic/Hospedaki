@@ -14,11 +14,13 @@ export async function useProperty() {
 
   // 404 só quando a API diz que a pousada não existe; outras falhas (servidor fora do ar, 500)
   // viram 503, para buscadores tentarem de novo em vez de tirarem o site do índice.
+  // O texto vai em `message`: statusMessage acentuado vira lixo no cabeçalho HTTP. A página de
+  // erro (app/error.vue) escolhe a cópia pelo status.
   if (error.value || !data.value) {
     const missing = !error.value || error.value.statusCode === 404
     throw createError({
-      statusCode: missing ? 404 : 503,
-      statusMessage: missing ? 'Pousada não encontrada' : 'Site temporariamente indisponível. Tente de novo em instantes.',
+      status: missing ? 404 : 503,
+      message: missing ? 'Pousada não encontrada' : 'Site temporariamente indisponível',
       fatal: true,
     })
   }

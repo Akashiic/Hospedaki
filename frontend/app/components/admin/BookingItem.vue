@@ -12,7 +12,7 @@ const statusLabel: Record<AdminBooking['status'], string> = {
   cancelled: 'Cancelada',
 }
 
-const date = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
+const date = (iso: string) => formatIso(iso, { weekday: 'short', day: '2-digit', month: 'short' })
 
 // Link de WhatsApp para falar com o hóspede (assume Brasil quando falta o código do país).
 const whatsapp = computed(() => {
@@ -42,29 +42,33 @@ const whatsapp = computed(() => {
 
     <p class="accs">
       <span v-for="acc in booking.accommodations" :key="acc.id" class="chip">{{ acc.name }}</span>
-      <strong class="total">{{ formatMoney(booking.total) }}</strong>
+      <span class="total">
+        <strong>{{ formatMoney(booking.total) }}</strong>
+        <!-- O total salvo não inclui o acréscimo das pessoas a mais sem valor cadastrado. -->
+        <small v-if="booking.extra_guests_unpriced > 0" class="unpriced">{{ guestCopy.panelUnpriced(booking.extra_guests_unpriced) }}</small>
+      </span>
     </p>
     <p v-if="booking.notes" class="notes">“{{ booking.notes }}”</p>
 
     <footer>
-      <a :href="whatsapp" target="_blank" rel="noopener" class="btn btn-ghost small">WhatsApp {{ booking.guest_phone }}</a>
+      <a :href="whatsapp" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">WhatsApp {{ formatPhone(booking.guest_phone) }}</a>
       <template v-if="booking.status === 'pending'">
         <template v-if="askingDecline">
           <span class="ask">Recusar este pedido?</span>
-          <button type="button" class="btn small danger" :disabled="busy" @click="emit('decline')">Sim, recusar</button>
-          <button type="button" class="btn btn-ghost small" @click="askingDecline = false">Voltar</button>
+          <button type="button" class="btn btn-sm danger" :disabled="busy" @click="emit('decline')">Sim, recusar</button>
+          <button type="button" class="btn btn-ghost btn-sm" @click="askingDecline = false">Voltar</button>
         </template>
         <template v-else>
-          <button type="button" class="btn btn-ghost small" :disabled="busy" @click="askingDecline = true">Recusar</button>
-          <button type="button" class="btn small" :disabled="busy" @click="emit('confirm')">Confirmar reserva</button>
+          <button type="button" class="btn btn-ghost btn-sm" :disabled="busy" @click="askingDecline = true">Recusar</button>
+          <button type="button" class="btn btn-sm" :disabled="busy" @click="emit('confirm')">Confirmar reserva</button>
         </template>
       </template>
       <template v-else-if="booking.status === 'confirmed'">
-        <button v-if="!askingDecline" type="button" class="btn btn-ghost small" @click="askingDecline = true">Cancelar reserva</button>
+        <button v-if="!askingDecline" type="button" class="btn btn-ghost btn-sm" @click="askingDecline = true">Cancelar reserva</button>
         <template v-else>
           <span class="ask">Cancelar e liberar as datas?</span>
-          <button type="button" class="btn small danger" :disabled="busy" @click="emit('decline')">Sim, cancelar</button>
-          <button type="button" class="btn btn-ghost small" @click="askingDecline = false">Voltar</button>
+          <button type="button" class="btn btn-sm danger" :disabled="busy" @click="emit('decline')">Sim, cancelar</button>
+          <button type="button" class="btn btn-ghost btn-sm" @click="askingDecline = false">Voltar</button>
         </template>
       </template>
     </footer>
@@ -87,11 +91,13 @@ dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color:
 dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
 .accs { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; }
 .chip { background: var(--soft); border-radius: 999px; padding: .2rem .65rem; font-size: .85rem; font-weight: 500; }
-.total { margin-left: auto; font-family: var(--font-display); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.total { margin-left: auto; display: grid; justify-items: end; text-align: right; }
+.total strong { font-family: var(--font-display); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.unpriced { color: var(--warn-ink); font-weight: 700; font-size: .82rem; }
 .notes { margin: 0; color: var(--muted); font-style: italic; }
 footer { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: .5rem; border-top: 1px solid var(--line); padding-top: .8rem; }
 footer > a { margin-right: auto; }
-.small { padding: .5rem 1rem; font-size: .88rem; }
-.danger { background: var(--danger); }
+// Fundo e letra próprios: a letra não herda a --brand-ink da marca (preta nas marcas claras).
+.danger { background: var(--danger); color: var(--danger-ink); }
 .ask { font-weight: 700; font-size: .9rem; }
 </style>

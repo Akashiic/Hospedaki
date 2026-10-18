@@ -23,40 +23,19 @@ watch(tab, () => { message.value = '' })
 const loaded = ref(false)
 const loadError = ref('')
 
-// Listas de reservas. Se a API voltar paginada (meta.last_page), o painel oferece "Carregar mais"
-// em vez de esconder o que passou da primeira página.
-type BookingPage = { data: AdminBooking[], meta?: { current_page: number, last_page: number, total?: number } }
-type BookingList = 'pending' | 'upcoming'
-const queries: Record<BookingList, Record<string, string | number>> = {
-  pending: { status: 'pending' },
-  upcoming: { status: 'confirmed', upcoming: 1 },
-}
-const lists = { pending, upcoming }
-const pages = reactive<Record<BookingList, { next: number | null, total: number | null, loading: boolean }>>({
-  pending: { next: null, total: null, loading: false },
-  upcoming: { next: null, total: null, loading: false },
-})
-function readPage(list: BookingList, res: BookingPage) {
-  const meta = res.meta
-  pages[list].next = meta && meta.current_page < meta.last_page ? meta.current_page + 1 : null
-  pages[list].total = meta?.total ?? null
-}
-const pendingCount = computed(() => pages.pending.total ?? pending.value.length)
-
 async function load() {
   loadError.value = ''
   try {
     const [meRes, pendingRes, upcomingRes, blocksRes] = await Promise.all([
       api<AdminMe>('/me'),
-      api<BookingPage>('/bookings', { query: queries.pending }),
-      api<BookingPage>('/bookings', { query: queries.upcoming }),
+      // A API devolve as listas inteiras (sem paginação): o painel só mostra o que está pela frente.
+      api<{ data: AdminBooking[] }>('/bookings', { query: { status: 'pending' } }),
+      api<{ data: AdminBooking[] }>('/bookings', { query: { status: 'confirmed', upcoming: 1 } }),
       api<{ data: AdminBlock[] }>('/blocked-dates'),
     ])
     me.value = meRes
     pending.value = pendingRes.data
     upcoming.value = upcomingRes.data
-    readPage('pending', pendingRes)
-    readPage('upcoming', upcomingRes)
     blocks.value = blocksRes.data
     loaded.value = true
   }
@@ -65,23 +44,6 @@ async function load() {
   }
 }
 onMounted(load)
-
-async function loadMore(list: BookingList) {
-  const page = pages[list].next
-  if (!page || pages[list].loading) return
-  pages[list].loading = true
-  try {
-    const res = await api<BookingPage>('/bookings', { query: { ...queries[list], page } })
-    lists[list].value = [...lists[list].value, ...res.data]
-    readPage(list, res)
-  }
-  catch (e) {
-    message.value = apiError(e)
-  }
-  finally {
-    pages[list].loading = false
-  }
-}
 
 async function act(booking: AdminBooking, action: 'confirm' | 'decline') {
   busyId.value = booking.id
@@ -162,7 +124,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
       </div>
       <nav class="container tabs" aria-label="Seções">
         <button type="button" :aria-pressed="tab === 'pending'" @click="tab = 'pending'">
-          Pedidos <span v-if="pendingCount" class="count">{{ pendingCount }}</span>
+          Pedidos <span v-if="pending.length" class="count">{{ pending.length }}</span>
         </button>
         <button type="button" :aria-pressed="tab === 'upcoming'" @click="tab = 'upcoming'">Próximas reservas</button>
         <button type="button" :aria-pressed="tab === 'blocks'" @click="tab = 'blocks'">Datas bloqueadas</button>
@@ -174,7 +136,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
 
       <div v-if="loadError" class="load-error" role="alert">
         <p>Não foi possível carregar o painel. {{ loadError }}</p>
-        <button type="button" class="btn small" @click="load">Tentar de novo</button>
+        <button type="button" class="btn btn-sm" @click="load">Tentar de novo</button>
       </div>
 
       <p v-else-if="!loaded" class="empty" aria-busy="true">Carregando...</p>
@@ -189,9 +151,6 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
           @confirm="act(booking, 'confirm')"
           @decline="act(booking, 'decline')"
         />
-        <button v-if="pages.pending.next" type="button" class="btn btn-ghost more" :disabled="pages.pending.loading" @click="loadMore('pending')">
-          {{ pages.pending.loading ? 'Carregando...' : 'Carregar mais pedidos' }}
-        </button>
       </section>
 
       <section v-else-if="tab === 'upcoming'" class="list">
@@ -203,9 +162,6 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
           :busy="busyId === booking.id"
           @decline="act(booking, 'decline')"
         />
-        <button v-if="pages.upcoming.next" type="button" class="btn btn-ghost more" :disabled="pages.upcoming.loading" @click="loadMore('upcoming')">
-          {{ pages.upcoming.loading ? 'Carregando...' : 'Carregar mais reservas' }}
-        </button>
       </section>
 
       <section v-else class="blocks">
@@ -259,8 +215,6 @@ h1 { margin: .1rem 0 0; font-size: 1.6rem; }
 .content { padding-block: 1.5rem 3rem; max-width: 860px; }
 .toast { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .75rem 1rem; font-weight: 500; margin: 0 0 1rem; }
 .list { display: grid; gap: 1rem; }
-.more { justify-self: center; }
-.small { padding: .5rem 1rem; font-size: .88rem; }
 .load-error { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
 .load-error p { margin: 0; font-weight: 500; }
 .empty { background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 2rem 1.2rem; text-align: center; color: var(--muted); margin: 0; }

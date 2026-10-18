@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Notifications\NewBookingRequest;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -50,6 +52,7 @@ class BookingRequestTest extends TestCase
             'tagline' => 'Desacelere',
             'highlights' => [['title' => 'Silêncio', 'text' => 'Só natureza.']],
             'story' => [['time' => '8h', 'period' => 'Manhã', 'title' => 'Café', 'text' => 'Com vista.']],
+            'story_title' => 'Do café à fogueira',
         ]);
         $this->property->photos()->create(['path' => 'https://exemplo.com/capa.jpg', 'featured' => true]);
         $this->chale->update(['amenities' => ['Hidromassagem', 'Varanda']]);
@@ -60,12 +63,21 @@ class BookingRequestTest extends TestCase
             ->assertJsonPath('data.tagline', 'Desacelere')
             ->assertJsonPath('data.highlights.0.title', 'Silêncio')
             ->assertJsonPath('data.story.0.period', 'Manhã')
+            ->assertJsonPath('data.story_title', 'Do café à fogueira')
+            ->assertJsonPath('data.timezone', 'America/Sao_Paulo')
             ->assertJsonPath('data.photos.0.url', 'https://exemplo.com/capa.jpg')
             ->assertJsonPath('data.photos.0.featured', true)
             ->assertJsonPath('data.accommodations.0.amenities', ['Hidromassagem', 'Varanda'])
             ->assertJsonPath('data.accommodations.1.amenities', []);
 
         $this->getJson('/api/properties/nao-existe')->assertNotFound();
+
+        // Outra pousada, em outro fuso e sem título próprio para "Um dia aqui".
+        Property::factory()->create(['slug' => 'manaus', 'timezone' => 'America/Manaus']);
+        $this->getJson('/api/properties/manaus')
+            ->assertOk()
+            ->assertJsonPath('data.timezone', 'America/Manaus')
+            ->assertJsonPath('data.story_title', null);
     }
 
     public function test_guest_can_request_both_accommodations_together(): void
@@ -231,6 +243,14 @@ class BookingRequestTest extends TestCase
         $this->assertStringNotContainsString('<code>', $html);
         $this->assertStringNotContainsString('<b>oi</b>', $html);
         $this->assertStringContainsString('**urgente** _agora_ `código` &lt;b&gt;oi&lt;/b&gt;', $html);
+
+        // Na versão em texto o hóspede aparece como digitou, sem barras de escape.
+        $mail = (new NewBookingRequest(Booking::first()))->toMail($owner);
+        $text = (string) app(Markdown::class)->renderText('notifications::email', $mail->data());
+        $this->assertStringContainsString('[Confirme seu acesso](https://evil.example/login)', $text);
+        $this->assertStringContainsString('**urgente** _agora_ `código` <b>oi</b>', $text);
+        $this->assertStringNotContainsString('\\[', $text);
+        $this->assertStringNotContainsString('\\*', $text);
         // Textos fixos do modelo de e-mail do Laravel também saem em português.
         $this->assertStringContainsString('Até mais,', $html);
         $this->assertStringNotContainsString('Regards', $html);
@@ -260,6 +280,31 @@ class BookingRequestTest extends TestCase
         $this->postJson('/api/properties/pousada/booking-requests', [])
             ->assertTooManyRequests()
             ->assertJsonPath('message', 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.');
+    }
+
+    public function test_guest_line_breaks_cannot_start_markdown_blocks(): void
+    {
+        $this->postJson('/api/properties/pousada/booking-requests', $this->payload([
+            'notes' => "Chego tarde\n# Título\n- item",
+        ]))->assertCreated();
+
+        $html = (string) (new NewBookingRequest(Booking::first()))->toMail(User::factory()->create())->render();
+
+        $this->assertStringContainsString('Observações: Chego tarde # Título - item', $html);
+        $this->assertStringNotContainsString('<h1>', $html);
+        $this->assertStringNotContainsString('<li>', $html);
+    }
+
+    public function test_other_http_errors_are_in_portuguese(): void
+    {
+        Route::get('/api/teste/negado', fn () => abort(403));
+        Route::get('/api/teste/manutencao', fn () => abort(503));
+
+        $this->getJson('/api/teste/negado')->assertForbidden()->assertJsonPath('message', 'Acesso negado.');
+        $this->getJson('/api/teste/manutencao')->assertServiceUnavailable()
+            ->assertJsonPath('message', 'Estamos em manutenção. Tente de novo em instantes.');
+        $this->deleteJson('/api/properties/pousada/quote')->assertMethodNotAllowed()
+            ->assertJsonPath('message', 'Método não permitido.');
     }
 
     public function test_panel_tokens_expire_after_30_days(): void

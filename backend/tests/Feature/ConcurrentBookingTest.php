@@ -9,12 +9,18 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
 use Tests\TestCase;
 
 /**
  * Pedidos simultâneos para as mesmas datas, em processos separados e num arquivo
  * SQLite de verdade (o banco em memória dos outros testes não tem concorrência).
+ *
+ * Sem pcntl ou posix o teste é pulado. Os atributos são checados antes do setUp, então
+ * o tearDown não roda; um markTestSkipped no setUp rodaria o tearDown e viraria erro.
  */
+#[RequiresPhpExtension('pcntl')]
+#[RequiresPhpExtension('posix')]
 class ConcurrentBookingTest extends TestCase
 {
     private const PROCESSES = 6;
@@ -24,10 +30,6 @@ class ConcurrentBookingTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        if (! function_exists('pcntl_fork') || ! function_exists('posix_kill')) {
-            $this->markTestSkipped('Precisa das extensões pcntl e posix.');
-        }
 
         $this->dir = sys_get_temp_dir().'/hospedaki-concorrencia-'.uniqid();
         mkdir($this->dir);

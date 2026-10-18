@@ -10,12 +10,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\Str;
 
 #[Fillable([
-    'property_id', 'code', 'status', 'check_in', 'check_out', 'guests',
+    'property_id', 'code', 'status', 'check_in', 'check_out', 'guests', 'extra_guests_unpriced',
     'guest_name', 'guest_email', 'guest_phone', 'notes', 'total',
     'confirmed_at', 'cancelled_at',
 ])]
 class Booking extends Model
 {
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'extra_guests_unpriced' => 0,
+    ];
+
     protected function casts(): array
     {
         return [
@@ -23,6 +30,7 @@ class Booking extends Model
             'check_in' => 'date',
             'check_out' => 'date',
             'guests' => 'integer',
+            'extra_guests_unpriced' => 'integer',
             'total' => 'integer',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',

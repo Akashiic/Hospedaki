@@ -1,7 +1,13 @@
 <script setup lang="ts">
 const { property } = await useProperty()
 
-useSeoMeta({ title: `Acomodações · ${property.value.name}` })
+// Descrição montada só com os nomes cadastrados, sem artigo ("o"/"a" depende do nome de cada pousada).
+const names = property.value.accommodations.map(a => a.name)
+const list = names.length > 1 ? `${names.slice(0, -1).join(', ')} e ${names.at(-1)}` : (names[0] ?? '')
+useSeoMeta({
+  title: `Acomodações · ${property.value.name}`,
+  description: list ? `${list}: fotos, comodidades e diárias de cada acomodação.` : undefined,
+})
 </script>
 
 <template>

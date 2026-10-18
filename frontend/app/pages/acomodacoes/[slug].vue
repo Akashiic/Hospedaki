@@ -4,12 +4,18 @@ const { property } = await useProperty()
 
 const acc = computed(() => property.value.accommodations.find(a => a.slug === route.params.slug))
 // fatal: também na navegação dentro do site mostra a página de erro (sem isso, ficava em branco).
-if (!acc.value) throw createError({ statusCode: 404, statusMessage: 'Acomodação não encontrada', fatal: true })
+// O texto vai em `message` (statusMessage acentuado viraria lixo no cabeçalho HTTP); error.vue escolhe a cópia pelo status.
+if (!acc.value) throw createError({ status: 404, message: 'Acomodação não encontrada', fatal: true })
+
+// Regra de pessoas a mais (null quando a diária já vale para a lotação toda).
+const guests = computed(() => guestPricing(acc.value!))
+const priceFor = computed(() => guests.value ? ` ${guestCopy.forPeople(guests.value.included)}` : '')
 
 const others = computed(() => property.value.accommodations.filter(a => a.id !== acc.value!.id))
 
 useSeoMeta({
-  title: `${acc.value.name} · ${property.value.name}`,
+  // Acomodação com o mesmo nome da pousada não repete o nome no título.
+  title: acc.value.name === property.value.name ? acc.value.name : `${acc.value.name} · ${property.value.name}`,
   description: acc.value.description ?? undefined,
   ogImage: acc.value.photos[0]?.url,
 })
@@ -33,9 +39,12 @@ useSeoMeta({
 
       <aside v-reveal class="facts" style="--i: 2">
         <!-- Mesma regra do PricingService: só as noites de sexta e sábado são de fim de semana. -->
-        <div><span>Diária {{ acc.weekend_price ? '(dom. a qui.)' : '' }}</span><strong>{{ formatMoney(acc.base_price) }}</strong></div>
-        <div v-if="acc.weekend_price"><span>Diária (sex. e sáb.)</span><strong>{{ formatMoney(acc.weekend_price) }}</strong></div>
-        <div><span>Hóspedes</span><strong>até {{ acc.max_guests }} pessoas</strong></div>
+        <div><span>Diária{{ priceFor }} {{ acc.weekend_price ? '(dom. a qui.)' : '' }}</span><strong>{{ formatMoney(acc.base_price) }}</strong></div>
+        <div v-if="acc.weekend_price"><span>Diária{{ priceFor }} (sex. e sáb.)</span><strong>{{ formatMoney(acc.weekend_price) }}</strong></div>
+        <div>
+          <span>Hóspedes</span><strong>até {{ acc.max_guests }} pessoas</strong>
+          <small v-if="guests" class="extra">{{ guestCopy.extraRule(guests) }}</small>
+        </div>
         <div v-if="acc.min_nights > 1"><span>Mínimo</span><strong>{{ acc.min_nights }} diárias</strong></div>
         <div><span>Entrada e saída</span><strong>{{ property.check_in_time }} · {{ property.check_out_time }}</strong></div>
         <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver datas <span class="arrow">→</span></NuxtLink>
@@ -75,6 +84,7 @@ useSeoMeta({
   // Só os rótulos das linhas (sem pegar a seta do botão "Ver datas").
   div > span { @include eyebrow(var(--muted), sm); }
   strong { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
+  .extra { color: var(--muted); font-size: .88rem; line-height: 1.4; }
 }
 .photos {
   display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: clamp(4rem, 8vw, 6rem);

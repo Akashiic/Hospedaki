@@ -11,6 +11,8 @@ export interface AdminBooking {
   guest_phone: string
   notes: string | null
   total: number
+  /** Pessoas a mais cujo acréscimo não entrou no total: combinar com o hóspede. */
+  extra_guests_unpriced: number
   accommodations: { id: number, name: string, subtotal: number }[]
   created_at: string
 }

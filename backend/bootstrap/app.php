@@ -26,9 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->respond(function ($response) {
             $messages = [
                 401 => 'Sua sessão expirou. Entre de novo.',
+                403 => 'Acesso negado.',
                 404 => 'Não encontrado.',
+                405 => 'Método não permitido.',
                 429 => 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.',
                 500 => 'Algo deu errado do nosso lado. Tente novamente em instantes.',
+                503 => 'Estamos em manutenção. Tente de novo em instantes.',
             ];
             $status = $response->getStatusCode();
 
