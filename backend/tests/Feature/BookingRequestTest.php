@@ -45,7 +45,11 @@ class BookingRequestTest extends TestCase
 
     public function test_public_property_page(): void
     {
-        $this->property->update(['tagline' => 'Desacelere', 'highlights' => [['title' => 'Silêncio', 'text' => 'Só natureza.']]]);
+        $this->property->update([
+            'tagline' => 'Desacelere',
+            'highlights' => [['title' => 'Silêncio', 'text' => 'Só natureza.']],
+            'story' => [['time' => '8h', 'period' => 'Manhã', 'title' => 'Café', 'text' => 'Com vista.']],
+        ]);
         $this->property->photos()->create(['path' => 'https://exemplo.com/capa.jpg', 'featured' => true]);
         $this->chale->update(['amenities' => ['Hidromassagem', 'Varanda']]);
 
@@ -54,6 +58,7 @@ class BookingRequestTest extends TestCase
             ->assertJsonCount(2, 'data.accommodations')
             ->assertJsonPath('data.tagline', 'Desacelere')
             ->assertJsonPath('data.highlights.0.title', 'Silêncio')
+            ->assertJsonPath('data.story.0.period', 'Manhã')
             ->assertJsonPath('data.photos.0.url', 'https://exemplo.com/capa.jpg')
             ->assertJsonPath('data.photos.0.featured', true)
             ->assertJsonPath('data.accommodations.0.amenities', ['Hidromassagem', 'Varanda'])
