@@ -57,3 +57,60 @@ jobs:
 
       - name: Execute tests
         run: php artisan test
+
+  postgres:
+    runs-on: ubuntu-latest
+
+    # O site no ar usa Postgres (Neon); aqui a mesma bateria roda nele.
+    name: PHP 8.3 + Postgres
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: hospedaki
+          POSTGRES_PASSWORD: hospedaki
+          POSTGRES_DB: hospedaki_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: hospedaki_test
+      DB_USERNAME: hospedaki
+      DB_PASSWORD: hospedaki
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+        with:
+          php-version: '8.3'
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, posix, pdo, pgsql, pdo_pgsql
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Execute tests
+        run: php artisan test

@@ -132,6 +132,10 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
     </header>
 
     <main class="container content">
+      <p v-if="me?.property.demo" class="demo-tip">
+        <strong>Demonstração.</strong> Assim o dono vê os pedidos que chegam pelo site. Confirme, recuse ou bloqueie datas à vontade: tudo volta ao início amanhã.
+        Faça também um pedido pelo <NuxtLink to="/reservar">site</NuxtLink> e veja ele chegar aqui.
+      </p>
       <p v-if="message" class="toast" role="status">{{ message }}</p>
 
       <div v-if="loadError" class="load-error" role="alert">
@@ -232,4 +236,6 @@ h1 { margin: .1rem 0 0; font-size: 1.6rem; }
 .block-list li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem 0; border-top: 1px solid var(--line); }
 .block-list li div { display: grid; }
 .block-list span { color: var(--muted); font-size: .9rem; }
+.demo-tip { margin: 0 0 1rem; padding: .8rem 1rem; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); font-size: .92rem; }
+.demo-tip a { color: inherit; font-weight: 700; }
 </style>

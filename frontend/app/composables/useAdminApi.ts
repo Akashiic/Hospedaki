@@ -27,7 +27,7 @@ export interface AdminBlock {
 
 export interface AdminMe {
   user: { name: string, email: string }
-  property: { name: string, slug: string, primary_color: string, accommodations: { id: number, name: string }[] }
+  property: { name: string, slug: string, primary_color: string, demo?: boolean, accommodations: { id: number, name: string }[] }
 }
 
 /** Token do painel, guardado num cookie do navegador do dono. */

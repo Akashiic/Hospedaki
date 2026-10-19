@@ -6,14 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use App\Services\AvailabilityService;
+use App\Services\DemoService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PropertyController extends Controller
 {
-    public function show(Property $property): PropertyResource
+    public function show(Property $property, DemoService $demo): PropertyResource
     {
+        // Toda visita ao site começa por aqui: é a hora de arrumar a demo do dia.
+        $demo->resetIfStale($property);
+
         $property->load(['photos', 'accommodations' => fn ($query) => $query->where('active', true)->with('photos')]);
 
         return new PropertyResource($property);

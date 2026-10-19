@@ -177,6 +177,7 @@ const whatsappLink = computed(() => {
 
           <form class="panel form" @submit.prevent="submit">
             <h2>Seus dados</h2>
+            <p v-if="property.demo" class="demo-note">Demonstração: use um nome de teste. O pedido aparece no painel aberto da demo, que qualquer visitante vê, e é apagado no dia seguinte.</p>
             <label for="guests">Hóspedes <input id="guests" v-model.number="guests" type="number" min="1" required></label>
             <label for="name">Nome <input id="name" v-model="form.guest_name" required autocomplete="name"></label>
             <label for="phone">WhatsApp <input id="phone" v-model="form.guest_phone" required type="tel" autocomplete="tel" placeholder="(11) 99999-9999"></label>
@@ -239,6 +240,7 @@ const whatsappLink = computed(() => {
 .line { display: flex; justify-content: space-between; gap: 1rem; margin: 0; font-variant-numeric: tabular-nums; }
 .line.total { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.15; align-items: baseline; border-top: 1px solid var(--line); padding-top: .5rem; margin-top: .2rem; }
 .note { margin: 0; color: var(--muted); font-size: .88rem; }
+.demo-note { margin: 0; padding: .6rem .8rem; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); font-size: .88rem; }
 .error { color: var(--danger); font-weight: 700; margin: 0; }
 .success, .empty { max-width: 640px; }
 .empty h2 { font-size: clamp(1.8rem, 4vw, 2.4rem); margin: 0 0 .6rem; }

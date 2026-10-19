@@ -84,7 +84,7 @@ const property: Property = {
     { url: porchScene, caption: 'Varanda do chalé', featured: false },
   ],
   email: 'contato@ivoforti.com', phone: '1146043867', whatsapp: '5511950211636', address: 'R. Custódio, 180',
-  city: 'Mairiporã', state: 'SP', logo_url: null, primary_color: '#2f6f4f', timezone: TIMEZONE,
+  city: 'Mairiporã', state: 'SP', logo_url: null, primary_color: '#2f6f4f', timezone: TIMEZONE, demo: true,
   story_title: 'Do café da manhã à fogueira',
   check_in_time: '14:00', check_out_time: '12:00', accommodations,
 }
@@ -276,10 +276,11 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
 
   Object.assign(handlers, {
     'POST /admin/login': () => ({ token: 'demo', user: { name: 'Dono da Pousada', email: body.email } }),
+    'POST /admin/demo-login': () => ({ token: 'demo', user: { name: 'Dono (demonstração)', email: 'demo@exemplo.com.br' } }),
     'POST /admin/logout': () => null,
     'GET /admin/me': () => ({
       user: { name: 'Dono da Pousada', email: 'dono@exemplo.com.br' },
-      property: { name: property.name, slug: property.slug, primary_color: property.primary_color, accommodations: accommodations.map(a => ({ id: a.id, name: a.name })) },
+      property: { name: property.name, slug: property.slug, primary_color: property.primary_color, demo: true, accommodations: accommodations.map(a => ({ id: a.id, name: a.name })) },
     }),
     'GET /admin/bookings': () => ({
       data: bookings

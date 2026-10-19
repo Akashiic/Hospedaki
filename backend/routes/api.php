@@ -20,6 +20,7 @@ Route::prefix('properties/{property:slug}')->group(function () {
 */
 Route::prefix('admin')->group(function () {
     Route::post('login', [Admin\AuthController::class, 'login'])->middleware('throttle:10,1');
+    Route::post('demo-login', [Admin\AuthController::class, 'demoLogin'])->middleware('throttle:10,1');
 
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('me', [Admin\AuthController::class, 'me']);
