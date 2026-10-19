@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\DemoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -26,6 +27,23 @@ class AuthController extends Controller
 
         return response()->json([
             'token' => $user->createToken('painel')->plainTextToken,
+            'user' => ['name' => $user->name, 'email' => $user->email],
+        ]);
+    }
+
+    /**
+     * Login aberto da pousada de demonstração: sem senha, só existe com DEMO_MODE ligado.
+     */
+    public function demoLogin(DemoService $demo): JsonResponse
+    {
+        $property = $demo->property();
+        abort_unless($property, 404);
+
+        $demo->resetIfStale($property);
+        $user = $demo->user($property);
+
+        return response()->json([
+            'token' => $user->createToken('painel-demo')->plainTextToken,
             'user' => ['name' => $user->name, 'email' => $user->email],
         ]);
     }

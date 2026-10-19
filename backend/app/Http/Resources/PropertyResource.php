@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Property;
+use App\Services\DemoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,6 +37,8 @@ class PropertyResource extends JsonResource
             'check_out_time' => substr((string) $this->check_out_time, 0, 5),
             // O site calcula "hoje" neste fuso, o mesmo que a API usa para validar as datas.
             'timezone' => $this->timezone ?: Property::DEFAULT_TIMEZONE,
+            // Pousada de demonstração: o site mostra o aviso de demo e o login aberto do painel.
+            'demo' => app(DemoService::class)->isDemo($this->resource),
             'accommodations' => AccommodationResource::collection($this->whenLoaded('accommodations')),
         ];
     }
