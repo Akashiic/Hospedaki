@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Accommodation;
+use App\Models\Media;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -19,9 +20,12 @@ use Illuminate\Database\Seeder;
  */
 class DatabaseSeeder extends Seeder
 {
+    public const SLUG = 'espaco-bela-vista';
+
     public function run(): void
     {
-        $property = Property::updateOrCreate(['slug' => 'espaco-bela-vista'], [
+        // Só cria o que falta: o seed roda a cada deploy e não pode desfazer o que o dono mudou no painel.
+        $property = Property::firstOrCreate(['slug' => self::SLUG], [
             'name' => 'Espaço Bela Vista',
             'tagline' => 'Piscina, fogueira e vista para as montanhas em Mairiporã',
             'description' => 'Uma pousada ao lado de uma reserva ambiental, a 5 minutos do centro de Mairiporã e a 45 do aeroporto de Guarulhos. Chalé com hidromassagem para o casal, espaço com piscina e salão de festas para a família e opções econômicas para quem vem a um casamento na região. Reserve direto com a gente, sem taxa de aplicativo.',
@@ -80,7 +84,24 @@ class DatabaseSeeder extends Seeder
             ['/fotos/chale-2.jpg', 'Hidromassagem do Chalé Master', false],
         ]);
 
-        $chale = $this->accommodation($property, 'chale-master', [
+        $this->accommodations($property);
+
+        // A senha só é definida quando o usuário é criado: rodar o seed de novo não pode
+        // trocar a senha do dono pela padrão, que está no README público.
+        User::firstOrCreate(['email' => 'dono@exemplo.com.br'], fn () => [
+            'property_id' => $property->id,
+            'name' => 'Dono da Pousada',
+            'password' => $this->ownerPassword(),
+        ]);
+    }
+
+    /**
+     * As quatro acomodações do site da pousada. Cria só as que não existem (pelo slug), com fotos e
+     * a diária de réveillon; as que já existem ficam como o dono deixou.
+     */
+    public function accommodations(Property $property): void
+    {
+        $this->accommodation($property, 'chale-master', [
             'name' => 'Chalé Master',
             'best_for' => 'casal',
             'description' => 'Chalé de 98 m² com vista para as montanhas, o preferido dos casais e das noivas que se arrumam para o casamento. Suíte master com cama king, closet e TV com streamings; banheiro em porcelanato com banheira de hidromassagem extra grande para o casal. Sala com livros, cozinha completa compacta, sala de jantar, segundo quarto com duas camas de solteiro e varandinha com cadeiras. Acesso por escada e ponte de madeira, perto do centro e dos espaços de casamento.',
@@ -101,7 +122,7 @@ class DatabaseSeeder extends Seeder
             ['/fotos/chale-9.jpg', 'Vista da janela'],
             ['/fotos/chale-10.jpg', 'Quarto extra com duas camas de solteiro'],
             ['/fotos/chale-11.jpg', 'Box do banheiro da suíte'],
-        ]);
+        ], holiday: 129700);
 
         $this->accommodation($property, 'espaco-bela-vista', [
             'name' => 'Espaço Bela Vista',
@@ -129,7 +150,7 @@ class DatabaseSeeder extends Seeder
             ['/fotos/espaco-12.jpg', 'Sinuca no salão com vista para a piscina'],
         ]);
 
-        $apto = $this->accommodation($property, 'apto-bela-piscina', [
+        $this->accommodation($property, 'apto-bela-piscina', [
             'name' => 'Apto Bela Piscina',
             'shared_unit' => 'apartamento-bela',
             'description' => 'Apartamento de 30 m² de frente para a piscina, com janelas para a floresta: ideal para um casal com filhos. Quarto de casal, quarto com beliche e cama de solteiro, sala com sofá e TV com streamings e banheiro privativo. A área de lazer com piscina é compartilhada; se quiser ela só para vocês, reserve o Espaço Bela Vista. Acesso por escadas; vaga rotativa na garagem, se houver.',
@@ -145,9 +166,9 @@ class DatabaseSeeder extends Seeder
             ['/fotos/apto-4.jpg', 'Entrada do apartamento'],
             ['/fotos/apto-5.jpg', 'Pia do banheiro'],
             ['/fotos/apto-6.jpg', 'Banheiro'],
-        ]);
+        ], holiday: 100000);
 
-        $suite = $this->accommodation($property, 'suite-vista-do-vale', [
+        $this->accommodation($property, 'suite-vista-do-vale', [
             'name' => 'Suíte Vista do Vale',
             'description' => 'Nossa opção mais econômica: apartamento de 32 m² com vista para o vale e a represa, ideal para quem vem a um casamento na região e quer pernoitar perto. Quarto com cama de casal, guarda-roupa e sofá-cama, cozinha compacta e banheiro com chuveiro quente. Não tem área de lazer, mas tem um quintal compartilhado. Acesso por escadas; sem garagem, com vagas na rua em frente.',
             'amenities' => ['Vista para o vale e a represa', 'Cama de casal e sofá-cama', 'Cozinha compacta', 'Chuveiro quente', 'Quintal compartilhado', 'Wi-Fi'],
@@ -160,36 +181,36 @@ class DatabaseSeeder extends Seeder
             ['/fotos/suite-2.jpg', 'Quarto com cama de casal e sofá-cama'],
             ['/fotos/suite-3.jpg', 'Banheiro com chuveiro quente'],
             ['/fotos/lugar-1.jpg', 'A represa vista da pousada'],
-        ]);
-
-        // Diárias de feriado publicadas no site da pousada (o Espaço tem pacotes à parte, sob consulta).
-        foreach ([[$chale, 129700], [$apto, 100000], [$suite, 99700]] as [$accommodation, $price]) {
-            $accommodation->seasonalPrices()->updateOrCreate(['name' => 'Feriado (réveillon)'], [
-                'starts_on' => now()->year.'-12-26',
-                'ends_on' => (now()->year + 1).'-01-02',
-                'price' => $price,
-                'weekend_price' => null,
-            ]);
-        }
-
-        // A senha só é definida quando o usuário é criado: rodar o seed de novo não pode
-        // trocar a senha do dono pela padrão, que está no README público.
-        User::firstOrCreate(['email' => 'dono@exemplo.com.br'], fn () => [
-            'property_id' => $property->id,
-            'name' => 'Dono da Pousada',
-            'password' => $this->ownerPassword(),
-        ]);
+        ], holiday: 99700);
     }
 
     /**
-     * Cria ou atualiza a acomodação e troca as fotos dela pelas da lista.
+     * Apaga as acomodações da pousada (com fotos e temporadas) e cria as originais de novo.
+     * Usado pelo reset diário da demonstração, depois de apagar os pedidos.
+     */
+    public function restoreAccommodations(Property $property): void
+    {
+        $mediaIds = $property->accommodations()->with('photos')->get()
+            ->flatMap(fn (Accommodation $accommodation) => $accommodation->photos->map(fn ($photo) => Media::idFromPath($photo->path)))
+            ->filter();
+        $property->accommodations()->delete();
+        Media::whereKey($mediaIds)->delete();
+        $this->accommodations($property);
+    }
+
+    /**
+     * Cria a acomodação, se ainda não existe, com as fotos da lista e a diária de réveillon.
      *
      * @param  array<string, mixed>  $data
      * @param  list<array{0: string, 1: string}>  $photos  caminho e legenda
      */
-    private function accommodation(Property $property, string $slug, array $data, array $photos): Accommodation
+    private function accommodation(Property $property, string $slug, array $data, array $photos, ?int $holiday = null): void
     {
-        $accommodation = $property->accommodations()->updateOrCreate(['slug' => $slug], $data + [
+        if ($property->accommodations()->where('slug', $slug)->exists()) {
+            return;
+        }
+
+        $accommodation = $property->accommodations()->create(['slug' => $slug] + $data + [
             'shared_unit' => null,
             'best_for' => null,
             // Provisório: acréscimo por pessoa a mais ainda não informado pela pousada.
@@ -198,22 +219,32 @@ class DatabaseSeeder extends Seeder
             'min_nights' => 1,
         ]);
 
-        $accommodation->photos()->delete();
         foreach ($photos as $i => [$path, $caption]) {
             $accommodation->photos()->create(['path' => $path, 'caption' => $caption, 'sort_order' => $i]);
         }
 
-        return $accommodation;
+        // Diária de feriado publicada no site da pousada (o Espaço tem pacotes à parte, sob consulta).
+        if ($holiday) {
+            $accommodation->seasonalPrices()->create([
+                'name' => 'Feriado (réveillon)',
+                'starts_on' => now()->year.'-12-26',
+                'ends_on' => (now()->year + 1).'-01-02',
+                'price' => $holiday,
+            ]);
+        }
     }
 
     /**
-     * Troca as fotos da pousada pelas da lista. As marcadas como destaque vão para a capa.
+     * Fotos da pousada, só quando ela ainda não tem nenhuma. As marcadas como destaque vão para a capa.
      *
      * @param  list<array{0: string, 1: string, 2: bool}>  $photos  caminho, legenda e destaque
      */
     private function photos(Property $property, array $photos): void
     {
-        $property->photos()->delete();
+        if ($property->photos()->exists()) {
+            return;
+        }
+
         foreach ($photos as $i => [$path, $caption, $featured]) {
             $property->photos()->create(['path' => $path, 'caption' => $caption, 'featured' => $featured, 'sort_order' => $i]);
         }

@@ -7,6 +7,7 @@ use App\Models\Accommodation;
 use App\Models\BlockedDate;
 use App\Models\Property;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -89,6 +90,11 @@ class DemoService
             $settings = $property->settings ?? [];
             unset($settings['home_sections']);
             $property->update(['settings' => $settings ?: null]);
+
+            // Visitantes podem editar, ocultar ou excluir acomodações pelo painel: voltam as originais.
+            if ($property->slug === DatabaseSeeder::SLUG) {
+                app(DatabaseSeeder::class)->restoreAccommodations($property);
+            }
 
             $accommodations = $property->accommodations()->where('active', true)->get();
 
