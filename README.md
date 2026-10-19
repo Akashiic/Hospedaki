@@ -19,6 +19,7 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
 - Datas bloqueadas pelo dono (manutenção, uso próprio, reserva feita no Airbnb/Booking).
 - Painel do dono em `/painel`: entrar, ver pedidos, confirmar, recusar, falar com o hóspede pelo WhatsApp e bloquear datas.
+- Página inicial personalizável pelo dono (aba **Página inicial** do painel): ligar, desligar e reordenar as seções (capa, "Um dia aqui", acomodações, sobre o lugar, galeria e serviços opcionais), com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas. A capa fica sempre no topo e seções sem conteúdo ficam fora do site.
 - Aviso por e-mail para o dono a cada pedido novo.
 - Google Analytics 4 e Pixel do Meta: basta informar os IDs. O envio de um pedido conta como conversão ("Lead").
 
@@ -129,6 +130,7 @@ Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`)
 | Método | Rota | Uso |
 |---|---|---|
 | POST | `/api/admin/login` | Entrar (e-mail e senha) |
+| GET / PUT | `/api/admin/layout` | Ordem e visibilidade das seções da página inicial |
 | POST | `/api/admin/demo-login` | Entrar na pousada de demonstração, sem senha (só com `DEMO_MODE`) |
 | GET | `/api/admin/me` | Usuário e pousada logados |
 | POST | `/api/admin/logout` | Sair |

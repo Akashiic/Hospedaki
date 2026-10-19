@@ -31,5 +31,7 @@ Route::prefix('admin')->group(function () {
         Route::get('blocked-dates', [Admin\BlockedDateController::class, 'index']);
         Route::post('blocked-dates', [Admin\BlockedDateController::class, 'store']);
         Route::delete('blocked-dates/{blockedDate}', [Admin\BlockedDateController::class, 'destroy']);
+        Route::get('layout', [Admin\LayoutController::class, 'show']);
+        Route::put('layout', [Admin\LayoutController::class, 'update']);
     });
 });

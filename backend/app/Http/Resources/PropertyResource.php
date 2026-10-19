@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Property;
 use App\Services\DemoService;
+use App\Support\HomeLayout;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,6 +22,8 @@ class PropertyResource extends JsonResource
             'story' => $this->story ?? [],
             'story_title' => $this->story_title,
             'extras' => $this->extras ?? [],
+            // Seções da página inicial na ordem escolhida pelo dono (a capa sempre primeiro).
+            'home_sections' => HomeLayout::normalize($this->settings['home_sections'] ?? null),
             'photos' => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($photo) => [
                 'url' => PhotoUrl::from($photo->path),
                 'caption' => $photo->caption,

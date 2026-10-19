@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
       </figure>
     </article>
 
-    <div class="outro container">
+    <div v-if="$slots.default" class="outro container">
       <slot />
     </div>
   </section>

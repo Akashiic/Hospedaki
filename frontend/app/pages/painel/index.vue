@@ -7,7 +7,7 @@ useHead({ title: 'Painel da pousada', meta: [{ name: 'robots', content: 'noindex
 const api = useAdminApi()
 const token = useAdminToken()
 
-type Tab = 'pending' | 'upcoming' | 'blocks'
+type Tab = 'pending' | 'upcoming' | 'blocks' | 'layout'
 const tab = ref<Tab>('pending')
 
 const me = ref<AdminMe | null>(null)
@@ -128,10 +128,11 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
         </button>
         <button type="button" :aria-pressed="tab === 'upcoming'" @click="tab = 'upcoming'">Próximas reservas</button>
         <button type="button" :aria-pressed="tab === 'blocks'" @click="tab = 'blocks'">Datas bloqueadas</button>
+        <button type="button" :aria-pressed="tab === 'layout'" @click="tab = 'layout'">Página inicial</button>
       </nav>
     </header>
 
-    <main class="container content">
+    <main class="container content" :class="{ wide: tab === 'layout' }">
       <p v-if="me?.property.demo" class="demo-tip">
         <strong>Demonstração.</strong> Assim o dono vê os pedidos que chegam pelo site. Confirme, recuse ou bloqueie datas à vontade: tudo volta ao início amanhã.
         Faça também um pedido pelo <NuxtLink to="/reservar">site</NuxtLink> e veja ele chegar aqui.
@@ -167,6 +168,8 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
           @decline="act(booking, 'decline')"
         />
       </section>
+
+      <AdminLayoutEditor v-else-if="tab === 'layout'" @saved="message = $event" />
 
       <section v-else class="blocks">
         <form class="panel block-form" @submit.prevent="addBlock">
@@ -217,6 +220,7 @@ h1 { margin: .1rem 0 0; font-size: 1.6rem; }
 .tabs button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--brand); }
 .count { background: var(--warn); color: var(--night); border-radius: 999px; font-size: .75rem; padding: .05rem .5rem; }
 .content { padding-block: 1.5rem 3rem; max-width: 860px; }
+.content.wide { max-width: 1280px; }
 .toast { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .75rem 1rem; font-weight: 500; margin: 0 0 1rem; }
 .list { display: grid; gap: 1rem; }
 .load-error { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
