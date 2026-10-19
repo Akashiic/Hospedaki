@@ -43,6 +43,8 @@ class DemoModeTest extends TestCase
 
         $token = $this->postJson('/api/admin/demo-login')->assertOk()->json('token');
 
+        $this->withToken($token)->getJson('/api/admin/me')->assertOk()->assertJsonPath('property.demo', true);
+
         $bookings = $this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->json('data');
         $this->assertCount(4, $bookings);
         $this->assertSame(['declined', 'confirmed', 'pending', 'pending'], array_column($bookings, 'status'));

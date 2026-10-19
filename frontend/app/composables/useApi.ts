@@ -57,6 +57,8 @@ export interface Property {
   story_title: string | null
   check_in_time: string
   check_out_time: string
+  /** Pousada de demonstração do Hospedaki: aviso de demo, login aberto no painel e página para donos. */
+  demo?: boolean
   accommodations: Accommodation[]
 }
 

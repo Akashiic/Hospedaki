@@ -51,7 +51,7 @@ class AuthController extends Controller
     /**
      * Usuário logado e a pousada que ele administra.
      */
-    public function me(Request $request): JsonResponse
+    public function me(Request $request, DemoService $demo): JsonResponse
     {
         $user = $request->user()->load('property.accommodations');
 
@@ -61,6 +61,7 @@ class AuthController extends Controller
                 'name' => $user->property->name,
                 'slug' => $user->property->slug,
                 'primary_color' => $user->property->primary_color,
+                'demo' => $demo->isDemo($user->property),
                 'accommodations' => $user->property->accommodations->map->only(['id', 'name']),
             ],
         ]);

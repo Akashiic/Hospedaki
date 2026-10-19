@@ -21,6 +21,7 @@ function skipToContent() {
       <slot />
     </main>
     <SiteFooter :property="property" :show-call="route.path !== '/reservar'" />
+    <SiteDemoChip v-if="property.demo" />
     <SiteMobileBar v-if="route.path !== '/reservar'" :property="property" :whatsapp="whatsappLink()" />
   </div>
 </template>

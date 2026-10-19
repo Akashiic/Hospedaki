@@ -40,6 +40,9 @@ export default defineNuxtConfig({
       propertySlug: 'espaco-bela-vista',
       gaId: '',
       metaPixelId: '',
+      // Contato da página do Hospedaki para pousadas (/hospedaki, só na demonstração).
+      salesWhatsapp: '',
+      salesEmail: '',
       demo,
     },
   },

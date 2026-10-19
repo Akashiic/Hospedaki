@@ -79,8 +79,19 @@ O site mostra a pousada indicada em `frontend/.env`:
 | `NUXT_PUBLIC_PROPERTY_SLUG` | Qual pousada exibir (o `slug` cadastrado) |
 | `NUXT_PUBLIC_GA_ID` | ID do Google Analytics 4 (opcional) |
 | `NUXT_PUBLIC_META_PIXEL_ID` | ID do Pixel do Meta (opcional) |
+| `NUXT_PUBLIC_SALES_WHATSAPP` / `NUXT_PUBLIC_SALES_EMAIL` | Contato da página `/hospedaki`, só na demonstração (opcional) |
 
 No backend, `FRONTEND_URL` lista os endereços dos sites autorizados a usar a API (separados por vírgula). O login do painel vale 30 dias; para apagar os tokens vencidos, rode o agendador do Laravel (`php artisan schedule:run` a cada minuto no cron).
+
+## Modo demonstração
+
+Para mostrar o Hospedaki a donos de pousada, ligue `DEMO_MODE=true` no backend (a pousada é a de `DEMO_PROPERTY_SLUG`, por padrão `espaco-bela-vista`). Com ele:
+
+- o site mostra um aviso de demonstração com links para o painel e para a página de vendas `/hospedaki`, com a calculadora de economia de comissão;
+- o painel ganha o botão **Entrar como dono (demonstração)**, sem senha;
+- na primeira visita de cada dia, os pedidos e bloqueios da pousada voltam aos exemplos (`php artisan demo:reset` faz isso na hora).
+
+O reset apaga **todos** os pedidos dessa pousada: nunca ligue o modo demonstração numa instalação que recebe reservas de verdade. Sem `DEMO_MODE`, nada disso aparece.
 
 Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.env`, que o Git ignora.
 
@@ -116,6 +127,7 @@ Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`)
 | Método | Rota | Uso |
 |---|---|---|
 | POST | `/api/admin/login` | Entrar (e-mail e senha) |
+| POST | `/api/admin/demo-login` | Entrar na pousada de demonstração, sem senha (só com `DEMO_MODE`) |
 | GET | `/api/admin/me` | Usuário e pousada logados |
 | POST | `/api/admin/logout` | Sair |
 | GET | `/api/admin/bookings?status=pending&upcoming=1` | Listar pedidos |
