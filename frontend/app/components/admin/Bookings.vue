@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdminBooking } from '~/composables/useAdminApi'
 import type { BookingScope } from '~/utils/bookings'
+import { CalendarSearch, Search } from 'lucide-vue-next'
 
 // Aba Reservas: todas as reservas da pousada, separadas por situação (próximas, em andamento,
 // concluídas, passadas, canceladas), com contagem em cada filtro e busca por nome, código ou telefone.
@@ -64,7 +65,12 @@ async function cancel(booking: AdminBooking) {
 
 <template>
   <section class="bookings">
-    <div class="filters" role="group" aria-label="Filtrar reservas">
+    <header class="page-head a-rise">
+      <h1>Reservas</h1>
+      <p>Todas as estadias da pousada, das que estão por vir às que já passaram.</p>
+    </header>
+
+    <div class="filters a-rise" style="--i: 1" role="group" aria-label="Filtrar reservas">
       <button
         v-for="s in BOOKING_SCOPES"
         :key="s.scope"
@@ -77,52 +83,72 @@ async function cancel(booking: AdminBooking) {
       </button>
     </div>
 
-    <div class="tools">
+    <div class="tools a-rise" style="--i: 2">
       <label class="search" for="booking-search">
+        <Search :size="18" aria-hidden="true" />
         <span class="sr-only">Buscar reserva</span>
         <input id="booking-search" v-model="search" type="search" placeholder="Buscar por nome, código, telefone ou acomodação" autocomplete="off">
       </label>
-      <p v-if="!loading && shown.length" class="summary">
-        {{ plural(shown.length, 'reserva', 'reservas') }}<template v-if="confirmedTotal"> · {{ formatMoney(confirmedTotal) }} confirmados</template>
-      </p>
+      <Transition name="a-tab">
+        <p v-if="!loading && shown.length" class="summary">
+          {{ plural(shown.length, 'reserva', 'reservas') }}<template v-if="confirmedTotal"> · <strong>{{ formatMoney(confirmedTotal) }}</strong> confirmados</template>
+        </p>
+      </Transition>
     </div>
 
-    <div v-if="error" class="load-error" role="alert">
+    <div v-if="error" class="a-card load-error" role="alert">
       <p>Não foi possível carregar as reservas. {{ error }}</p>
       <button type="button" class="btn btn-sm" @click="load">Tentar de novo</button>
     </div>
-    <p v-else-if="loading && !bookings.length" class="empty" aria-busy="true">Carregando...</p>
-    <p v-else-if="!shown.length" class="empty">{{ emptyText }}</p>
-    <div v-else class="list" :class="{ stale: loading }">
+    <div v-else-if="loading && !bookings.length" class="skel" aria-busy="true"><span v-for="n in 3" :key="n" class="a-skeleton" /></div>
+    <div v-else-if="!shown.length" class="a-card empty">
+      <span class="empty-ico"><CalendarSearch :size="28" aria-hidden="true" /></span>
+      <p>{{ emptyText }}</p>
+    </div>
+    <TransitionGroup v-else tag="div" name="a-list" class="list" :class="{ stale: loading }">
       <AdminBookingItem
-        v-for="booking in shown"
+        v-for="(booking, i) in shown"
         :key="booking.id"
+        class="a-rise"
+        :style="{ '--i': Math.min(i, 6) }"
         :booking="booking"
         :today="props.today"
         :busy="busyId === booking.id"
         @decline="cancel(booking)"
       />
-    </div>
+    </TransitionGroup>
   </section>
 </template>
 
 <style scoped lang="scss">
-.bookings { display: grid; gap: 1rem; }
-.filters { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .2rem; scrollbar-width: thin; }
+.bookings { display: grid; gap: 1.1rem; max-width: 980px; }
+.page-head h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0 0 .3rem; }
+.page-head p { margin: 0; color: var(--muted); }
+.filters { display: flex; gap: .4rem; overflow-x: auto; padding: .2rem .1rem .4rem; margin: 0 -.1rem; scrollbar-width: none; }
 .filters button {
-  display: inline-flex; align-items: center; gap: .45rem; flex: none;
-  min-height: 40px; padding: 0 .9rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
-  font: inherit; font-size: .88rem; font-weight: 700; color: var(--text); cursor: pointer; white-space: nowrap;
-  &[aria-pressed="true"] { background: var(--night); border-color: var(--night); color: var(--on-night); }
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; gap: .45rem; flex: none;
+  min-height: 42px; padding: 0 1rem; border-radius: 999px; border: 0; background: var(--a-card); box-shadow: var(--a-shadow);
+  font: inherit; font-size: .88rem; font-weight: 700; color: var(--muted); cursor: pointer; white-space: nowrap;
+  // O fundo escuro do filtro ativo entra por opacidade.
+  &::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: var(--night); opacity: 0; transition: opacity $dur-sm $ease-move; z-index: -1; }
+  &[aria-pressed="true"] { color: var(--on-night); }
+  &[aria-pressed="true"]::before { opacity: 1; }
 }
-.n { min-width: 1.4rem; padding: .05rem .4rem; border-radius: 999px; background: var(--soft); color: var(--muted); font-size: .76rem; text-align: center; }
+.n { min-width: 1.4rem; padding: .05rem .4rem; border-radius: 999px; background: var(--a-sunk); color: var(--muted); font-size: .74rem; text-align: center; }
 [aria-pressed="true"] .n { background: rgb(255 255 255 / .16); color: var(--on-night); }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
-.search { flex: 1 1 260px; }
-.summary { margin: 0; color: var(--muted); font-size: .88rem; font-weight: 500; }
-.list { display: grid; gap: 1rem; transition: opacity $dur-sm $ease-move; }
+.search { position: relative; flex: 1 1 280px; }
+.search svg { position: absolute; left: .9rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search input { padding-left: 2.6rem; border: 0; border-radius: 14px; box-shadow: var(--a-shadow); min-height: 46px; }
+.summary { margin: 0; color: var(--muted); font-size: .9rem; }
+.summary strong { color: var(--text); }
+.list { position: relative; display: grid; gap: 1rem; transition: opacity $dur-sm $ease-move; }
 .list.stale { opacity: .55; }
-.empty { background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 2rem 1.2rem; text-align: center; color: var(--muted); margin: 0; }
-.load-error { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
+.skel { display: grid; gap: 1rem; }
+.skel span { height: 200px; border-radius: var(--a-radius); }
+.empty { display: grid; justify-items: center; gap: .6rem; padding: 2.4rem 1.2rem; text-align: center; color: var(--muted); }
+.empty p { margin: 0; }
+.empty-ico { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; background: var(--a-sunk); color: var(--brand-text); }
+.load-error { padding: 1rem 1.2rem; display: grid; gap: .8rem; justify-items: start; border-left: 4px solid var(--danger); }
 .load-error p { margin: 0; }
 </style>

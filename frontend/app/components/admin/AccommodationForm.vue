@@ -124,7 +124,7 @@ function back() {
 </script>
 
 <template>
-  <div class="editor">
+  <div class="editor a-rise">
     <header class="head">
       <button type="button" class="back" @click="back">← Acomodações</button>
       <h2>{{ isNew ? 'Nova acomodação' : current!.name }}</h2>
@@ -270,11 +270,11 @@ function back() {
 <style scoped lang="scss">
 .editor { display: grid; gap: 1rem; }
 .head { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem 1rem; }
-.head h2 { margin: 0; font-size: 1.6rem; flex: 1 1 auto; }
+.head h2 { @include display(clamp(2rem, 4vw, 2.6rem)); margin: 0; flex: 1 1 auto; }
 .back, .view { background: none; border: 0; padding: .5rem 0; font: inherit; font-weight: 700; color: var(--brand-text); cursor: pointer; text-decoration: none; }
 .back { flex-basis: 100%; text-align: left; }
 .sections { display: grid; gap: 1rem; }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; margin: 0; }
+.card { background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; margin: 0; }
 h3 { margin: 0; font-size: 1.25rem; }
 label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; min-width: 0; }
 .label { font-weight: 700; font-size: .88rem; }
@@ -295,7 +295,7 @@ label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; 
 .thumb { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / .25); transition: transform $dur-sm $ease-move; }
 .switch[aria-checked="true"] .track { background: var(--brand); }
 .switch[aria-checked="true"] .thumb { transform: translateX(16px); }
-.sim { background: var(--soft); border-radius: 12px; padding: 1rem; display: grid; gap: .7rem; }
+.sim { background: var(--a-sunk); border-radius: 14px; padding: 1rem; display: grid; gap: .7rem; }
 .sim-title { margin: 0; font-weight: 700; font-size: .88rem; }
 .sim-grid { display: grid; gap: .7rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
 .sim-grid div { display: grid; gap: .1rem; background: var(--card); border-radius: 10px; padding: .7rem .8rem; }
@@ -303,8 +303,10 @@ label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; 
 .sim-grid strong { font-family: var(--font-display); font-size: 1.5rem; font-weight: 400; font-variant-numeric: tabular-nums; }
 .sim-grid small { color: var(--muted); }
 .savebar {
-  position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .7rem .8rem calc(.7rem + env(safe-area-inset-bottom, 0px));
+  position: sticky; bottom: 0; z-index: 3;
+  // No celular fica acima da navegação de baixo do painel.
+  @include below(lg) { bottom: calc(4.9rem + env(safe-area-inset-bottom, 0px)); } display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: .7rem .8rem calc(.7rem + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -8px 24px rgb(0 0 0 / .06);
 }
 .status { margin: 0 auto 0 0; font-size: .86rem; color: var(--muted); }

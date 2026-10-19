@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { bookingPhase, inScope, matchesSearch } from '../app/utils/bookings.ts'
+import { bookingPhase, initialsOf, inScope, matchesSearch } from '../app/utils/bookings.ts'
 
 const today = '2026-10-20'
 const b = (status: 'pending' | 'confirmed' | 'declined' | 'cancelled', check_in: string, check_out: string) => ({ status, check_in, check_out })
@@ -32,5 +32,14 @@ describe('matchesSearch', () => {
     assert.ok(matchesSearch(booking, 'chale'))
     assert.ok(matchesSearch(booking, '99999'))
     assert.ok(!matchesSearch(booking, 'souza'))
+  })
+})
+
+describe('initialsOf', () => {
+  it('takes the first letters of the first two words', () => {
+    assert.equal(initialsOf('Família Oliveira'), 'FO')
+    assert.equal(initialsOf('Dono (demonstração)'), 'DD')
+    assert.equal(initialsOf('ana'), 'A')
+    assert.equal(initialsOf(''), '?')
   })
 })

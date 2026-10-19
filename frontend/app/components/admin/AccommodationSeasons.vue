@@ -123,7 +123,7 @@ const date = (iso: string) => formatIso(iso, { day: '2-digit', month: 'short', y
 </template>
 
 <style scoped lang="scss">
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; }
+.card { background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; }
 .title { display: grid; gap: .2rem; }
 h3 { margin: 0; font-size: 1.25rem; }
 .hint { margin: 0; color: var(--muted); font-size: .86rem; }
@@ -136,7 +136,7 @@ h3 { margin: 0; font-size: 1.25rem; }
 .actions { display: flex; gap: .6rem; }
 .link { background: none; border: 0; padding: .4rem 0; font: inherit; font-weight: 700; font-size: .88rem; color: var(--brand-text); cursor: pointer; }
 .link.del { color: var(--danger); }
-.form { display: grid; gap: .8rem; background: var(--soft); border-radius: 12px; padding: 1rem; }
+.form { display: grid; gap: .8rem; background: var(--a-sunk); border-radius: 14px; padding: 1rem; }
 .form label { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; min-width: 0; }
 .opt { font-weight: 400; color: var(--muted); }
 .row { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }

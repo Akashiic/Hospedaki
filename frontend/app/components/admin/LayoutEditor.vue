@@ -46,15 +46,16 @@ const isDefault = computed(() => sameLayout(draft.value, DEFAULT_LAYOUT))
 const activePreset = computed(() => LAYOUT_PRESETS.find(p => sameLayout(draft.value, presetLayout(p.keys)))?.id)
 
 // ── Reordenar: setas (teclado e toque) e arrastar (mouse) ──
-const list = ref<HTMLElement>()
+const list = ref<{ $el: HTMLElement }>()
 async function move(from: number, to: number, focus?: 'up' | 'down') {
   const key = draft.value[from]?.key
   draft.value = moveSection(draft.value, from, to)
   if (!focus || !key) return
   // O foco acompanha a seção movida, para dar vários passos seguidos pelo teclado.
   await nextTick()
-  const btn = list.value?.querySelector<HTMLButtonElement>(`[data-key="${key}"] .${focus}`)
-  ;(btn && !btn.disabled ? btn : list.value?.querySelector<HTMLElement>(`[data-key="${key}"] .${focus === 'up' ? 'down' : 'up'}`))?.focus()
+  const el = list.value?.$el
+  const btn = el?.querySelector<HTMLButtonElement>(`[data-key="${key}"] .${focus}`)
+  ;(btn && !btn.disabled ? btn : el?.querySelector<HTMLElement>(`[data-key="${key}"] .${focus === 'up' ? 'down' : 'up'}`))?.focus()
 }
 
 const dragging = ref<number | null>(null)
@@ -154,8 +155,8 @@ const scale = computed(() => stageWidth.value ? Math.min(1, stageWidth.value / f
 
     <template v-else>
       <div class="side">
-        <header class="intro">
-          <h2>Página inicial</h2>
+        <header class="intro a-rise">
+          <h1>Página inicial</h1>
           <p>Escolha o que aparece na página inicial do seu site e em que ordem. A prévia mostra o resultado antes de salvar.</p>
         </header>
 
@@ -176,7 +177,8 @@ const scale = computed(() => stageWidth.value ? Math.min(1, stageWidth.value / f
           <p class="hint">{{ LAYOUT_PRESETS.find(p => p.id === activePreset)?.description ?? 'Layout personalizado.' }}</p>
         </section>
 
-        <ol ref="list" class="sections" aria-label="Seções da página inicial, de cima para baixo">
+        <!-- TransitionGroup: ao mudar a ordem, as seções deslizam até o novo lugar. -->
+        <TransitionGroup ref="list" tag="ol" name="a-list" class="sections" aria-label="Seções da página inicial, de cima para baixo">
           <li
             v-for="(s, i) in draft"
             :key="s.key"
@@ -211,7 +213,7 @@ const scale = computed(() => stageWidth.value ? Math.min(1, stageWidth.value / f
               </button>
             </div>
           </li>
-        </ol>
+        </TransitionGroup>
 
         <ul v-if="warnings.length" class="warnings" aria-live="polite">
           <li v-for="w in warnings" :key="w">{{ w }}</li>
@@ -258,10 +260,10 @@ const scale = computed(() => stageWidth.value ? Math.min(1, stageWidth.value / f
 <style scoped lang="scss">
 .editor { display: grid; gap: 1.2rem; align-items: start; grid-template-columns: minmax(0, 1fr); @include above(lg) { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); } }
 .side { display: grid; gap: 1rem; min-width: 0; }
-.intro h2 { margin: 0; font-size: 1.6rem; }
+.intro h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0; }
 .intro p { margin: .3rem 0 0; color: var(--muted); }
 h3 { margin: 0 0 .5rem; font-family: var(--font-body); font-size: .88rem; font-weight: 700; }
-.presets { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1rem; }
+.presets { background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: 1rem; }
 .chips { display: flex; flex-wrap: wrap; gap: .45rem; }
 .chips button {
   min-height: 40px; padding: 0 .9rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
@@ -270,10 +272,10 @@ h3 { margin: 0 0 .5rem; font-family: var(--font-body); font-size: .88rem; font-w
 }
 .hint { margin: .6rem 0 0; color: var(--muted); font-size: .86rem; }
 
-.sections { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.sections { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
 .sections li {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .8rem; align-items: center;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .8rem .9rem;
+  background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: .8rem .9rem;
   transition: opacity $dur-sm $ease-move, transform $dur-md $ease-enter;
   &[draggable="true"] { cursor: grab; }
   &.dragging { opacity: .45; }
@@ -308,8 +310,9 @@ h3 { margin: 0 0 .5rem; font-family: var(--font-body); font-size: .88rem; font-w
 }
 // Barra fixa no pé da tela enquanto se mexe na lista: o estado e os dois botões numa linha só.
 .actions {
-  position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
-  background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .7rem .8rem calc(.7rem + env(safe-area-inset-bottom, 0px));
+  position: sticky; bottom: 0; z-index: 2;
+  @include below(lg) { bottom: calc(4.9rem + env(safe-area-inset-bottom, 0px)); } display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: .7rem .8rem calc(.7rem + env(safe-area-inset-bottom, 0px));
   box-shadow: 0 -8px 24px rgb(0 0 0 / .06);
 }
 .status { margin: 0 auto 0 0; font-size: .84rem; color: var(--muted); }
@@ -323,11 +326,11 @@ h3 { margin: 0 0 .5rem; font-family: var(--font-body); font-size: .88rem; font-w
   min-height: 34px; padding: 0 .8rem; border: 0; border-radius: 999px; background: none; font: inherit; font-size: .82rem; font-weight: 700; color: var(--muted); cursor: pointer;
   &[aria-pressed="true"] { background: var(--night); color: var(--on-night); }
 }
-.stage { min-width: 0; display: grid; justify-items: center; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: .8rem; }
+.stage { min-width: 0; display: grid; justify-items: center; background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: .8rem; }
 .frame-box { position: relative; overflow: hidden; border-radius: 12px; box-shadow: 0 10px 30px rgb(0 0 0 / .12); background: var(--night); }
 .stage.mobile .frame-box { border-radius: 22px; outline: 6px solid var(--night); }
 iframe { display: block; border: 0; transform-origin: 0 0; background: var(--paper); }
 .loading { position: absolute; left: 50%; bottom: .8rem; transform: translateX(-50%); margin: 0; padding: .35rem .8rem; border-radius: 999px; background: rgb(14 20 18 / .85); color: var(--on-night); font-size: .8rem; white-space: nowrap; }
-.load-error { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
+.load-error { background: var(--a-card); border-left: 4px solid var(--danger); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
 .load-error p { margin: 0; }
 </style>

@@ -115,7 +115,7 @@ async function remove(id: number) {
       <p class="hint">A primeira é a capa. Fotos na horizontal, bem iluminadas, vendem mais.</p>
     </div>
 
-    <ul v-if="photos.length" class="grid" :class="{ busy }">
+    <TransitionGroup v-if="photos.length" tag="ul" name="a-list" class="grid" :class="{ busy }">
       <li v-for="(p, i) in photos" :key="p.id">
         <figure>
           <img :src="p.url" :alt="p.caption ?? ''" loading="lazy" decoding="async">
@@ -130,7 +130,7 @@ async function remove(id: number) {
           <button type="button" class="text del" :disabled="busy" :aria-label="`Excluir foto ${i + 1}`" @click="remove(p.id)">Excluir</button>
         </div>
       </li>
-    </ul>
+    </TransitionGroup>
     <p v-else class="empty">Nenhuma foto ainda. Sem foto, a acomodação aparece no site com um fundo escuro.</p>
 
     <div class="upload">
@@ -143,14 +143,14 @@ async function remove(id: number) {
 </template>
 
 <style scoped lang="scss">
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; }
+.card { background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow); padding: 1.2rem; display: grid; gap: .9rem; min-width: 0; }
 .title { display: grid; gap: .2rem; }
 h3 { margin: 0; font-size: 1.25rem; }
 .hint { margin: 0; color: var(--muted); font-size: .86rem; }
-.grid { list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); transition: opacity $dur-sm $ease-move; }
+.grid { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: .9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); transition: opacity $dur-sm $ease-move; }
 .grid.busy { opacity: .6; }
 .grid li { display: grid; gap: .4rem; align-content: start; }
-figure { position: relative; margin: 0; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: var(--night); }
+figure { position: relative; margin: 0; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden; background: var(--night); }
 img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .cover { position: absolute; left: .5rem; top: .5rem; background: var(--amber); color: var(--night); font-size: .72rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; }
 .grid input { font-size: .86rem; padding: .5rem .65rem; }
