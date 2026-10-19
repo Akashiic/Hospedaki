@@ -198,11 +198,19 @@ const whatsappLink = computed(() => {
                   <template v-for="item in quote.items" :key="item.accommodation_id">
                     <p class="line">
                       <span>{{ item.name }} · {{ plural(quote.nights, 'diária', 'diárias') }}</span>
-                      <span>{{ formatMoney(item.subtotal - item.extra_guests_subtotal) }}</span>
+                      <span>{{ formatMoney(item.nights_total - item.extra_guests_subtotal) }}</span>
                     </p>
                     <p v-if="item.extra_guests_subtotal > 0" class="line">
                       <span>{{ guestCopy.quoteExtraLine(item.extra_guests, quote.nights) }}</span>
                       <span>{{ formatMoney(item.extra_guests_subtotal) }}</span>
+                    </p>
+                    <p v-if="item.discount > 0" class="line discount">
+                      <span>{{ guestCopy.discountLine(item.discount_percent, quote.nights) }}</span>
+                      <span>− {{ formatMoney(item.discount) }}</span>
+                    </p>
+                    <p v-if="item.cleaning_fee > 0" class="line">
+                      <span>Taxa de limpeza</span>
+                      <span>{{ formatMoney(item.cleaning_fee) }}</span>
                     </p>
                   </template>
                   <p class="line total">
@@ -243,6 +251,7 @@ const whatsappLink = computed(() => {
 .form h2 { margin: 0; font-size: 1.9rem; }
 .form label { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; }
 .opt { font-weight: 400; color: var(--muted); }
+.discount { color: var(--brand-text); font-weight: 700; }
 .quote { background: var(--soft); border-radius: 10px; padding: .9rem 1rem; display: grid; gap: .35rem; }
 .line { display: flex; justify-content: space-between; gap: 1rem; margin: 0; font-variant-numeric: tabular-nums; }
 .line.total { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.15; align-items: baseline; border-top: 1px solid var(--line); padding-top: .5rem; margin-top: .2rem; }

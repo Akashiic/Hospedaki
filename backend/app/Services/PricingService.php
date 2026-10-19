@@ -19,6 +19,10 @@ use Carbon\CarbonPeriod;
  * Noites de sexta e sábado contam como fim de semana. Pessoas além das incluídas na diária
  * somam o acréscimo por pessoa (extra_guest_price) em cada noite. Se a pousada não informou
  * esse valor, ele não entra no total e as pessoas voltam em "extra_guests_unpriced".
+ *
+ * Sobre a soma das diárias (com as pessoas a mais), como no Airbnb:
+ *   - desconto mensal (monthly_discount %) a partir de 28 noites, senão semanal (weekly_discount %) a partir de 7;
+ *   - taxa de limpeza (cleaning_fee), uma vez por estadia, sem desconto.
  */
 class PricingService
 {
@@ -26,7 +30,7 @@ class PricingService
 
     /**
      * @param  int  $extraGuests  pessoas além das incluídas na diária, já distribuídas para esta acomodação
-     * @return array{total: int, nights: list<array{date: string, price: int}>, extra_guests: int, extra_guests_subtotal: int, extra_guests_unpriced: int}
+     * @return array{total: int, nights_total: int, discount: int, discount_percent: int, cleaning_fee: int, nights: list<array{date: string, price: int}>, extra_guests: int, extra_guests_subtotal: int, extra_guests_unpriced: int}
      */
     public function quote(Accommodation $accommodation, CarbonInterface $checkIn, CarbonInterface $checkOut, int $extraGuests = 0): array
     {
@@ -57,13 +61,44 @@ class PricingService
             $extraTotal += $extraPerNight;
         }
 
+        $percent = $this->discountPercent($accommodation, count($nights));
+        $discount = intdiv($total * $percent, 100);
+        $cleaning = $accommodation->cleaning_fee ?? 0;
+
         return [
-            'total' => $total,
+            'total' => $total - $discount + $cleaning,
+            'nights_total' => $total,
+            'discount' => $discount,
+            'discount_percent' => $percent,
+            'cleaning_fee' => $cleaning,
             'nights' => $nights,
             'extra_guests' => $extraGuests,
             'extra_guests_subtotal' => $extraTotal,
             'extra_guests_unpriced' => $priced ? 0 : $extraGuests,
         ];
+    }
+
+    /**
+     * Desconto por estadia longa: o mensal vale a partir de 28 noites, o semanal a partir de 7.
+     */
+    public function discountPercent(Accommodation $accommodation, int $nights): int
+    {
+        if ($nights >= 28 && $accommodation->monthly_discount) {
+            return min(100, $accommodation->monthly_discount);
+        }
+
+        return $nights >= 7 && $accommodation->weekly_discount ? min(100, $accommodation->weekly_discount) : 0;
+    }
+
+    /**
+     * Maior mínimo de noites das temporadas que a estadia pega (0 quando nenhuma exige).
+     */
+    public function seasonMinNights(Accommodation $accommodation, CarbonInterface $checkIn, CarbonInterface $checkOut): int
+    {
+        return (int) $accommodation->seasonalPrices()
+            ->whereDate('starts_on', '<', $checkOut)
+            ->whereDate('ends_on', '>=', $checkIn)
+            ->max('min_nights');
     }
 
     private function priceForNight(Accommodation $accommodation, ?SeasonalPrice $season, CarbonInterface $night): int

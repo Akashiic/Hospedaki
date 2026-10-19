@@ -29,7 +29,7 @@ class BookingService
      * extra_guests_unpriced, para o site e o dono saberem que esse acréscimo fica a combinar.
      *
      * @param  list<int>  $accommodationIds
-     * @return array{check_in: string, check_out: string, nights: int, total: int, extra_guests_unpriced: int, items: list<array{accommodation_id: int, name: string, subtotal: int, extra_guests: int, extra_guests_subtotal: int, nights: list<array{date: string, price: int}>}>}
+     * @return array{check_in: string, check_out: string, nights: int, total: int, extra_guests_unpriced: int, items: list<array{accommodation_id: int, name: string, subtotal: int, nights_total: int, discount: int, discount_percent: int, cleaning_fee: int, extra_guests: int, extra_guests_subtotal: int, nights: list<array{date: string, price: int}>}>}
      */
     public function quote(Property $property, array $accommodationIds, string $checkIn, string $checkOut, int $guests): array
     {
@@ -49,7 +49,12 @@ class BookingService
             return [
                 'accommodation_id' => $accommodation->id,
                 'name' => $accommodation->name,
+                // Diárias (com pessoas a mais), menos o desconto de estadia longa, mais a taxa de limpeza.
                 'subtotal' => $quote['total'],
+                'nights_total' => $quote['nights_total'],
+                'discount' => $quote['discount'],
+                'discount_percent' => $quote['discount_percent'],
+                'cleaning_fee' => $quote['cleaning_fee'],
                 'extra_guests' => $quote['extra_guests'],
                 'extra_guests_subtotal' => $quote['extra_guests_subtotal'],
                 'nights' => $quote['nights'],
@@ -213,9 +218,11 @@ class BookingService
         }
 
         foreach ($accommodations as $accommodation) {
-            if ($nights < $accommodation->min_nights) {
+            // O mínimo de uma temporada (ex.: réveillon) vale quando é maior que o da acomodação.
+            $minNights = max($accommodation->min_nights, $this->pricing->seasonMinNights($accommodation, $checkIn, $checkOut));
+            if ($nights < $minNights) {
                 throw ValidationException::withMessages([
-                    'check_out' => "{$accommodation->name} exige no mínimo {$accommodation->min_nights} ".($accommodation->min_nights === 1 ? 'diária.' : 'diárias.'),
+                    'check_out' => "{$accommodation->name} exige no mínimo {$minNights} ".($minNights === 1 ? 'diária' : 'diárias').($minNights > $accommodation->min_nights ? ' nessas datas.' : '.'),
                 ]);
             }
 

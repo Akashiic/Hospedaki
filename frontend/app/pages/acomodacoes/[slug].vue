@@ -46,6 +46,12 @@ useSeoMeta({
           <small v-if="guests" class="extra">{{ guestCopy.extraRule(guests) }}</small>
         </div>
         <div v-if="acc.min_nights > 1"><span>Mínimo</span><strong>{{ acc.min_nights }} diárias</strong></div>
+        <div v-if="acc.cleaning_fee"><span>Taxa de limpeza</span><strong>{{ formatMoney(acc.cleaning_fee) }}</strong><small class="extra">uma vez por estadia</small></div>
+        <div v-if="acc.weekly_discount || acc.monthly_discount">
+          <span>Estadias longas</span>
+          <strong v-if="acc.weekly_discount" class="small">{{ acc.weekly_discount }}% off a partir de 7 diárias</strong>
+          <strong v-if="acc.monthly_discount" class="small">{{ acc.monthly_discount }}% off a partir de 28 diárias</strong>
+        </div>
         <div><span>Entrada e saída</span><strong>{{ property.check_in_time }} · {{ property.check_out_time }}</strong></div>
         <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver datas <span class="arrow">→</span></NuxtLink>
       </aside>
@@ -85,6 +91,7 @@ useSeoMeta({
   div > span { @include eyebrow(var(--muted), sm); }
   strong { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; font-variant-numeric: tabular-nums; }
   .extra { color: var(--muted); font-size: .88rem; line-height: 1.4; }
+  strong.small { font-size: 1.2rem; line-height: 1.25; }
 }
 .photos {
   display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: clamp(4rem, 8vw, 6rem);

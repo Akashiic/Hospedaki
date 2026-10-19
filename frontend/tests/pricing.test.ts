@@ -1,7 +1,7 @@
 // Textos de preço por pessoa usados em cartões, vitrine, ficha, orçamento e painel.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { guestCopy, guestPricing, plural, totalGuests } from '../app/utils/pricing.ts'
+import { guestCopy, guestPricing, plural, stayCharges, totalGuests } from '../app/utils/pricing.ts'
 
 const espaco = { max_guests: 6, base_price: 49700, included_guests: 2, extra_guest_price: null }
 // Os valores em BRL usam espaço não separável depois do "R$".
@@ -50,5 +50,15 @@ describe('totalGuests', () => {
       { max_guests: 3 },
     ]
     assert.equal(totalGuests(accs), 13)
+  })
+})
+
+describe('stayCharges', () => {
+  const acc = { cleaning_fee: 5000, weekly_discount: 10, monthly_discount: 25 }
+  it('matches the backend: cleaning always, weekly from 7 nights, monthly from 28', () => {
+    assert.deepEqual(stayCharges(30000, 3, acc), { discount: 0, discount_percent: 0, cleaning_fee: 5000, total: 35000 })
+    assert.deepEqual(stayCharges(70000, 7, acc), { discount: 7000, discount_percent: 10, cleaning_fee: 5000, total: 68000 })
+    assert.deepEqual(stayCharges(280000, 28, acc), { discount: 70000, discount_percent: 25, cleaning_fee: 5000, total: 215000 })
+    assert.deepEqual(stayCharges(10000, 1, {}), { discount: 0, discount_percent: 0, cleaning_fee: 0, total: 10000 })
   })
 })

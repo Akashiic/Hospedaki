@@ -4,7 +4,7 @@ import type { Accommodation, Property, Quote, QuoteItem } from '~/composables/us
 import { addDaysIso, addMonthsIso, nightsBetween, todayIn, weekdayOf } from '~/utils/dates'
 import { type BookingScope, inScope } from '~/utils/bookings'
 import { normalizeLayout } from '~/utils/homeLayout'
-import { plural } from '~/utils/pricing'
+import { plural, stayCharges } from '~/utils/pricing'
 import { dawnScene, goldenScene, interiorScene, nightScene, porchScene, trailScene } from './illustrations'
 
 interface DemoSeason { accommodation_id: number, starts_on: string, ends_on: string, price: number }
@@ -154,7 +154,12 @@ function priceItems(accs: Accommodation[], checkIn: string, checkOut: string, gu
       subtotal += (season ? season.price : (weekend && acc.weekend_price ? acc.weekend_price : acc.base_price)) + perNight
       extraTotal += perNight
     }
-    return { accommodation_id: acc.id, name: acc.name, subtotal, extra_guests: extra, extra_guests_subtotal: extraTotal }
+    const charges = stayCharges(subtotal, nightsBetween(checkIn, checkOut), acc)
+    return {
+      accommodation_id: acc.id, name: acc.name, subtotal: charges.total, nights_total: subtotal,
+      discount: charges.discount, discount_percent: charges.discount_percent, cleaning_fee: charges.cleaning_fee,
+      extra_guests: extra, extra_guests_subtotal: extraTotal,
+    }
   })
 }
 

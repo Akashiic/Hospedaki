@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['accommodation_id', 'name', 'starts_on', 'ends_on', 'price', 'weekend_price'])]
+#[Fillable(['accommodation_id', 'name', 'starts_on', 'ends_on', 'price', 'weekend_price', 'min_nights'])]
 class SeasonalPrice extends Model
 {
     protected function casts(): array

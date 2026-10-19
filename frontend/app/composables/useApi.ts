@@ -12,6 +12,11 @@ export interface Accommodation {
   base_price: number
   weekend_price: number | null
   min_nights: number
+  /** Taxa de limpeza por estadia, em centavos; null = sem taxa. */
+  cleaning_fee?: number | null
+  /** Desconto (%) sobre as diárias a partir de 7 noites e a partir de 28. */
+  weekly_discount?: number | null
+  monthly_discount?: number | null
   /** Pessoas incluídas no valor da diária; null = a diária vale para a lotação toda. */
   included_guests: number | null
   /** Acréscimo por pessoa a mais, por diária, em centavos; null = ainda não informado. */
@@ -73,8 +78,15 @@ export interface Property {
 export interface QuoteItem {
   accommodation_id: number
   name: string
-  /** Inclui o acréscimo das pessoas a mais quando o valor dele é conhecido. */
+  /** Total desta acomodação: diárias (com as pessoas a mais), menos o desconto, mais a limpeza. */
   subtotal: number
+  /** Soma das diárias, já com o acréscimo das pessoas a mais quando o valor é conhecido. */
+  nights_total: number
+  /** Desconto de estadia longa, em centavos, e o percentual aplicado. */
+  discount: number
+  discount_percent: number
+  /** Taxa de limpeza da estadia. */
+  cleaning_fee: number
   /** Pessoas além das incluídas, atribuídas a esta acomodação. */
   extra_guests: number
   /** Valor delas na estadia (0 quando o acréscimo ainda não foi informado). */

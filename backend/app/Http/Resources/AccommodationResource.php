@@ -28,6 +28,10 @@ class AccommodationResource extends JsonResource
             'weekend_price' => $this->weekend_price,
             'extra_guest_price' => $this->extra_guest_price,
             'min_nights' => $this->min_nights,
+            // Taxa de limpeza por estadia (centavos) e descontos (%) para 7 e 28 noites ou mais.
+            'cleaning_fee' => $this->cleaning_fee,
+            'weekly_discount' => $this->weekly_discount,
+            'monthly_discount' => $this->monthly_discount,
             'photos' => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($photo) => [
                 'url' => PhotoUrl::from($photo->path),
                 'caption' => $photo->caption,
