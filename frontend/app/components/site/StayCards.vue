@@ -42,6 +42,9 @@ const ordered = computed(() => props.highlight
   &.n3 { @include above(lg) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   &.n4 { @include above(xl) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 }
+// Quatro lado a lado: cartões em pé e título menor, para o texto ficar na parte escura da foto.
+.n4 .card { @include above(xl) { aspect-ratio: 3 / 4.2; } }
+.n4 h3 { @include above(xl) { font-size: 2.1rem; } }
 .card {
   position: relative; display: block; border-radius: 6px; overflow: hidden; color: #fff; text-decoration: none; background: var(--night);
   aspect-ratio: 4 / 5; max-width: 100%;
