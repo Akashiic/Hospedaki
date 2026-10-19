@@ -7,7 +7,9 @@ use App\Models\Accommodation;
 use App\Models\BlockedDate;
 use App\Models\Booking;
 use App\Models\Property;
+use App\Services\DemoService;
 use Carbon\CarbonImmutable;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -105,5 +107,27 @@ class DemoModeTest extends TestCase
 
         config(['demo.enabled' => false]);
         $this->artisan('demo:reset')->assertFailed();
+    }
+
+    public function test_reset_restores_the_original_accommodations(): void
+    {
+        $this->seed();
+        config(['demo.property_slug' => DatabaseSeeder::SLUG]);
+        $property = Property::where('slug', DatabaseSeeder::SLUG)->firstOrFail();
+        $demo = app(DemoService::class);
+        $demo->reset($property);
+
+        // Um visitante renomeia o chalé, oculta a suíte e exclui o apartamento.
+        $property->accommodations()->where('slug', 'chale-master')->update(['name' => 'Bagunça', 'base_price' => 1]);
+        $property->accommodations()->where('slug', 'suite-vista-do-vale')->update(['active' => false]);
+        $property->accommodations()->where('slug', 'apto-bela-piscina')->delete();
+
+        $demo->reset($property);
+
+        $accommodations = $property->accommodations()->get();
+        $this->assertSame(['Chalé Master', 'Espaço Bela Vista', 'Apto Bela Piscina', 'Suíte Vista do Vale'], $accommodations->pluck('name')->all());
+        $this->assertTrue($accommodations->every->active);
+        $this->assertSame(49700, $accommodations->first()->base_price);
+        $this->assertSame(7, $property->bookings()->count());
     }
 }

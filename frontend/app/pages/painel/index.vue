@@ -7,7 +7,7 @@ useHead({ title: 'Painel da pousada', meta: [{ name: 'robots', content: 'noindex
 const api = useAdminApi()
 const token = useAdminToken()
 
-type Tab = 'pending' | 'bookings' | 'blocks' | 'layout'
+type Tab = 'pending' | 'bookings' | 'blocks' | 'accommodations' | 'layout'
 const tab = ref<Tab>('pending')
 
 const me = ref<AdminMe | null>(null)
@@ -128,6 +128,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
         </button>
         <button type="button" :aria-pressed="tab === 'bookings'" @click="tab = 'bookings'">Reservas</button>
         <button type="button" :aria-pressed="tab === 'blocks'" @click="tab = 'blocks'">Datas bloqueadas</button>
+        <button type="button" :aria-pressed="tab === 'accommodations'" @click="tab = 'accommodations'">Acomodações</button>
         <button type="button" :aria-pressed="tab === 'layout'" @click="tab = 'layout'">Página inicial</button>
       </nav>
     </header>
@@ -160,6 +161,8 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
       </section>
 
       <AdminBookings v-else-if="tab === 'bookings'" :today="today" @message="message = $event" @changed="load" />
+
+      <AdminAccommodations v-else-if="tab === 'accommodations'" :demo="me?.property.demo" @message="message = $event" @changed="load" />
 
       <AdminLayoutEditor v-else-if="tab === 'layout'" @saved="message = $event" />
 

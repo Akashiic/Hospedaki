@@ -7,7 +7,7 @@ import { normalizeLayout } from '~/utils/homeLayout'
 import { plural, stayCharges } from '~/utils/pricing'
 import { dawnScene, goldenScene, interiorScene, nightScene, porchScene, trailScene } from './illustrations'
 
-interface DemoSeason { accommodation_id: number, starts_on: string, ends_on: string, price: number }
+interface DemoSeason { id?: number, name?: string, accommodation_id: number, starts_on: string, ends_on: string, price: number, weekend_price?: number | null, min_nights?: number | null }
 interface DemoBlock { id: number, accommodation_id: number, starts_on: string, ends_on: string, reason: string | null }
 export interface DemoBooking {
   id: number
@@ -104,6 +104,24 @@ const blocks: DemoBlock[] = [
 ]
 
 let nextId = 4
+
+// Painel na prévia: acomodações ocultas e o formato que o formulário de acomodação usa.
+const hidden = new Set<number>()
+function adminAccommodation(a: Accommodation) {
+  return {
+    ...a,
+    shared_unit: a.shared_unit ?? null, best_for: a.best_for ?? null,
+    cleaning_fee: a.cleaning_fee ?? null, weekly_discount: a.weekly_discount ?? null, monthly_discount: a.monthly_discount ?? null,
+    active: !hidden.has(a.id), sort_order: accommodations.indexOf(a) + 1,
+    photos: a.photos.map((p, i) => ({ id: i + 1, url: p.url, caption: p.caption })),
+    seasons: seasons.filter(x => x.accommodation_id === a.id).map(x => {
+      x.id ??= nextId++
+      return { id: x.id, name: x.name ?? 'Feriado', starts_on: x.starts_on, ends_on: x.ends_on, price: x.price, weekend_price: x.weekend_price ?? null, min_nights: x.min_nights ?? null }
+    }),
+    bookings_count: bookings.filter(b => b.accommodations.some(x => x.id === a.id)).length,
+    upcoming_bookings_count: bookings.filter(b => ['pending', 'confirmed'].includes(b.status) && b.check_out > today() && b.accommodations.some(x => x.id === a.id)).length,
+  }
+}
 const bookings: DemoBooking[] = [
   booking(1, 'confirmed', 2, 5, 7, 'Ana Souza', 2, 'Aniversário de casamento.'),
   booking(2, 'pending', 2, 12, 14, 'Carlos Lima', 2, null),
@@ -238,7 +256,8 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
   const route = path.replace(/^\/properties\/[^/]+/, '/site').replace(/\/$/, '') || '/'
 
   const handlers: Record<string, () => unknown> = {
-    'GET /site': () => ({ data: property }),
+    // Acomodações ocultas pelo painel saem do site.
+    'GET /site': () => ({ data: { ...property, accommodations: accommodations.filter(a => !hidden.has(a.id)) } }),
     'GET /site/availability': () => ({
       from: options.query?.from, to: options.query?.to,
       accommodations: accommodations.map(a => ({ id: a.id, unavailable: unavailable(a.id, options.query!.from, options.query!.to) })),
@@ -281,6 +300,35 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
     return null as T
   }
 
+  // Painel: acomodações (na prévia, as mudanças valem só enquanto a aba estiver aberta).
+  const accMatch = route.match(/^\/admin\/accommodations\/(\d+)(?:\/(photos|seasons)(?:\/(\d+))?)?$/)
+  if (accMatch) {
+    const acc = accommodations.find(a => a.id === Number(accMatch[1])) ?? notFound()
+    const [, , sub, subId] = accMatch
+    if (!sub && method === 'PUT') {
+      const { active, ...fields } = body as Record<string, any>
+      Object.assign(acc, fields)
+      if (active) hidden.delete(acc.id)
+      else hidden.add(acc.id)
+      return { data: adminAccommodation(acc) } as T
+    }
+    if (!sub && method === 'DELETE') {
+      if (bookings.some(b => b.accommodations.some(x => x.id === acc.id))) fail('accommodation', 'Esta acomodação tem reservas no histórico e não pode ser excluída. Oculte do site para ela deixar de aparecer.')
+      accommodations.splice(accommodations.indexOf(acc), 1)
+      return null as T
+    }
+    if (sub === 'photos' && method === 'POST') fail('photo', 'Na prévia o envio de fotos fica desligado.')
+    if (sub === 'photos' && method === 'PUT') {
+      const old = [...acc.photos]
+      acc.photos = (body.photos as { id: number, caption: string | null }[]).map(p => ({ ...old[p.id - 1]!, caption: p.caption }))
+    }
+    if (sub === 'photos' && method === 'DELETE') acc.photos.splice(Number(subId) - 1, 1)
+    if (sub === 'seasons' && method === 'POST') seasons.push({ ...(body as any), id: nextId++, accommodation_id: acc.id })
+    if (sub === 'seasons' && method === 'PUT') Object.assign(seasons.find(x => x.id === Number(subId)) ?? notFound(), body)
+    if (sub === 'seasons' && method === 'DELETE') seasons.splice(seasons.findIndex(x => x.id === Number(subId)), 1)
+    return { data: adminAccommodation(acc) } as T
+  }
+
   Object.assign(handlers, {
     'POST /admin/login': () => ({ token: 'demo', user: { name: 'Dono da Pousada', email: body.email } }),
     'POST /admin/demo-login': () => ({ token: 'demo', user: { name: 'Dono (demonstração)', email: 'demo@exemplo.com.br' } }),
@@ -300,6 +348,18 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
           .map(withNights),
         meta: { counts: Object.fromEntries(scopes.map(s => [s, bookings.filter(b => inScope(b, s, today())).length])) },
       }
+    },
+    'GET /admin/accommodations': () => ({ data: accommodations.map(adminAccommodation) }),
+    'POST /admin/accommodations': () => {
+      const { active, ...fields } = body as Record<string, any>
+      const created = { ...fields, id: nextId++, slug: String(fields.name).toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-'), photos: [] } as unknown as Accommodation
+      accommodations.push(created)
+      if (!active) hidden.add(created.id)
+      return { data: adminAccommodation(created) }
+    },
+    'PUT /admin/accommodations/order': () => {
+      accommodations.sort((a, b) => body.ids.indexOf(a.id) - body.ids.indexOf(b.id))
+      return null
     },
     'GET /admin/layout': () => ({ sections: normalizeLayout(property.home_sections) }),
     'PUT /admin/layout': () => {

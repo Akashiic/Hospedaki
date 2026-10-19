@@ -36,6 +36,26 @@ export function stayCharges(
   return { discount, discount_percent: percent, cleaning_fee: cleaning, total: nightsTotal - discount + cleaning }
 }
 
+/**
+ * Valor digitado no painel ("450", "450,50", "1.250,00", "R$ 99,9") em centavos; null quando vazio
+ * ou ilegível. Vírgula é o separador de centavos; ponto, o de milhar (ou de centavos, se for o único
+ * e vier com 1 ou 2 casas, como "450.5").
+ */
+export function centsFromInput(value: string | null | undefined): number | null {
+  let v = (value ?? '').replace(/[^\d.,]/g, '')
+  if (!v) return null
+  if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')
+  else if (/^\d+\.\d{1,2}$/.test(v)) { /* ponto decimal */ }
+  else v = v.replace(/\./g, '')
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n * 100) : null
+}
+
+/** Centavos no formato do campo: 45000 → "450,00"; null → "". */
+export function inputFromCents(cents: number | null | undefined): string {
+  return cents == null ? '' : (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 /** "1 diária", "2 diárias". */
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
