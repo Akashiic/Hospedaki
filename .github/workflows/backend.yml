@@ -43,7 +43,7 @@ jobs:
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, posix, pdo, sqlite, pdo_sqlite
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, posix, pdo, sqlite, pdo_sqlite, gd, exif
           coverage: none
 
       - name: Install Composer dependencies
@@ -100,7 +100,7 @@ jobs:
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, posix, pdo, pgsql, pdo_pgsql
+          extensions: dom, curl, libxml, mbstring, zip, pcntl, posix, pdo, pgsql, pdo_pgsql, gd, exif
           coverage: none
 
       - name: Install Composer dependencies

@@ -19,11 +19,13 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
 - Datas bloqueadas pelo dono (manutenção, uso próprio, reserva feita no Airbnb/Booking).
 - Painel do dono em `/painel`: entrar, ver pedidos, confirmar, recusar, falar com o hóspede pelo WhatsApp e bloquear datas.
+- Aba **Reservas** no painel: filtros Próximas, Em andamento, Concluídas, Passadas (inclui pedidos que venceram sem resposta) e Canceladas, com contagem e busca por nome, código, telefone ou acomodação.
+- Aba **Acomodações** no painel: criar, editar, ocultar do site e excluir (só sem reservas no histórico), mudar a ordem, enviar e ordenar fotos e cadastrar temporadas e feriados. Preços: diária, diária de sexta e sábado, valor por pessoa a mais, taxa de limpeza, mínimo de diárias, desconto semanal (7+ diárias) e mensal (28+), e preço e mínimo próprios por temporada. O formulário simula quanto o hóspede paga.
 - Página inicial personalizável pelo dono (aba **Página inicial** do painel): ligar, desligar e reordenar as seções (capa, "Um dia aqui", acomodações, sobre o lugar, galeria e serviços opcionais), com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas. A capa fica sempre no topo e seções sem conteúdo ficam fora do site.
 - Aviso por e-mail para o dono a cada pedido novo.
 - Google Analytics 4 e Pixel do Meta: basta informar os IDs. O envio de um pedido conta como conversão ("Lead").
 
-Ficam para as próximas versões: pagamento por Pix, sincronização de calendário com Airbnb/Booking, cadastro de fotos e preços pelo painel e aviso automático por WhatsApp.
+Ficam para as próximas versões: pagamento por Pix, sincronização de calendário com Airbnb/Booking, edição dos textos da pousada pelo painel e aviso automático por WhatsApp.
 
 ## Estrutura
 
@@ -49,7 +51,7 @@ php artisan migrate --seed
 php artisan serve            # http://localhost:8000
 ```
 
-O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com as quatro acomodações do site da pousada (Chalé Master, Espaço Bela Vista, Apto Bela Piscina e Suíte Vista do Vale), as fotos delas (em `frontend/public/fotos`) e os serviços opcionais, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). Rodar o seed de novo atualiza textos e preços, mas não mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias. As diárias valem para 2 pessoas (no Chalé Master isso também é provisório); o acréscimo por pessoa a mais ainda não foi informado e fica vazio em `extra_guest_price`, então o site e o e-mail avisam que esse valor é combinado na confirmação. Em produção, com `php artisan config:cache`, o `backend/.env` não é lido pelo seed: passe a senha no próprio comando, por exemplo `SEED_OWNER_PASSWORD='…' php artisan db:seed --force`.
+O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com as quatro acomodações do site da pousada (Chalé Master, Espaço Bela Vista, Apto Bela Piscina e Suíte Vista do Vale), as fotos delas (em `frontend/public/fotos`) e os serviços opcionais, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). O seed roda a cada deploy e só cria o que falta: não desfaz o que o dono mudou no painel nem mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias. As diárias valem para 2 pessoas (no Chalé Master isso também é provisório); o acréscimo por pessoa a mais ainda não foi informado e fica vazio em `extra_guest_price`, então o site e o e-mail avisam que esse valor é combinado na confirmação. Em produção, com `php artisan config:cache`, o `backend/.env` não é lido pelo seed: passe a senha no próprio comando, por exemplo `SEED_OWNER_PASSWORD='…' php artisan db:seed --force`.
 
 **2. Site** (em outro terminal):
 
@@ -130,6 +132,11 @@ Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`)
 | Método | Rota | Uso |
 |---|---|---|
 | POST | `/api/admin/login` | Entrar (e-mail e senha) |
+| GET / POST | `/api/admin/accommodations` | Acomodações (com as ocultas) e criar uma nova |
+| PUT / DELETE | `/api/admin/accommodations/{id}` | Editar ou excluir (excluir só sem reservas) |
+| PUT | `/api/admin/accommodations/order` | Ordem das acomodações no site |
+| POST / PUT | `/api/admin/accommodations/{id}/photos` | Enviar foto (guardada no banco) / legendas e ordem |
+| POST / PUT / DELETE | `/api/admin/accommodations/{id}/seasons[/{season}]` | Temporadas e feriados |
 | GET / PUT | `/api/admin/layout` | Ordem e visibilidade das seções da página inicial |
 | POST | `/api/admin/demo-login` | Entrar na pousada de demonstração, sem senha (só com `DEMO_MODE`) |
 | GET | `/api/admin/me` | Usuário e pousada logados |

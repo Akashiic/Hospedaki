@@ -25,9 +25,50 @@ export interface AdminBlock {
   reason: string | null
 }
 
+export interface AdminSeason {
+  id: number
+  name: string
+  starts_on: string
+  ends_on: string
+  price: number
+  weekend_price: number | null
+  min_nights: number | null
+}
+
+/** Acomodação como o painel edita (valores em centavos). */
+export interface AdminAccommodation {
+  id: number
+  name: string
+  slug: string
+  description: string | null
+  amenities: string[]
+  max_guests: number
+  included_guests: number | null
+  base_price: number
+  weekend_price: number | null
+  extra_guest_price: number | null
+  cleaning_fee: number | null
+  weekly_discount: number | null
+  monthly_discount: number | null
+  min_nights: number
+  best_for: 'casal' | 'familia' | null
+  shared_unit: string | null
+  active: boolean
+  sort_order: number
+  photos: { id: number, url: string, caption: string | null }[]
+  seasons: AdminSeason[]
+  bookings_count: number
+  upcoming_bookings_count: number
+}
+
+/** Campos que o formulário envia ao criar ou salvar. */
+export type AccommodationInput = Pick<AdminAccommodation,
+  'name' | 'description' | 'amenities' | 'max_guests' | 'included_guests' | 'base_price' | 'weekend_price'
+  | 'extra_guest_price' | 'cleaning_fee' | 'weekly_discount' | 'monthly_discount' | 'min_nights' | 'best_for' | 'active'>
+
 export interface AdminMe {
   user: { name: string, email: string }
-  property: { name: string, slug: string, primary_color: string, demo?: boolean, accommodations: { id: number, name: string }[] }
+  property: { name: string, slug: string, primary_color: string, demo?: boolean, timezone?: string, accommodations: { id: number, name: string }[] }
 }
 
 /** Token do painel, guardado num cookie do navegador do dono. */

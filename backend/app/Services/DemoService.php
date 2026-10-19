@@ -7,6 +7,7 @@ use App\Models\Accommodation;
 use App\Models\BlockedDate;
 use App\Models\Property;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -90,6 +91,11 @@ class DemoService
             unset($settings['home_sections']);
             $property->update(['settings' => $settings ?: null]);
 
+            // Visitantes podem editar, ocultar ou excluir acomodações pelo painel: voltam as originais.
+            if ($property->slug === DatabaseSeeder::SLUG) {
+                app(DatabaseSeeder::class)->restoreAccommodations($property);
+            }
+
             $accommodations = $property->accommodations()->where('active', true)->get();
 
             if ($accommodations->isEmpty()) {
@@ -100,6 +106,11 @@ class DemoService
             $first = $accommodations->first();
             $second = $accommodations->get(1) ?? $first;
 
+            // Uma de cada situação da aba Reservas: cancelada antiga, concluída, hospedados agora...
+            $this->sample($property, $second, -15, -13, BookingStatus::Cancelled, 'Bruno Teixeira', 2, null, hoursAgo: 24 * 25);
+            $this->sample($property, $second, -8, -5, BookingStatus::Confirmed, 'Família Rocha', 4, 'Chegamos depois das 20h.', hoursAgo: 24 * 20);
+            $this->sample($property, $first, -1, 2, BookingStatus::Confirmed, 'Marina e Paulo', 2, 'Lua de mel!', hoursAgo: 24 * 12);
+            // ...e as que estão por vir.
             $this->sample($property, $first, 3, 4, BookingStatus::Declined, 'Ricardo Alves', 2, 'Dá para fazer o check-in às 22h?', hoursAgo: 52);
             $this->sample($property, $second, 5, 7, BookingStatus::Confirmed, 'Ana Souza', 2, 'Aniversário de casamento.', hoursAgo: 30);
             $this->sample($property, $first, 9, 12, BookingStatus::Pending, 'Família Oliveira', 5, 'Vamos com um cachorro pequeno, pode?', hoursAgo: 5);
@@ -142,7 +153,7 @@ class DemoService
             'notes' => $notes,
             'total' => $quote['total'],
             'confirmed_at' => $status === BookingStatus::Confirmed ? now()->subHours($hoursAgo - 1) : null,
-            'cancelled_at' => $status === BookingStatus::Declined ? now()->subHours($hoursAgo - 1) : null,
+            'cancelled_at' => in_array($status, [BookingStatus::Declined, BookingStatus::Cancelled], true) ? now()->subHours($hoursAgo - 1) : null,
         ]);
         $booking->accommodations()->attach($accommodation->id, ['subtotal' => $quote['items'][0]['subtotal']]);
 

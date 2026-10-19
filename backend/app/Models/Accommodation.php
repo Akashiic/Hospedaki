@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'property_id', 'name', 'slug', 'shared_unit', 'best_for', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
-    'weekend_price', 'extra_guest_price', 'min_nights', 'sort_order', 'active',
+    'weekend_price', 'extra_guest_price', 'cleaning_fee', 'weekly_discount', 'monthly_discount', 'min_nights', 'sort_order', 'active',
 ])]
 class Accommodation extends Model
 {
@@ -28,6 +28,9 @@ class Accommodation extends Model
             'base_price' => 'integer',
             'weekend_price' => 'integer',
             'extra_guest_price' => 'integer',
+            'cleaning_fee' => 'integer',
+            'weekly_discount' => 'integer',
+            'monthly_discount' => 'integer',
             'min_nights' => 'integer',
             'active' => 'boolean',
         ];

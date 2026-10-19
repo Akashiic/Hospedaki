@@ -21,6 +21,41 @@ export function totalGuests(accs: Pick<Accommodation, 'max_guests' | 'shared_uni
   return total + [...units.values()].reduce((n, v) => n + v, 0)
 }
 
+/**
+ * Desconto de estadia longa e taxa de limpeza sobre a soma das diárias, como o PricingService:
+ * o mensal vale a partir de 28 noites, senão o semanal a partir de 7; a limpeza entra uma vez, sem desconto.
+ */
+export function stayCharges(
+  nightsTotal: number,
+  nights: number,
+  acc: Pick<Accommodation, 'cleaning_fee' | 'weekly_discount' | 'monthly_discount'>,
+): { discount: number, discount_percent: number, cleaning_fee: number, total: number } {
+  const percent = Math.min(100, nights >= 28 && acc.monthly_discount ? acc.monthly_discount : nights >= 7 && acc.weekly_discount ? acc.weekly_discount : 0)
+  const discount = Math.floor(nightsTotal * percent / 100)
+  const cleaning = acc.cleaning_fee ?? 0
+  return { discount, discount_percent: percent, cleaning_fee: cleaning, total: nightsTotal - discount + cleaning }
+}
+
+/**
+ * Valor digitado no painel ("450", "450,50", "1.250,00", "R$ 99,9") em centavos; null quando vazio
+ * ou ilegível. Vírgula é o separador de centavos; ponto, o de milhar (ou de centavos, se for o único
+ * e vier com 1 ou 2 casas, como "450.5").
+ */
+export function centsFromInput(value: string | null | undefined): number | null {
+  let v = (value ?? '').replace(/[^\d.,]/g, '')
+  if (!v) return null
+  if (v.includes(',')) v = v.replace(/\./g, '').replace(',', '.')
+  else if (/^\d+\.\d{1,2}$/.test(v)) { /* ponto decimal */ }
+  else v = v.replace(/\./g, '')
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n * 100) : null
+}
+
+/** Centavos no formato do campo: 45000 → "450,00"; null → "". */
+export function inputFromCents(cents: number | null | undefined): string {
+  return cents == null ? '' : (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 /** "1 diária", "2 diárias". */
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -43,6 +78,8 @@ export function guestPricing(acc: Pick<Accommodation, 'max_guests' | 'included_g
 }
 
 export const guestCopy = {
+  /** "Desconto semanal (10%)" a partir de 7 noites; "Desconto mensal (25%)" a partir de 28. */
+  discountLine: (percent: number, nights: number) => `Desconto ${nights >= 28 ? 'mensal' : 'semanal'} (${percent}%)`,
   /** "para 2 pessoas" */
   forPeople: (n: number) => `para ${plural(n, 'pessoa', 'pessoas')}`,
 

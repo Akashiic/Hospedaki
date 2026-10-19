@@ -1,16 +1,12 @@
 <script setup lang="ts">
 import type { AdminBooking } from '~/composables/useAdminApi'
 
-const props = defineProps<{ booking: AdminBooking, busy?: boolean }>()
+// today: "hoje" no fuso da pousada, para saber se a estadia já começou ou terminou.
+const props = defineProps<{ booking: AdminBooking, today: string, busy?: boolean }>()
 const emit = defineEmits<{ confirm: [], decline: [] }>()
 const askingDecline = ref(false)
 
-const statusLabel: Record<AdminBooking['status'], string> = {
-  pending: 'Aguardando você',
-  confirmed: 'Confirmada',
-  declined: 'Recusada',
-  cancelled: 'Cancelada',
-}
+const phase = computed(() => bookingPhase(props.booking, props.today))
 
 const date = (iso: string) => formatIso(iso, { weekday: 'short', day: '2-digit', month: 'short' })
 
@@ -24,13 +20,13 @@ const whatsapp = computed(() => {
 </script>
 
 <template>
-  <article class="item" :class="booking.status">
+  <article class="item" :class="[booking.status, phase]">
     <header>
       <div>
         <h3>{{ booking.guest_name }}</h3>
         <p class="code">Pedido {{ booking.code }}</p>
       </div>
-      <span class="status">{{ statusLabel[booking.status] }}</span>
+      <span class="status">{{ PHASE_LABEL[phase] }}</span>
     </header>
 
     <dl>
@@ -52,7 +48,8 @@ const whatsapp = computed(() => {
 
     <footer>
       <a :href="whatsapp" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">WhatsApp {{ formatPhone(booking.guest_phone) }}</a>
-      <template v-if="booking.status === 'pending'">
+      <!-- Estadia concluída ou pedido vencido não têm mais o que responder: fica só o contato. -->
+      <template v-if="phase === 'request'">
         <template v-if="askingDecline">
           <span class="ask">Recusar este pedido?</span>
           <button type="button" class="btn btn-sm danger" :disabled="busy" @click="emit('decline')">Sim, recusar</button>
@@ -63,7 +60,7 @@ const whatsapp = computed(() => {
           <button type="button" class="btn btn-sm" :disabled="busy" @click="emit('confirm')">Confirmar reserva</button>
         </template>
       </template>
-      <template v-else-if="booking.status === 'confirmed'">
+      <template v-else-if="phase === 'upcoming' || phase === 'ongoing'">
         <button v-if="!askingDecline" type="button" class="btn btn-ghost btn-sm" @click="askingDecline = true">Cancelar reserva</button>
         <template v-else>
           <span class="ask">Cancelar e liberar as datas?</span>
@@ -85,6 +82,11 @@ h3 { margin: 0; font-size: 1.15rem; }
 .status { font-size: .78rem; font-weight: 700; padding: .25rem .6rem; border-radius: 999px; background: var(--soft); white-space: nowrap; }
 .pending .status { background: var(--warn-soft); color: var(--warn-ink); }
 .confirmed .status { background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand-text); }
+.item.ongoing { border-left-color: var(--amber); }
+.ongoing .status { background: var(--night); color: var(--amber-soft); }
+.item.completed, .item.expired, .item.declined, .item.cancelled { border-left-color: var(--line); }
+.completed .status, .expired .status { background: var(--soft); color: var(--muted); }
+.declined .status, .cancelled .status { background: color-mix(in srgb, var(--danger) 10%, white); color: var(--danger); }
 dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .5rem; margin: 0; }
 @include below(sm) { dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
