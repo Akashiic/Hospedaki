@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'name', 'tagline', 'slug', 'domain', 'description', 'highlights', 'story', 'story_title', 'email', 'phone', 'whatsapp',
+    'name', 'tagline', 'slug', 'domain', 'description', 'highlights', 'story', 'story_title', 'extras', 'email', 'phone', 'whatsapp',
     'address', 'city', 'state', 'logo_path', 'primary_color', 'timezone',
     'check_in_time', 'check_out_time', 'settings', 'active',
 ])]
@@ -34,6 +34,7 @@ class Property extends Model
             'settings' => 'array',
             'highlights' => 'array',
             'story' => 'array',
+            'extras' => 'array',
             'active' => 'boolean',
         ];
     }

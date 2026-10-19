@@ -1,7 +1,7 @@
 // Textos de preço por pessoa usados em cartões, vitrine, ficha, orçamento e painel.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { guestCopy, guestPricing, plural } from '../app/utils/pricing.ts'
+import { guestCopy, guestPricing, plural, totalGuests } from '../app/utils/pricing.ts'
 
 const espaco = { max_guests: 6, base_price: 49700, included_guests: 2, extra_guest_price: null }
 // Os valores em BRL usam espaço não separável depois do "R$".
@@ -38,5 +38,17 @@ describe('guestCopy', () => {
     assert.equal(guestCopy.quoteNote(4), 'Não inclui o acréscimo de 4 pessoas a mais, combinado com a pousada na confirmação.')
     assert.equal(guestCopy.quoteExtraLine(1, 2), '1 pessoa a mais · 2 diárias')
     assert.equal(guestCopy.panelUnpriced(4), '+ acréscimo de 4 pessoas a combinar')
+  })
+})
+
+describe('totalGuests', () => {
+  it('counts accommodations that share a unit only once, by the larger one', () => {
+    const accs = [
+      { max_guests: 4, shared_unit: null },
+      { max_guests: 6, shared_unit: 'apto' },
+      { max_guests: 5, shared_unit: 'apto' },
+      { max_guests: 3 },
+    ]
+    assert.equal(totalGuests(accs), 13)
   })
 })

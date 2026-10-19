@@ -16,6 +16,10 @@ class AccommodationResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
+            // Indicação da pousada para a escolha "a dois / com a família" da capa.
+            'best_for' => $this->best_for,
+            // Acomodações com o mesmo valor ficam no mesmo imóvel e não são reservadas juntas.
+            'shared_unit' => $this->shared_unit,
             'amenities' => $this->amenities ?? [],
             'max_guests' => $this->max_guests,
             // Pessoas incluídas na diária e acréscimo por pessoa a mais, por diária (centavos); nulo = não informado.

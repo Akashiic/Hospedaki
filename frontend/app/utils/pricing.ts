@@ -7,6 +7,20 @@ export function formatMoney(cents: number): string {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+/**
+ * Quantas pessoas a pousada recebe ao mesmo tempo. Acomodações que dividem o imóvel (shared_unit)
+ * não são reservadas juntas: delas conta só a maior.
+ */
+export function totalGuests(accs: Pick<Accommodation, 'max_guests' | 'shared_unit'>[]): number {
+  const units = new Map<string, number>()
+  let total = 0
+  for (const a of accs) {
+    if (!a.shared_unit) total += a.max_guests
+    else units.set(a.shared_unit, Math.max(units.get(a.shared_unit) ?? 0, a.max_guests))
+  }
+  return total + [...units.values()].reduce((n, v) => n + v, 0)
+}
+
 /** "1 diária", "2 diárias". */
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`

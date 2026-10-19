@@ -20,6 +20,7 @@ class PropertyResource extends JsonResource
             'highlights' => $this->highlights ?? [],
             'story' => $this->story ?? [],
             'story_title' => $this->story_title,
+            'extras' => $this->extras ?? [],
             'photos' => $this->whenLoaded('photos', fn () => $this->photos->map(fn ($photo) => [
                 'url' => PhotoUrl::from($photo->path),
                 'caption' => $photo->caption,

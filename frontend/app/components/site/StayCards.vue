@@ -10,7 +10,7 @@ const ordered = computed(() => props.highlight
 </script>
 
 <template>
-  <div class="cards">
+  <div class="cards" :class="`n${Math.min(ordered.length, 4)}`">
     <NuxtLink
       v-for="(acc, i) in ordered"
       :key="acc.id"
@@ -33,7 +33,15 @@ const ordered = computed(() => props.highlight
 </template>
 
 <style scoped lang="scss">
-.cards { display: grid; gap: clamp(1rem, 2.5vw, 2rem); grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); }
+// Colunas pelo número de acomodações, sem deixar um cartão sozinho na última linha:
+// 2 por linha no tablet; 3 ou 4 lado a lado nas telas largas.
+.cards {
+  display: grid; gap: clamp(1rem, 2.5vw, 2rem); grid-template-columns: minmax(0, 1fr);
+  @include above(md) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  &.n1 { grid-template-columns: minmax(0, 1fr); }
+  &.n3 { @include above(lg) { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  &.n4 { @include above(xl) { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+}
 .card {
   position: relative; display: block; border-radius: 6px; overflow: hidden; color: #fff; text-decoration: none; background: var(--night);
   aspect-ratio: 4 / 5; max-width: 100%;
@@ -41,11 +49,11 @@ const ordered = computed(() => props.highlight
 }
 .media, .media img { position: absolute; inset: 0; width: 100%; height: 100%; }
 .media img { object-fit: cover; transition: transform $dur-2xl $ease-enter; }
-.media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(8 12 10 / 0) 40%, rgb(8 12 10 / .82)); }
+.media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(8 12 10 / 0) 30%, rgb(8 12 10 / .55) 60%, rgb(8 12 10 / .9)); }
 .card:hover .media img { transform: scale($zoom-sm); }
 .body { position: absolute; inset: auto 0 0; padding: clamp(1.2rem, 3vw, 2rem); display: grid; gap: .3rem; }
 .badge { @include eyebrow(var(--night), sm); justify-self: start; margin-bottom: .6rem; padding: .3rem .65rem; border-radius: 999px; background: var(--amber); }
-h3 { @include display(clamp(2.2rem, 4.5vw, 3.2rem)); margin: 0; }
+h3 { @include display(clamp(2rem, 3.6vw, 3rem)); margin: 0; }
 .meta { margin: 0; color: rgb(255 255 255 / .82); }
 .more { margin-top: .6rem; font-weight: 700; display: inline-flex; gap: .4rem; }
 .arrow { transition: transform $dur-md $ease-enter; }

@@ -11,9 +11,14 @@ export function usePersona() {
   return useState<Persona | null>('persona', () => null)
 }
 
-/** Casal fica com a acomodação de menor capacidade; família, com a de maior. */
+/**
+ * A acomodação que a pousada indicou para quem vem (best_for). Sem indicação, casal fica com a
+ * de menor capacidade e família com a de maior.
+ */
 export function accommodationFor(property: Property, persona: Persona | null): Accommodation | undefined {
   if (!persona || !property.accommodations.length) return undefined
+  const chosen = property.accommodations.find(a => a.best_for === persona)
+  if (chosen) return chosen
   const bySize = [...property.accommodations].sort((a, b) => a.max_guests - b.max_guests)
   return persona === 'casal' ? bySize[0] : bySize[bySize.length - 1]
 }
