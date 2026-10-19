@@ -17,6 +17,9 @@ export interface AdminBooking {
   created_at: string
 }
 
+/** Abas do painel (o nome vai na URL: /painel?aba=reservas). */
+export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'bloqueios' | 'acomodacoes' | 'pagina'
+
 export interface AdminBlock {
   id: number
   accommodation_id: number

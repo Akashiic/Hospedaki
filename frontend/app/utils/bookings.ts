@@ -61,3 +61,8 @@ export function matchesSearch(b: { guest_name: string, code: string, guest_phone
   return [b.guest_name, b.code, ...b.accommodations.map(a => a.name)].some(v => norm(v).includes(t))
     || (digits.length >= 3 && b.guest_phone.replace(/\D/g, '').includes(digits))
 }
+
+/** Iniciais para o avatar: "Família Oliveira" → "FO", "Dono (demonstração)" → "DD". */
+export function initialsOf(name: string): string {
+  return (name.match(/\p{L}+/gu) ?? []).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?'
+}

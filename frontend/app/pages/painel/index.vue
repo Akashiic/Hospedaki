@@ -1,39 +1,40 @@
 <script setup lang="ts">
-import type { AdminBlock, AdminBooking, AdminMe } from '~/composables/useAdminApi'
+import type { AdminBooking, AdminMe, AdminTab } from '~/composables/useAdminApi'
+import { Inbox } from 'lucide-vue-next'
 
 definePageMeta({ middleware: 'admin', layout: 'painel', pageTransition: { name: 'fade', mode: 'out-in' } })
 useHead({ title: 'Painel da pousada', meta: [{ name: 'robots', content: 'noindex' }] })
 
 const api = useAdminApi()
 const token = useAdminToken()
+const toast = useToast()
+const route = useRoute()
+const router = useRouter()
 
-type Tab = 'pending' | 'bookings' | 'blocks' | 'accommodations' | 'layout'
-const tab = ref<Tab>('pending')
+// A aba fica no endereço (/painel?aba=reservas): recarregar a página ou voltar não perde o lugar.
+const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'bloqueios', 'acomodacoes', 'pagina']
+const tab = computed<AdminTab>(() => TABS.includes(route.query.aba as AdminTab) ? route.query.aba as AdminTab : 'inicio')
+function go(next: AdminTab) {
+  if (next !== tab.value) router.push({ query: next === 'inicio' ? {} : { aba: next } })
+  if (import.meta.client) window.scrollTo({ top: 0 })
+}
 
 const me = ref<AdminMe | null>(null)
 const pending = ref<AdminBooking[]>([])
-const blocks = ref<AdminBlock[]>([])
 const busyId = ref<number | null>(null)
-const message = ref('')
-watch(tab, () => { message.value = '' })
-
-// Estado da carga: os textos de "nenhum pedido" só aparecem depois de uma carga que deu certo,
-// e uma falha mostra o erro com "Tentar de novo" (em vez de ficar em "Carregando..." para sempre).
 const loaded = ref(false)
 const loadError = ref('')
 
 async function load() {
   loadError.value = ''
   try {
-    const [meRes, pendingRes, blocksRes] = await Promise.all([
+    const [meRes, pendingRes] = await Promise.all([
       api<AdminMe>('/me'),
       // Pedidos esperando resposta cuja entrada ainda não passou; os vencidos ficam em Reservas → Passadas.
       api<{ data: AdminBooking[] }>('/bookings', { query: { scope: 'requests' } }),
-      api<{ data: AdminBlock[] }>('/blocked-dates'),
     ])
     me.value = meRes
     pending.value = pendingRes.data
-    blocks.value = blocksRes.data
     loaded.value = true
   }
   catch (e) {
@@ -42,57 +43,24 @@ async function load() {
 }
 onMounted(load)
 
+// "Hoje" no fuso da pousada, o mesmo da API: diz se a estadia já começou ou terminou.
+const today = computed(() => todayIn(me.value?.property.timezone ?? 'America/Sao_Paulo'))
+
 async function act(booking: AdminBooking, action: 'confirm' | 'decline') {
   busyId.value = booking.id
   try {
     await api(`/bookings/${booking.id}/${action}`, { method: 'POST' })
-    message.value = action === 'confirm'
-      ? `Reserva de ${booking.guest_name} confirmada. Avise o hóspede pelo WhatsApp.`
-      : `Pedido de ${booking.guest_name} encerrado. As datas foram liberadas.`
-    await load()
+    // O cartão sai da lista com animação; o aviso confirma o que aconteceu.
+    pending.value = pending.value.filter(b => b.id !== booking.id)
+    toast.show(action === 'confirm'
+      ? `Reserva de ${booking.guest_name} confirmada! Avise pelo WhatsApp.`
+      : `Pedido de ${booking.guest_name} recusado. As datas foram liberadas.`, action === 'confirm' ? 'success' : 'info')
   }
   catch (e) {
-    message.value = apiError(e)
+    toast.show(apiError(e), 'error')
   }
   finally {
     busyId.value = null
-  }
-}
-
-const newBlock = reactive({ accommodation_id: 0, starts_on: '', ends_on: '', reason: '' })
-const blockError = ref('')
-watch(me, (value) => {
-  if (value && !newBlock.accommodation_id) newBlock.accommodation_id = value.property.accommodations[0]?.id ?? 0
-})
-
-async function addBlock() {
-  blockError.value = ''
-  try {
-    await api('/blocked-dates', { method: 'POST', body: { ...newBlock, reason: newBlock.reason || null } })
-    Object.assign(newBlock, { starts_on: '', ends_on: '', reason: '' })
-    await load()
-  }
-  catch (e) {
-    blockError.value = apiError(e)
-  }
-}
-
-// Um clique por vez: o botão fica desativado até a lista voltar (dois cliques seguidos não
-// mandam dois pedidos).
-const removingId = ref<number | null>(null)
-async function removeBlock(block: AdminBlock) {
-  if (removingId.value) return
-  removingId.value = block.id
-  blockError.value = ''
-  try {
-    await api(`/blocked-dates/${block.id}`, { method: 'DELETE' })
-    await load()
-  }
-  catch (e) {
-    blockError.value = apiError(e)
-  }
-  finally {
-    removingId.value = null
   }
 }
 
@@ -102,139 +70,83 @@ async function logout() {
   await navigateTo('/painel/entrar')
 }
 
-// "Hoje" no fuso da pousada, o mesmo da API: diz se a estadia já começou ou terminou.
-const today = computed(() => todayIn(me.value?.property.timezone ?? 'America/Sao_Paulo'))
-
-const accName = (id: number) => me.value?.property.accommodations.find(a => a.id === id)?.name ?? ''
-const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/')
+const notify = (text: string) => toast.show(text, /não|erro|falh/i.test(text) ? 'error' : 'success')
 </script>
 
 <template>
-  <div class="page" :style="me ? { '--brand': me.property.primary_color } : undefined">
-    <header class="top">
-      <div class="container top-inner">
-        <div>
-          <p class="eyebrow">Painel</p>
-          <h1>{{ me?.property.name ?? (loadError ? 'Painel da pousada' : 'Carregando...') }}</h1>
-        </div>
-        <div class="top-actions">
-          <NuxtLink to="/" class="link">Ver site</NuxtLink>
-          <button type="button" class="link" @click="logout">Sair</button>
-        </div>
-      </div>
-      <nav class="container tabs" aria-label="Seções">
-        <button type="button" :aria-pressed="tab === 'pending'" @click="tab = 'pending'">
-          Pedidos <span v-if="pending.length" class="count">{{ pending.length }}</span>
-        </button>
-        <button type="button" :aria-pressed="tab === 'bookings'" @click="tab = 'bookings'">Reservas</button>
-        <button type="button" :aria-pressed="tab === 'blocks'" @click="tab = 'blocks'">Datas bloqueadas</button>
-        <button type="button" :aria-pressed="tab === 'accommodations'" @click="tab = 'accommodations'">Acomodações</button>
-        <button type="button" :aria-pressed="tab === 'layout'" @click="tab = 'layout'">Página inicial</button>
-      </nav>
-    </header>
-
-    <main class="container content" :class="{ wide: tab === 'layout' }">
-      <p v-if="me?.property.demo" class="demo-tip">
-        <strong>Demonstração.</strong> Assim o dono vê os pedidos que chegam pelo site. Confirme, recuse ou bloqueie datas à vontade: tudo volta ao início amanhã.
-        Faça também um pedido pelo <NuxtLink to="/reservar">site</NuxtLink> e veja ele chegar aqui.
+  <AdminShell
+    :tab="tab"
+    :property-name="me?.property.name ?? null"
+    :user-name="me?.user.name ?? null"
+    :pending="pending.length"
+    :demo="me?.property.demo"
+    :style="me ? { '--brand': me.property.primary_color } : undefined"
+    @go="go"
+    @logout="logout"
+  >
+    <Transition name="a-tab" appear>
+      <p v-if="me?.property.demo && tab === 'inicio'" class="demo-tip">
+        <strong>Demonstração.</strong> Mexa à vontade: confirme pedidos, edite acomodações, mude a página inicial. Tudo volta ao início amanhã.
       </p>
-      <p v-if="message" class="toast" role="status">{{ message }}</p>
+    </Transition>
 
-      <div v-if="loadError" class="load-error" role="alert">
-        <p>Não foi possível carregar o painel. {{ loadError }}</p>
-        <button type="button" class="btn btn-sm" @click="load">Tentar de novo</button>
-      </div>
+    <div v-if="loadError" class="a-card load-error" role="alert">
+      <p>Não foi possível carregar o painel. {{ loadError }}</p>
+      <button type="button" class="btn btn-sm" @click="load">Tentar de novo</button>
+    </div>
 
-      <p v-else-if="!loaded" class="empty" aria-busy="true">Carregando...</p>
+    <Transition v-else name="a-tab" mode="out-in">
+      <div :key="tab" class="view">
+        <AdminOverview v-if="tab === 'inicio'" :me="me" :today="today" @go="go" />
 
-      <section v-else-if="tab === 'pending'" class="list">
-        <p v-if="!pending.length" class="empty">Nenhum pedido esperando resposta. Quando chegar um, você recebe um e-mail e ele aparece aqui.</p>
-        <AdminBookingItem
-          v-for="booking in pending"
-          :key="booking.id"
-          :booking="booking"
-          :today="today"
-          :busy="busyId === booking.id"
-          @confirm="act(booking, 'confirm')"
-          @decline="act(booking, 'decline')"
-        />
-      </section>
-
-      <AdminBookings v-else-if="tab === 'bookings'" :today="today" @message="message = $event" @changed="load" />
-
-      <AdminAccommodations v-else-if="tab === 'accommodations'" :demo="me?.property.demo" @message="message = $event" @changed="load" />
-
-      <AdminLayoutEditor v-else-if="tab === 'layout'" @saved="message = $event" />
-
-      <section v-else class="blocks">
-        <form class="panel block-form" @submit.prevent="addBlock">
-          <h2>Bloquear datas</h2>
-          <p class="hint">Use para manutenção, uso próprio ou reservas feitas no Airbnb e Booking.</p>
-          <label for="acc">Acomodação
-            <select id="acc" v-model.number="newBlock.accommodation_id">
-              <option v-for="acc in me?.property.accommodations" :key="acc.id" :value="acc.id">{{ acc.name }}</option>
-            </select>
-          </label>
-          <div class="row">
-            <label for="from">Primeira noite <input id="from" v-model="newBlock.starts_on" type="date" required></label>
-            <label for="to">Última noite <input id="to" v-model="newBlock.ends_on" type="date" required :min="newBlock.starts_on"></label>
+        <section v-else-if="tab === 'pedidos'" class="requests">
+          <header class="page-head a-rise">
+            <h1>Pedidos</h1>
+            <p>Pedidos de reserva esperando sua resposta. As datas ficam seguras para o hóspede até você confirmar ou recusar.</p>
+          </header>
+          <div v-if="!loaded" class="skel"><span v-for="n in 2" :key="n" class="a-skeleton" /></div>
+          <div v-else-if="!pending.length" class="a-card empty a-rise" style="--i: 1">
+            <span class="empty-ico"><Inbox :size="30" /></span>
+            <h2>Tudo respondido!</h2>
+            <p>Quando chegar um pedido novo, você recebe um e-mail e ele aparece aqui.</p>
           </div>
-          <label for="reason"><span>Motivo <span class="opt">opcional</span></span> <input id="reason" v-model="newBlock.reason" placeholder="Ex.: reserva pelo Airbnb"></label>
-          <p v-if="blockError" class="error" role="alert">{{ blockError }}</p>
-          <button class="btn">Bloquear</button>
-        </form>
+          <TransitionGroup v-else tag="div" name="a-list" class="list">
+            <AdminBookingItem
+              v-for="(booking, i) in pending"
+              :key="booking.id"
+              class="a-rise"
+              :style="{ '--i': i + 1 }"
+              :booking="booking"
+              :today="today"
+              :busy="busyId === booking.id"
+              @confirm="act(booking, 'confirm')"
+              @decline="act(booking, 'decline')"
+            />
+          </TransitionGroup>
+        </section>
 
-        <div class="panel">
-          <h2>Bloqueios</h2>
-          <p v-if="!blocks.length" class="hint">Nenhuma data bloqueada.</p>
-          <ul class="block-list">
-            <li v-for="block in blocks" :key="block.id">
-              <div>
-                <strong>{{ accName(block.accommodation_id) }}</strong>
-                <span>{{ shortDate(block.starts_on) }} a {{ shortDate(block.ends_on) }}<template v-if="block.reason"> · {{ block.reason }}</template></span>
-              </div>
-              <button type="button" class="link" :disabled="removingId !== null" @click="removeBlock(block)">{{ removingId === block.id ? 'Desbloqueando...' : 'Desbloquear' }}</button>
-            </li>
-          </ul>
-        </div>
-      </section>
-    </main>
-  </div>
+        <AdminBookings v-else-if="tab === 'reservas'" :today="today" @message="notify" @changed="load" />
+        <AdminBlocks v-else-if="tab === 'bloqueios'" :me="me" />
+        <AdminAccommodations v-else-if="tab === 'acomodacoes'" :demo="me?.property.demo" @message="notify" @changed="load" />
+        <AdminLayoutEditor v-else-if="tab === 'pagina'" @saved="notify" />
+      </div>
+    </Transition>
+  </AdminShell>
 </template>
 
 <style scoped lang="scss">
-.page { min-height: 100vh; background: var(--soft); }
-.top { background: var(--card); border-bottom: 1px solid var(--line); }
-.top-inner { display: flex; justify-content: space-between; align-items: end; gap: 1rem; padding-block: 1.2rem .6rem; }
-h1 { margin: .1rem 0 0; font-size: 1.6rem; }
-.top-actions { display: flex; gap: .6rem; }
-.link { background: none; border: 0; padding: .6rem .2rem; font: inherit; font-weight: 700; color: var(--brand-text); cursor: pointer; text-decoration: none; }
-.link:disabled { opacity: .5; cursor: default; }
-.tabs { display: flex; gap: .3rem; overflow-x: auto; }
-.tabs button { font: inherit; font-weight: 700; background: none; border: 0; border-bottom: 3px solid transparent; padding: .7rem .6rem; color: var(--muted); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: .4rem; }
-.tabs button[aria-pressed="true"] { color: var(--text); border-bottom-color: var(--brand); }
-.count { background: var(--warn); color: var(--night); border-radius: 999px; font-size: .75rem; padding: .05rem .5rem; }
-.content { padding-block: 1.5rem 3rem; max-width: 860px; }
-.content.wide { max-width: 1280px; }
-.toast { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .75rem 1rem; font-weight: 500; margin: 0 0 1rem; }
-.list { display: grid; gap: 1rem; }
-.load-error { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--danger); border-radius: var(--radius); padding: 1rem 1.1rem; display: grid; gap: .8rem; justify-items: start; }
-.load-error p { margin: 0; font-weight: 500; }
-.empty { background: var(--card); border: 1px dashed var(--line); border-radius: var(--radius); padding: 2rem 1.2rem; text-align: center; color: var(--muted); margin: 0; }
-.blocks { display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-@include below(md) { .blocks { grid-template-columns: minmax(0, 1fr); } }
-.panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.2rem; min-width: 0; }
-.panel h2 { margin: 0 0 .3rem; font-size: 1.2rem; }
-.block-form { display: grid; gap: .8rem; }
-.block-form label { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
-.hint { color: var(--muted); font-size: .9rem; margin: 0; }
-.opt { font-weight: 400; color: var(--muted); }
-.error { color: var(--danger); font-weight: 700; margin: 0; }
-.block-list { list-style: none; margin: .6rem 0 0; padding: 0; display: grid; }
-.block-list li { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .7rem 0; border-top: 1px solid var(--line); }
-.block-list li div { display: grid; }
-.block-list span { color: var(--muted); font-size: .9rem; }
-.demo-tip { margin: 0 0 1rem; padding: .8rem 1rem; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); font-size: .92rem; }
-.demo-tip a { color: inherit; font-weight: 700; }
+.view { display: grid; gap: 1.2rem; }
+.page-head h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0 0 .3rem; }
+.page-head p { margin: 0; color: var(--muted); max-width: 60ch; }
+.requests { display: grid; gap: 1.2rem; max-width: 920px; }
+.list { position: relative; display: grid; gap: 1rem; }
+.skel { display: grid; gap: 1rem; }
+.skel span { height: 220px; border-radius: var(--a-radius); }
+.empty { display: grid; justify-items: center; gap: .4rem; padding: 2.6rem 1.2rem; text-align: center; }
+.empty h2 { margin: .4rem 0 0; font-size: 1.6rem; }
+.empty p { margin: 0; color: var(--muted); }
+.empty-ico { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand-text); }
+.load-error { padding: 1rem 1.2rem; display: grid; gap: .8rem; justify-items: start; border-left: 4px solid var(--danger); }
+.load-error p { margin: 0; }
+.demo-tip { margin: 0 0 1.2rem; padding: .8rem 1rem; border-radius: 14px; background: var(--warn-soft); color: var(--warn-ink); font-size: .92rem; }
 </style>
