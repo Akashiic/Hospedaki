@@ -46,8 +46,11 @@ class DemoModeTest extends TestCase
         $this->withToken($token)->getJson('/api/admin/me')->assertOk()->assertJsonPath('property.demo', true);
 
         $bookings = $this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->json('data');
-        $this->assertCount(4, $bookings);
-        $this->assertSame(['declined', 'confirmed', 'pending', 'pending'], array_column($bookings, 'status'));
+        $this->assertCount(7, $bookings);
+        $this->assertSame(['cancelled', 'confirmed', 'confirmed', 'declined', 'confirmed', 'pending', 'pending'], array_column($bookings, 'status'));
+        // Um exemplo em cada filtro da aba Reservas.
+        $counts = $this->withToken($token)->getJson('/api/admin/bookings?scope=all')->json('meta.counts');
+        $this->assertSame(['requests' => 2, 'upcoming' => 1, 'ongoing' => 1, 'completed' => 1, 'past' => 2, 'cancelled' => 2, 'all' => 7], $counts);
         $this->assertTrue(collect($bookings)->every(fn ($booking) => $booking['total'] > 0));
         $this->assertCount(2, $this->withToken($token)->getJson('/api/admin/blocked-dates')->json('data'));
 
@@ -58,7 +61,7 @@ class DemoModeTest extends TestCase
     public function test_site_shows_the_demo_flag_and_resets_once_a_day(): void
     {
         $this->getJson('/api/properties/pousada-demo')->assertOk()->assertJsonPath('data.demo', true);
-        $this->assertSame(4, Booking::count());
+        $this->assertSame(7, Booking::count());
 
         // Um visitante mexe na demo: recusa tudo e apaga os bloqueios.
         Booking::query()->update(['status' => BookingStatus::Declined]);
@@ -98,7 +101,7 @@ class DemoModeTest extends TestCase
     public function test_demo_reset_command(): void
     {
         $this->artisan('demo:reset')->assertSuccessful();
-        $this->assertSame(4, $this->property->bookings()->count());
+        $this->assertSame(7, $this->property->bookings()->count());
 
         config(['demo.enabled' => false]);
         $this->artisan('demo:reset')->assertFailed();

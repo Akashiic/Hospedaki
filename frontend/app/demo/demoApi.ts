@@ -2,6 +2,7 @@
 // Imita as respostas do backend Laravel com dados de exemplo.
 import type { Accommodation, Property, Quote, QuoteItem } from '~/composables/useApi'
 import { addDaysIso, addMonthsIso, nightsBetween, todayIn, weekdayOf } from '~/utils/dates'
+import { type BookingScope, inScope } from '~/utils/bookings'
 import { normalizeLayout } from '~/utils/homeLayout'
 import { plural } from '~/utils/pricing'
 import { dawnScene, goldenScene, interiorScene, nightScene, porchScene, trailScene } from './illustrations'
@@ -281,15 +282,20 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
     'POST /admin/logout': () => null,
     'GET /admin/me': () => ({
       user: { name: 'Dono da Pousada', email: 'dono@exemplo.com.br' },
-      property: { name: property.name, slug: property.slug, primary_color: property.primary_color, demo: true, accommodations: accommodations.map(a => ({ id: a.id, name: a.name })) },
+      property: { name: property.name, slug: property.slug, primary_color: property.primary_color, demo: true, timezone: TIMEZONE, accommodations: accommodations.map(a => ({ id: a.id, name: a.name })) },
     }),
-    'GET /admin/bookings': () => ({
-      data: bookings
-        .filter(b => !options.query?.status || b.status === options.query.status)
-        .filter(b => !options.query?.upcoming || b.check_out >= today())
-        .sort((a, b) => a.check_in.localeCompare(b.check_in))
-        .map(withNights),
-    }),
+    'GET /admin/bookings': () => {
+      const scope = (options.query?.scope ?? 'all') as BookingScope
+      const desc = ['completed', 'past', 'cancelled', 'all'].includes(scope)
+      const scopes: BookingScope[] = ['requests', 'upcoming', 'ongoing', 'completed', 'past', 'cancelled', 'all']
+      return {
+        data: bookings
+          .filter(b => inScope(b, scope, today()))
+          .sort((a, b) => desc ? b.check_in.localeCompare(a.check_in) : a.check_in.localeCompare(b.check_in))
+          .map(withNights),
+        meta: { counts: Object.fromEntries(scopes.map(s => [s, bookings.filter(b => inScope(b, s, today())).length])) },
+      }
+    },
     'GET /admin/layout': () => ({ sections: normalizeLayout(property.home_sections) }),
     'PUT /admin/layout': () => {
       property.home_sections = normalizeLayout(body.sections)

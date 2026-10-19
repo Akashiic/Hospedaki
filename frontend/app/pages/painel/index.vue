@@ -7,12 +7,11 @@ useHead({ title: 'Painel da pousada', meta: [{ name: 'robots', content: 'noindex
 const api = useAdminApi()
 const token = useAdminToken()
 
-type Tab = 'pending' | 'upcoming' | 'blocks' | 'layout'
+type Tab = 'pending' | 'bookings' | 'blocks' | 'layout'
 const tab = ref<Tab>('pending')
 
 const me = ref<AdminMe | null>(null)
 const pending = ref<AdminBooking[]>([])
-const upcoming = ref<AdminBooking[]>([])
 const blocks = ref<AdminBlock[]>([])
 const busyId = ref<number | null>(null)
 const message = ref('')
@@ -26,16 +25,14 @@ const loadError = ref('')
 async function load() {
   loadError.value = ''
   try {
-    const [meRes, pendingRes, upcomingRes, blocksRes] = await Promise.all([
+    const [meRes, pendingRes, blocksRes] = await Promise.all([
       api<AdminMe>('/me'),
-      // A API devolve as listas inteiras (sem paginação): o painel só mostra o que está pela frente.
-      api<{ data: AdminBooking[] }>('/bookings', { query: { status: 'pending' } }),
-      api<{ data: AdminBooking[] }>('/bookings', { query: { status: 'confirmed', upcoming: 1 } }),
+      // Pedidos esperando resposta cuja entrada ainda não passou; os vencidos ficam em Reservas → Passadas.
+      api<{ data: AdminBooking[] }>('/bookings', { query: { scope: 'requests' } }),
       api<{ data: AdminBlock[] }>('/blocked-dates'),
     ])
     me.value = meRes
     pending.value = pendingRes.data
-    upcoming.value = upcomingRes.data
     blocks.value = blocksRes.data
     loaded.value = true
   }
@@ -105,6 +102,9 @@ async function logout() {
   await navigateTo('/painel/entrar')
 }
 
+// "Hoje" no fuso da pousada, o mesmo da API: diz se a estadia já começou ou terminou.
+const today = computed(() => todayIn(me.value?.property.timezone ?? 'America/Sao_Paulo'))
+
 const accName = (id: number) => me.value?.property.accommodations.find(a => a.id === id)?.name ?? ''
 const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/')
 </script>
@@ -126,7 +126,7 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
         <button type="button" :aria-pressed="tab === 'pending'" @click="tab = 'pending'">
           Pedidos <span v-if="pending.length" class="count">{{ pending.length }}</span>
         </button>
-        <button type="button" :aria-pressed="tab === 'upcoming'" @click="tab = 'upcoming'">Próximas reservas</button>
+        <button type="button" :aria-pressed="tab === 'bookings'" @click="tab = 'bookings'">Reservas</button>
         <button type="button" :aria-pressed="tab === 'blocks'" @click="tab = 'blocks'">Datas bloqueadas</button>
         <button type="button" :aria-pressed="tab === 'layout'" @click="tab = 'layout'">Página inicial</button>
       </nav>
@@ -152,22 +152,14 @@ const shortDate = (iso: string) => iso.split('-').reverse().slice(0, 2).join('/'
           v-for="booking in pending"
           :key="booking.id"
           :booking="booking"
+          :today="today"
           :busy="busyId === booking.id"
           @confirm="act(booking, 'confirm')"
           @decline="act(booking, 'decline')"
         />
       </section>
 
-      <section v-else-if="tab === 'upcoming'" class="list">
-        <p v-if="!upcoming.length" class="empty">Nenhuma reserva confirmada pela frente.</p>
-        <AdminBookingItem
-          v-for="booking in upcoming"
-          :key="booking.id"
-          :booking="booking"
-          :busy="busyId === booking.id"
-          @decline="act(booking, 'decline')"
-        />
-      </section>
+      <AdminBookings v-else-if="tab === 'bookings'" :today="today" @message="message = $event" @changed="load" />
 
       <AdminLayoutEditor v-else-if="tab === 'layout'" @saved="message = $event" />
 

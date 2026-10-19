@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Property;
 use App\Models\User;
 use App\Services\DemoService;
 use Illuminate\Http\JsonResponse;
@@ -62,6 +63,8 @@ class AuthController extends Controller
                 'slug' => $user->property->slug,
                 'primary_color' => $user->property->primary_color,
                 'demo' => $demo->isDemo($user->property),
+                // Fuso da pousada: o painel calcula "hoje" igual à API (reserva em andamento, concluída...).
+                'timezone' => $user->property->timezone ?: Property::DEFAULT_TIMEZONE,
                 'accommodations' => $user->property->accommodations->map->only(['id', 'name']),
             ],
         ]);
