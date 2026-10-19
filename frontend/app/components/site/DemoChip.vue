@@ -37,8 +37,9 @@ function close() {
   box-shadow: 0 8px 24px rgb(0 0 0 / .25);
 
   @include above(md) {
-    top: auto; left: auto; transform: none;
-    right: var(--gutter-r); bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
+    top: auto; transform: none;
+    // Canto esquerdo: o direito tem a legenda e o contador das fotos da capa.
+    left: var(--gutter); bottom: calc(1.2rem + env(safe-area-inset-bottom, 0px));
     font-size: .88rem;
   }
 }

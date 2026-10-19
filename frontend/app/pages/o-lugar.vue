@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { property, gallery } = await useProperty()
+const { property, gallery, whatsappLink } = await useProperty()
 
 useSeoMeta({ title: `O lugar · ${property.value.name}`, description: property.value.description ?? undefined })
 </script>
@@ -14,5 +14,6 @@ useSeoMeta({ title: `O lugar · ${property.value.name}`, description: property.v
     />
     <SiteIntro :property="property" />
     <LazySiteGallery v-if="gallery.length > 1" hydrate-on-visible :photos="gallery" />
+    <SiteExtras v-if="property.extras?.length" :extras="property.extras" :whatsapp="whatsappLink('Olá! Quero saber dos serviços opcionais.')" />
   </div>
 </template>

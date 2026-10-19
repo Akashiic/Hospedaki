@@ -48,7 +48,7 @@ php artisan migrate --seed
 php artisan serve            # http://localhost:8000
 ```
 
-O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com o Espaço Bela Vista e o Chalé Master, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). Rodar o seed de novo atualiza textos e preços, mas não mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias. As diárias valem para 2 pessoas (no Chalé Master isso também é provisório); o acréscimo por pessoa a mais ainda não foi informado e fica vazio em `extra_guest_price`, então o site e o e-mail avisam que esse valor é combinado na confirmação. Em produção, com `php artisan config:cache`, o `backend/.env` não é lido pelo seed: passe a senha no próprio comando, por exemplo `SEED_OWNER_PASSWORD='…' php artisan db:seed --force`.
+O `--seed` cria a primeira pousada, o Espaço Bela Vista (`espaco-bela-vista`), com as quatro acomodações do site da pousada (Chalé Master, Espaço Bela Vista, Apto Bela Piscina e Suíte Vista do Vale), as fotos delas (em `frontend/public/fotos`) e os serviços opcionais, e o usuário do painel `dono@exemplo.com.br` com senha `password` (troque com `SEED_OWNER_PASSWORD`, que é obrigatória em produção). Rodar o seed de novo atualiza textos e preços, mas não mexe na senha de um usuário que já existe. Textos e preços vêm do site atual da pousada; a capacidade de cada acomodação e as datas de feriado são provisórias. As diárias valem para 2 pessoas (no Chalé Master isso também é provisório); o acréscimo por pessoa a mais ainda não foi informado e fica vazio em `extra_guest_price`, então o site e o e-mail avisam que esse valor é combinado na confirmação. Em produção, com `php artisan config:cache`, o `backend/.env` não é lido pelo seed: passe a senha no próprio comando, por exemplo `SEED_OWNER_PASSWORD='…' php artisan db:seed --force`.
 
 **2. Site** (em outro terminal):
 
@@ -108,6 +108,8 @@ Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.en
 | `bookings` | Pedido de reserva: hóspede, datas, total e status (`pending`, `confirmed`, `declined`, `cancelled`) |
 | `booking_accommodation` | Quais acomodações entram em cada reserva e o valor de cada uma |
 | `blocked_dates` | Períodos bloqueados pelo dono |
+
+Acomodações com o mesmo `shared_unit` ficam no mesmo imóvel e uma ocupa a outra: o Espaço Bela Vista inclui o apartamento que também é alugado sozinho como Apto Bela Piscina. Fotos com caminho começando em `/` (como `/fotos/chale-1.jpg`) são servidas pelo próprio site.
 
 Valores em dinheiro são guardados em centavos (R$ 350,00 = `35000`). O `check_out` é o dia da saída: uma reserva de 10 a 12 ocupa as noites dos dias 10 e 11, e outra pode entrar no dia 12.
 

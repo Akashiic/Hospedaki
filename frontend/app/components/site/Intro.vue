@@ -21,7 +21,7 @@ defineProps<{ property: Property }>()
     <div v-reveal class="container facts">
       <div><span>Check-in</span><strong>a partir das {{ property.check_in_time }}</strong></div>
       <div><span>Check-out</span><strong>até {{ property.check_out_time }}</strong></div>
-      <div><span>Hóspedes</span><strong>até {{ property.accommodations.reduce((n, a) => n + a.max_guests, 0) }} pessoas</strong></div>
+      <div><span>Hóspedes</span><strong>até {{ totalGuests(property.accommodations) }} pessoas</strong></div>
       <div v-if="property.city"><span>Onde</span><strong>{{ property.city }}<template v-if="property.state">, {{ property.state }}</template></strong></div>
     </div>
   </section>

@@ -78,10 +78,18 @@ class BookingService
             // O SQLite ignora lockForUpdate(): lá a transação começa com uma escrita que não muda nada,
             // o que pega a trava de escrita do arquivo antes da leitura e põe os pedidos em fila.
             // Sem isso, dois pedidos leem juntos e o segundo a gravar cai em "database is locked" (500).
-            $accommodations = Accommodation::whereKey($data['accommodation_ids']);
-            DB::connection()->getDriverName() === 'sqlite'
-                ? $accommodations->toBase()->update(['id' => DB::raw('id')])
-                : $accommodations->orderBy('id')->lockForUpdate()->get(); // sempre na mesma ordem, sem deadlock
+            // Essa trava vale para o arquivo todo, então já cobre as acomodações do mesmo imóvel.
+            if (DB::connection()->getDriverName() === 'sqlite') {
+                Accommodation::whereKey($data['accommodation_ids'])->toBase()->update(['id' => DB::raw('id')]);
+            } else {
+                // Trava também as que dividem o imóvel com as pedidas (shared_unit): um pedido do Espaço
+                // e outro do apartamento que fica dentro dele não podem passar juntos.
+                $units = Accommodation::whereKey($data['accommodation_ids'])->whereNotNull('shared_unit')->pluck('shared_unit');
+                Accommodation::where(fn ($query) => $query
+                    ->whereKey($data['accommodation_ids'])
+                    ->orWhere(fn ($query) => $query->where('property_id', $property->id)->whereIn('shared_unit', $units)))
+                    ->orderBy('id')->lockForUpdate()->get(); // sempre na mesma ordem, sem deadlock
+            }
 
             $quote = $this->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'], $data['guests']);
 
@@ -192,6 +200,13 @@ class BookingService
     private function assertRules(Collection $accommodations, CarbonImmutable $checkIn, CarbonImmutable $checkOut, int $guests): void
     {
         $nights = (int) $checkIn->diffInDays($checkOut);
+
+        $shared = $accommodations->whereNotNull('shared_unit')->groupBy('shared_unit')->first(fn ($group) => $group->count() > 1);
+        if ($shared) {
+            throw ValidationException::withMessages([
+                'accommodation_ids' => $shared->pluck('name')->join(', ', ' e ').' ficam no mesmo imóvel e não podem ser reservados juntos.',
+            ]);
+        }
 
         if ($guests > $accommodations->sum('max_guests')) {
             throw ValidationException::withMessages(['guests' => 'Número de hóspedes acima da capacidade.']);

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'property_id', 'name', 'slug', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
+    'property_id', 'name', 'slug', 'shared_unit', 'best_for', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
     'weekend_price', 'extra_guest_price', 'min_nights', 'sort_order', 'active',
 ])]
 class Accommodation extends Model
@@ -51,6 +51,24 @@ class Accommodation extends Model
     public function blockedDates(): HasMany
     {
         return $this->hasMany(BlockedDate::class);
+    }
+
+    /**
+     * Ids desta acomodação e das que dividem o mesmo imóvel com ela (shared_unit):
+     * uma reserva ou um bloqueio em qualquer uma delas ocupa todas.
+     *
+     * @return list<int>
+     */
+    public function unitIds(): array
+    {
+        if (! $this->shared_unit) {
+            return [$this->id];
+        }
+
+        return static::where('property_id', $this->property_id)
+            ->where('shared_unit', $this->shared_unit)
+            ->pluck('id')
+            ->all();
     }
 
     public function bookings(): BelongsToMany

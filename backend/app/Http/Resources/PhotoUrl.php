@@ -8,7 +8,8 @@ use Illuminate\Support\Str;
 final class PhotoUrl
 {
     /**
-     * Aceita um caminho no disco "public" ou uma URL completa.
+     * Aceita um caminho no disco "public", uma URL completa ou um caminho começando com "/",
+     * que é uma foto servida pelo próprio site (frontend/public) e segue sem mudança.
      */
     public static function from(?string $path): ?string
     {
@@ -16,6 +17,6 @@ final class PhotoUrl
             return null;
         }
 
-        return Str::startsWith($path, ['http://', 'https://']) ? $path : Storage::disk('public')->url($path);
+        return Str::startsWith($path, ['http://', 'https://', '/']) ? $path : Storage::disk('public')->url($path);
     }
 }

@@ -17,6 +17,10 @@ export interface Accommodation {
   /** Acréscimo por pessoa a mais, por diária, em centavos; null = ainda não informado. */
   extra_guest_price: number | null
   amenities: string[]
+  /** Indicação da pousada para a escolha da capa; sem ela, vale a capacidade. */
+  best_for?: 'casal' | 'familia' | null
+  /** Acomodações com o mesmo valor dividem o imóvel (o Espaço inclui o apartamento) e não são reservadas juntas. */
+  shared_unit?: string | null
   photos: Photo[]
 }
 
@@ -53,6 +57,8 @@ export interface Property {
   primary_color: string
   /** Fuso da pousada (IANA): define o "hoje" do calendário, igual ao do backend. */
   timezone: string
+  /** Serviços opcionais (café da manhã, decoração...), mostrados em "O lugar". */
+  extras?: { title: string, text: string }[]
   /** Título da seção "Um dia aqui"; sem ele, um título genérico. */
   story_title: string | null
   check_in_time: string

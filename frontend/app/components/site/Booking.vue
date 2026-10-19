@@ -46,7 +46,14 @@ onMounted(async () => {
 const unavailable = computed(() => [...new Set(selected.value.flatMap(id => unavailableById.value[id] ?? []))])
 
 function toggle(id: number) {
-  selected.value = selected.value.includes(id) ? selected.value.filter(x => x !== id) : [...selected.value, id]
+  if (selected.value.includes(id)) {
+    selected.value = selected.value.filter(x => x !== id)
+    return
+  }
+  // Acomodações do mesmo imóvel (o Espaço inclui o apartamento) não vão juntas: a nova toma o lugar da outra.
+  const unit = props.property.accommodations.find(a => a.id === id)?.shared_unit
+  const others = unit ? selected.value.filter(x => props.property.accommodations.find(a => a.id === x)?.shared_unit !== unit) : selected.value
+  selected.value = [...others, id]
 }
 
 // O orçamento guarda quantos hóspedes ele considerou, para o "Total para N pessoas".
