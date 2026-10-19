@@ -21,7 +21,8 @@ function skipToContent() {
       <slot />
     </main>
     <SiteFooter :property="property" :show-call="route.path !== '/reservar'" />
-    <SiteDemoChip v-if="property.demo" />
+    <!-- Dentro da prévia do editor do painel (?layout=), o aviso de demonstração atrapalharia. -->
+    <SiteDemoChip v-if="property.demo && !route.query.layout" />
     <SiteMobileBar v-if="route.path !== '/reservar'" :property="property" :whatsapp="whatsappLink()" />
   </div>
 </template>

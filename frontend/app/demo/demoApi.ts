@@ -2,6 +2,7 @@
 // Imita as respostas do backend Laravel com dados de exemplo.
 import type { Accommodation, Property, Quote, QuoteItem } from '~/composables/useApi'
 import { addDaysIso, addMonthsIso, nightsBetween, todayIn, weekdayOf } from '~/utils/dates'
+import { normalizeLayout } from '~/utils/homeLayout'
 import { plural } from '~/utils/pricing'
 import { dawnScene, goldenScene, interiorScene, nightScene, porchScene, trailScene } from './illustrations'
 
@@ -289,6 +290,11 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
         .sort((a, b) => a.check_in.localeCompare(b.check_in))
         .map(withNights),
     }),
+    'GET /admin/layout': () => ({ sections: normalizeLayout(property.home_sections) }),
+    'PUT /admin/layout': () => {
+      property.home_sections = normalizeLayout(body.sections)
+      return { sections: property.home_sections }
+    },
     'GET /admin/blocked-dates': () => ({ data: [...blocks].sort((a, b) => a.starts_on.localeCompare(b.starts_on)) }),
     'POST /admin/blocked-dates': () => {
       if (!accommodations.some(a => a.id === body.accommodation_id)) fail('accommodation_id', 'Acomodação não encontrada.')

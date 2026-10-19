@@ -59,6 +59,8 @@ export interface Property {
   timezone: string
   /** Serviços opcionais (café da manhã, decoração...), mostrados em "O lugar". */
   extras?: { title: string, text: string }[]
+  /** Seções da página inicial na ordem escolhida pelo dono no painel (a capa sempre primeiro). */
+  home_sections?: { key: string, visible: boolean }[]
   /** Título da seção "Um dia aqui"; sem ele, um título genérico. */
   story_title: string | null
   check_in_time: string
