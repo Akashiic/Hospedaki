@@ -85,6 +85,10 @@ class DemoService
             $property->bookings()->delete();
             BlockedDate::whereIn('accommodation_id', $property->accommodations()->select('id'))->delete();
             $this->user($property)->tokens()->delete();
+            // O layout da página inicial volta ao padrão: um visitante pode ter escondido tudo.
+            $settings = $property->settings ?? [];
+            unset($settings['home_sections']);
+            $property->update(['settings' => $settings ?: null]);
 
             $accommodations = $property->accommodations()->where('active', true)->get();
 

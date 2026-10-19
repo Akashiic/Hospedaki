@@ -68,11 +68,15 @@ class DemoModeTest extends TestCase
         $this->getJson('/api/properties/pousada-demo')->assertOk();
         $this->assertSame(0, Booking::where('status', BookingStatus::Pending)->count());
 
+        // E esconde seções da página inicial.
+        $this->property->update(['settings' => ['home_sections' => [['key' => 'stays', 'visible' => false]]]]);
+
         // No dia seguinte (no fuso da pousada), volta ao estado inicial.
         $this->travelTo(CarbonImmutable::now($this->property->timezone)->addDay()->setTime(0, 30));
         $this->getJson('/api/properties/pousada-demo')->assertOk();
         $this->assertSame(2, Booking::where('status', BookingStatus::Pending)->count());
         $this->assertSame(2, BlockedDate::count());
+        $this->assertNull($this->property->fresh()->settings);
     }
 
     public function test_other_properties_are_never_reset(): void
