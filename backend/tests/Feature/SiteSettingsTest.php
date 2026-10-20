@@ -154,4 +154,37 @@ class SiteSettingsTest extends TestCase
     {
         $this->postJson('/api/admin/site/images/banner', ['photo' => $this->image(10, 10)])->assertNotFound();
     }
+
+    public function test_search_settings_have_safe_defaults_and_are_validated(): void
+    {
+        $seo = $this->getJson('/api/properties/pousada')->json('data.seo');
+        $this->assertSame(['·', 'allow', true, 'BedAndBreakfast', true], [$seo['separator'], $seo['ai_bots'], $seo['structured_data'], $seo['schema_type'], $seo['sitemap_images']]);
+
+        $this->putJson('/api/admin/site/seo', ['indexable' => true, 'ai_bots' => 'training', 'schema_type' => 'Hotel', 'separator' => '|'])->assertOk();
+        // Salvar só uma parte mantém o resto.
+        $this->putJson('/api/admin/site/seo', ['indexable' => true, 'sitemap_images' => false])->assertOk()
+            ->assertJsonPath('seo.ai_bots', 'training')
+            ->assertJsonPath('seo.schema_type', 'Hotel')
+            ->assertJsonPath('seo.separator', '|')
+            ->assertJsonPath('seo.sitemap_images', false);
+
+        $this->putJson('/api/admin/site/seo', ['indexable' => true, 'ai_bots' => 'some', 'schema_type' => 'Castle', 'separator' => '/'])
+            ->assertJsonValidationErrors(['ai_bots', 'schema_type', 'separator']);
+    }
+
+    public function test_pages_can_leave_google_except_the_home(): void
+    {
+        $this->putJson('/api/admin/site/pages/reservar', ['index' => false])->assertOk()->assertJsonPath('pages.reservar.index', false);
+        $this->putJson('/api/admin/site/pages/inicio', ['index' => false])->assertOk()->assertJsonPath('pages.inicio.index', true);
+        $this->assertFalse($this->getJson('/api/properties/pousada')->json('data.pages.reservar.index'));
+    }
+
+    public function test_api_is_never_indexed_but_photos_are(): void
+    {
+        $this->getJson('/api/properties/pousada')->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+        $this->getJson('/api/admin/me')->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
+
+        $media = Media::create(['property_id' => $this->property->id, 'mime' => 'image/jpeg', 'width' => 1, 'height' => 1, 'size' => 1, 'data' => base64_encode('x')]);
+        $this->get("/api/media/{$media->id}")->assertOk()->assertHeaderMissing('X-Robots-Tag');
+    }
 }

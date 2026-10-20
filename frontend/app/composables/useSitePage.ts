@@ -3,6 +3,7 @@ import type { PageKey } from '~/utils/sitePages'
 /**
  * Textos de uma página do site (os do dono ou os padrão) e as tags de SEO dela.
  * `image` é a foto da página, usada ao compartilhar quando a pousada não escolheu uma imagem própria.
+ * Página tirada do Google pelo dono (ou a prévia do editor) recebe noindex e sai do mapa do site.
  */
 export async function useSitePage(key: PageKey, options: { image?: () => string | null | undefined, noindex?: () => boolean } = {}) {
   // Depois do await o Nuxt perde o contexto da página: as tags são registradas dentro dele.
@@ -16,8 +17,10 @@ export async function useSitePage(key: PageKey, options: { image?: () => string 
     ogTitle: () => content.value.seoTitle,
     ogDescription: () => content.value.seoDescription ?? undefined,
     ogImage: () => property.value.share_image_url ?? options.image?.() ?? undefined,
-    robots: () => options.noindex?.() ? 'noindex' : undefined,
   }))
+  if (property.value.pages?.[key]?.index === false || options.noindex?.()) {
+    nuxtApp.runWithContext(() => useRobotsRule('noindex, follow'))
+  }
 
   return content
 }

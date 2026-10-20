@@ -1,2 +1,5 @@
+# API do Hospedaki: nada aqui é para buscadores, exceto as fotos da pousada
+# (aparecem no Google Imagens e nas prévias de link do WhatsApp).
 User-agent: *
-Disallow:
+Allow: /api/media/
+Disallow: /

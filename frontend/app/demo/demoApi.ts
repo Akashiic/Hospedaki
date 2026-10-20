@@ -334,14 +334,15 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
   const siteMatch = route.match(/^\/admin\/site(?:\/(identity|seo|pages|images)(?:\/(\w+))?)?$/)
   if (siteMatch) {
     const [, part, key] = siteMatch
-    const pages = (property.pages ??= Object.fromEntries(SITE_PAGES.map(p => [p.key, { menu: true, eyebrow: null, title: null, lead: null, seo_title: null, seo_description: null }])) as NonNullable<Property['pages']>)
-    const seo = (property.seo ??= { description: null, indexable: true, google_verification: null, ga_id: null, meta_pixel_id: null })
+    const pages = (property.pages ??= Object.fromEntries(SITE_PAGES.map(p => [p.key, { menu: true, index: true, eyebrow: null, title: null, lead: null, seo_title: null, seo_description: null }])) as NonNullable<Property['pages']>)
+    const seo = (property.seo ??= { description: null, indexable: true, separator: '·', ai_bots: 'allow', structured_data: true, schema_type: 'BedAndBreakfast', sitemap_images: true, google_verification: null, ga_id: null, meta_pixel_id: null })
     if (part === 'identity' && method === 'PUT') Object.assign(property, body)
     if (part === 'seo' && method === 'PUT') Object.assign(seo, body)
     if (part === 'pages' && method === 'PUT') {
       const page = pages[key as PageKey] ?? notFound()
       Object.assign(page, body)
       if (!SITE_PAGES.find(p => p.key === key)?.menuOptional) page.menu = true
+      if (!SITE_PAGES.find(p => p.key === key)?.searchOptional) page.index = true
     }
     if (part === 'images' && method === 'POST') fail('photo', 'Na prévia o envio de imagens fica desligado.')
     if (part === 'images' && method === 'DELETE') {

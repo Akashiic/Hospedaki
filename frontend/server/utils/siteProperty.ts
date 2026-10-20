@@ -1,17 +1,26 @@
-import type { H3Event } from 'h3'
-
-interface SiteProperty {
-  seo?: { indexable?: boolean }
-  accommodations?: { slug: string }[]
+/** O que o servidor do site precisa da pousada para SEO (robots, mapa do site, nome). */
+export interface SiteProperty {
+  name: string
+  description: string | null
+  tagline: string | null
+  demo?: boolean
+  pages?: Record<string, { index?: boolean }>
+  seo?: { indexable?: boolean, ai_bots?: 'allow' | 'training' | 'all', sitemap_images?: boolean, description?: string | null }
+  photos?: { url: string, caption: string | null }[]
+  accommodations?: { slug: string, name: string, updated_at?: string | null, photos: { url: string, caption: string | null }[] }[]
 }
 
-/** Pousada do site, para robots.txt e sitemap.xml. Null se a API não responder. */
-export async function siteProperty(event: H3Event): Promise<SiteProperty | null> {
-  const { apiBase, propertySlug } = useRuntimeConfig(event).public
-  return await $fetch<{ data: SiteProperty }>(`${apiBase}/properties/${propertySlug}`, { timeout: 20000 })
+/**
+ * Pousada do site, guardada por um minuto: robots.txt, sitemap.xml e cada página leem daqui sem
+ * chamar a API toda vez. Null se a API não responder (o site segue com os padrões).
+ */
+const cachedProperty = defineCachedFunction(async (apiBase: string, slug: string) => {
+  return await $fetch<{ data: SiteProperty }>(`${apiBase}/properties/${slug}`, { timeout: 25000 })
     .then(res => res.data)
     .catch(() => null)
-}
+}, { name: 'site-property', maxAge: 60, swr: false, getKey: (apiBase: string, slug: string) => `${apiBase}|${slug}` })
 
-/** Endereço do site como o visitante usou (domínio próprio ou o da Vercel). */
-export const siteOrigin = (event: H3Event) => getRequestURL(event, { xForwardedHost: true, xForwardedProto: true }).origin
+export async function siteProperty(): Promise<SiteProperty | null> {
+  const { apiBase, propertySlug } = useRuntimeConfig().public
+  return await cachedProperty(apiBase, propertySlug)
+}

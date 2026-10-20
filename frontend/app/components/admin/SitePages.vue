@@ -73,6 +73,7 @@ const cards = computed(() => SITE_PAGES.map((info) => {
               <p v-if="card.content" class="seo"><span>No Google:</span> {{ card.content.seoTitle }}</p>
               <div class="chips">
                 <span class="chip" :class="{ off: !(card.saved?.menu ?? true) }"><span class="a-dot" />{{ (card.saved?.menu ?? true) ? 'No menu' : 'Fora do menu' }}</span>
+                <span v-if="card.saved?.index === false" class="chip off"><span class="a-dot" />Fora do Google</span>
                 <span v-if="card.custom" class="chip brand">Textos personalizados</span>
                 <span v-if="card.info.key === 'inicio'" class="chip">Seções e ordem</span>
               </div>

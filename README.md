@@ -24,7 +24,8 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - **Seu site** no painel, com três telas:
   - **Páginas**: cada página do site (Início, O lugar, Acomodações, Reservar, Contato) com os textos da abertura, o título e a descrição no Google e a opção de sair do menu, com prévia do Google e do WhatsApp. Na página inicial, as seções podem ser ligadas, desligadas e reordenadas, com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas (a capa fica sempre no topo e seções sem conteúdo ficam fora do site).
   - **Configurações**: logo, ícone da aba do navegador, nome, frase de destaque, cor principal, apresentação e contatos.
-  - **SEO**: imagem de compartilhamento, descrição padrão, "Aparecer no Google", verificação do Search Console, Google Analytics e Pixel do Meta. O `robots.txt` e o `sitemap.xml` são gerados pelo site e seguem essas escolhas.
+  - **SEO**: imagem de compartilhamento, descrição padrão, separador dos títulos, "Aparecer no Google", robôs de IA (liberar, bloquear o treino ou bloquear todos), dados estruturados (Schema.org, com o tipo de hospedagem), fotos no mapa do site, verificação do Search Console, Google Analytics e Pixel do Meta, com o `robots.txt` e o `sitemap.xml` que estão no ar. Cada página também pode sair do Google em **Páginas**.
+- SEO com [Nuxt SEO](https://nuxtseo.com) (`@nuxtjs/seo`: robots, sitemap, Schema.org e tags padrão). As escolhas do painel valem por requisição (`frontend/server/plugins`). Em produção, defina `NUXT_SITE_URL` com o endereço público do site. O painel e o login nunca são indexados: `X-Robots-Tag: noindex`, meta noindex, fora do mapa do site, sem iframe e sem cache; a API também responde com noindex.
 - Aviso por e-mail para o dono a cada pedido novo.
 - Google Analytics 4 e Pixel do Meta: basta informar os IDs. O envio de um pedido conta como conversão ("Lead").
 
