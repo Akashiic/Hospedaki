@@ -21,6 +21,12 @@ class DemoService
     /** Guarda a data (no fuso da pousada) do último reset. */
     private const RESET_KEY = 'demo:reset-on';
 
+    /**
+     * Tempo máximo do reset, em segundos. São cerca de 115 consultas, e com a API e o banco em
+     * regiões diferentes cada uma leva uns 250 ms: passa dos 30 s padrão do PHP.
+     */
+    private const RESET_TIME_LIMIT = 180;
+
     public function __construct(private readonly BookingService $bookings) {}
 
     public function isDemo(Property $property): bool
@@ -55,6 +61,10 @@ class DemoService
     /**
      * Reseta a demo na primeira visita de cada dia. Chamado pelo site e pelo login da demo,
      * porque no plano gratuito do Render não há agendador rodando o tempo todo.
+     *
+     * O reset roda depois que a resposta sai (quem chegou primeiro não espera) e com um limite
+     * de tempo maior: cortado no meio pelo limite padrão, ele voltava atrás e cada visita
+     * seguinte tentava de novo e caía do mesmo jeito.
      */
     public function resetIfStale(Property $property): void
     {
@@ -68,12 +78,17 @@ class DemoService
             return;
         }
 
-        // Se outro pedido já está resetando, este segue sem esperar.
-        Cache::lock(self::RESET_KEY.':lock', 30)->get(function () use ($property, $today) {
-            if (Cache::get(self::RESET_KEY) !== $today) {
-                $this->reset($property);
-                Cache::forever(self::RESET_KEY, $today);
-            }
+        app()->terminating(function () use ($property, $today) {
+            @set_time_limit(self::RESET_TIME_LIMIT);
+
+            // Se outro pedido já está resetando, este segue sem esperar. A trava dura mais que
+            // o próprio reset, para dois pedidos nunca resetarem ao mesmo tempo.
+            Cache::lock(self::RESET_KEY.':lock', self::RESET_TIME_LIMIT + 20)->get(function () use ($property, $today) {
+                if (Cache::get(self::RESET_KEY) !== $today) {
+                    $this->reset($property);
+                    Cache::forever(self::RESET_KEY, $today);
+                }
+            });
         });
     }
 
@@ -85,7 +100,9 @@ class DemoService
         DB::transaction(function () use ($property) {
             $property->bookings()->delete();
             BlockedDate::whereIn('accommodation_id', $property->accommodations()->select('id'))->delete();
-            $this->user($property)->tokens()->delete();
+            // Só as sessões de dias anteriores: quem acabou de entrar (o reset roda depois do
+            // login) continua logado.
+            $this->user($property)->tokens()->where('created_at', '<', $property->today()->utc())->delete();
             // Layout da home, textos das páginas e SEO voltam ao padrão: um visitante pode ter
             // escondido tudo ou trocado o nome da pousada.
             $settings = $property->settings ?? [];
