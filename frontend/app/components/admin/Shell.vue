@@ -17,6 +17,18 @@ const items: { tab: AdminTab, label: string, icon: Component, mobile?: boolean }
   { tab: 'pagina', label: 'Página inicial', icon: LayoutTemplate },
 ]
 
+// Barra fina no topo enquanto alguma requisição do painel está em andamento. Só aparece
+// depois de 150 ms, para não piscar nas respostas rápidas.
+const inflight = useAdminBusy()
+const busy = ref(false)
+let busyTimer: ReturnType<typeof setTimeout> | undefined
+watch(inflight, (n) => {
+  clearTimeout(busyTimer)
+  if (n > 0) busyTimer = setTimeout(() => { busy.value = true }, 150)
+  else busy.value = false
+})
+onBeforeUnmount(() => clearTimeout(busyTimer))
+
 const more = ref(false)
 const inMore = computed(() => !items.find(i => i.tab === props.tab)?.mobile)
 function go(tab: AdminTab) {
@@ -28,6 +40,9 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
 
 <template>
   <div class="shell">
+    <Transition name="progress">
+      <div v-if="busy" class="progress" role="progressbar" aria-label="Carregando"><span /></div>
+    </Transition>
     <aside class="side" aria-label="Menu do painel">
       <div class="brand">
         <span class="mark" aria-hidden="true">{{ (propertyName ?? 'P').slice(0, 1) }}</span>
@@ -94,6 +109,14 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
 
 <style scoped lang="scss">
 .shell { --side: 248px; min-height: 100vh; }
+// Barra de progresso indeterminada: um trecho de cor que corre da esquerda para a direita.
+.progress { position: fixed; z-index: 90; top: 0; left: 0; right: 0; height: 3px; overflow: hidden; background: color-mix(in srgb, var(--brand) 18%, transparent); }
+.progress span { position: absolute; inset: 0; width: 40%; background: var(--brand); border-radius: 0 3px 3px 0; animation: run 1.1s $ease-move infinite; }
+@keyframes run { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.progress-enter-active { transition: opacity $dur-sm $ease-enter; }
+.progress-leave-active { transition: opacity $dur-md $ease-exit; }
+.progress-enter-from, .progress-leave-to { opacity: 0; }
+@include reduced-motion { .progress span { animation-duration: 2.2s; } }
 .mark {
   display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 12px;
   background: var(--brand); color: var(--brand-ink); font-family: var(--font-display); font-size: 1.4rem;

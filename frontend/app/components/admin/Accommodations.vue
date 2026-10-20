@@ -15,6 +15,7 @@ const busy = ref(false)
 // null: lista; 'new': formulário vazio; número: editando essa acomodação.
 const open = ref<number | 'new' | null>(null)
 // A chave muda só ao abrir pela lista: criar uma acomodação nova mantém o mesmo formulário aberto.
+const view = useViewMode('acomodacoes')
 const formKey = ref(0)
 function openForm(target: number | 'new') {
   formKey.value++
@@ -107,20 +108,23 @@ const fromPrice = (a: AdminAccommodation) => Math.min(a.base_price, a.weekend_pr
         <h1>Acomodações</h1>
         <p class="hint">Na ordem em que aparecem no site. Toque em uma para editar dados, preços, fotos e temporadas.</p>
       </div>
-      <button type="button" class="btn" @click="openForm('new')"><Plus :size="18" aria-hidden="true" /> Nova acomodação</button>
+      <div class="head-tools">
+        <AdminViewToggle v-if="list.length" v-model="view" />
+        <button type="button" class="btn" @click="openForm('new')"><Plus :size="18" aria-hidden="true" /> Nova acomodação</button>
+      </div>
     </header>
 
     <div v-if="error" class="a-card load-error" role="alert">
       <p>Não foi possível carregar as acomodações. {{ error }}</p>
       <button type="button" class="btn btn-sm" @click="load">Tentar de novo</button>
     </div>
-    <div v-else-if="loading" class="skel" aria-busy="true"><span v-for="n in 3" :key="n" class="a-skeleton" /></div>
+    <AdminLoading v-else-if="loading" text="Carregando acomodações..." :cards="3" height="116px" />
     <div v-else-if="!list.length" class="a-card empty">
       <span class="empty-ico"><BedDouble :size="30" aria-hidden="true" /></span>
       <p>Nenhuma acomodação ainda. Crie a primeira para ela aparecer no site.</p>
     </div>
 
-    <TransitionGroup v-else tag="ol" name="a-list" class="list" :class="{ busy }">
+    <TransitionGroup v-else tag="ol" name="a-list" class="items" :class="[view, { busy }]">
       <li v-for="(a, i) in list" :key="a.id" class="a-card a-lift a-rise" :class="{ off: !a.active }" :style="{ '--i': i + 1 }">
         <button type="button" class="open" :aria-label="`Editar ${a.name}`" @click="openForm(a.id)">
           <span class="thumb">
@@ -151,21 +155,32 @@ const fromPrice = (a: AdminAccommodation) => Math.min(a.base_price, a.weekend_pr
 </template>
 
 <style scoped lang="scss">
-.accs { display: grid; gap: 1.1rem; max-width: 980px; }
+.accs { display: grid; gap: 1.1rem; max-width: 1240px; }
+.head-tools { display: flex; align-items: center; gap: .6rem; }
 .head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: .8rem; }
 .head h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0 0 .3rem; }
 .head .btn { gap: .4rem; }
 .hint { margin: 0; color: var(--muted); }
-.list { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; transition: opacity $dur-sm $ease-move; }
-.list.busy { opacity: .7; }
-.list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .6rem; padding: .7rem .9rem .7rem .7rem; }
-.list li.off .thumb img, .list li.off strong { opacity: .5; }
-@include below(sm) { .list li { grid-template-columns: minmax(0, 1fr); } .tools { justify-content: flex-end; } }
+.items { position: relative; list-style: none; margin: 0; padding: 0; display: grid; gap: .8rem; transition: opacity $dur-sm $ease-move; }
+.items.busy { opacity: .7; }
+.items.list { max-width: 980px; }
+.items li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .6rem; padding: .7rem .9rem .7rem .7rem; }
+.items li.off .thumb img, .items li.off strong { opacity: .5; }
+@include below(sm) { .items li { grid-template-columns: minmax(0, 1fr); } .tools { justify-content: flex-end; } }
+// Grade: foto grande no alto, dados embaixo e as ações no pé do cartão.
+.items.grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 1rem;
+  li { grid-template-columns: minmax(0, 1fr); align-content: start; padding: .7rem .7rem .8rem; }
+  .open { grid-template-columns: minmax(0, 1fr); gap: .8rem; }
+  .thumb { aspect-ratio: 16 / 10; }
+  .info { padding: 0 .3rem; }
+  .tools { justify-content: space-between; padding: 0 .2rem; }
+}
 .open { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 1rem; align-items: center; background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
 @include below(sm) { .open { grid-template-columns: 92px minmax(0, 1fr); } }
 .thumb { aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; background: var(--a-sunk); display: grid; place-items: center; }
 .thumb img { width: 100%; height: 100%; object-fit: cover; transition: transform $dur-2xl $ease-enter; }
-@media (hover: hover) { .list li:hover .thumb img { transform: scale($zoom-sm); } }
+@media (hover: hover) { .items li:hover .thumb img { transform: scale($zoom-sm); } }
 .nophoto { color: var(--muted); }
 .info { display: grid; gap: .3rem; min-width: 0; }
 .info strong { font-family: var(--font-display); font-weight: 400; font-size: 1.45rem; line-height: 1.1; }
@@ -179,8 +194,6 @@ const fromPrice = (a: AdminAccommodation) => Math.min(a.base_price, a.weekend_pr
 .tools button { display: inline-grid; place-items: center; min-width: 40px; height: 40px; border: 0; background: var(--a-sunk); border-radius: 12px; font: inherit; color: var(--text); cursor: pointer; }
 .tools button:disabled { opacity: .35; cursor: default; }
 .tools .text { display: inline-flex; align-items: center; gap: .35rem; padding: 0 .85rem; font-weight: 700; font-size: .86rem; color: var(--brand-text); }
-.skel { display: grid; gap: .8rem; }
-.skel span { height: 116px; border-radius: var(--a-radius); }
 .empty { display: grid; justify-items: center; gap: .6rem; padding: 2.4rem 1.2rem; text-align: center; color: var(--muted); }
 .empty p { margin: 0; }
 .empty-ico { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 20px; background: var(--a-sunk); color: var(--brand-text); }

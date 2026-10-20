@@ -9,7 +9,7 @@ const emit = defineEmits<{ saved: [acc: AdminAccommodation, created: boolean], d
 const api = useAdminApi()
 
 const blank = (): AccommodationInput => ({
-  name: '', description: '', amenities: [], max_guests: 2, included_guests: 2,
+  name: '', description: '', amenities: [], max_guests: 2, included_guests: null,
   base_price: 0, weekend_price: null, extra_guest_price: null, cleaning_fee: null,
   weekly_discount: null, monthly_discount: null, min_nights: 1, best_for: null, active: true,
 })
@@ -22,6 +22,35 @@ const fromAcc = (a: AdminAccommodation): AccommodationInput => ({
 
 const current = ref<AdminAccommodation | null>(props.accommodation)
 const form = reactive<AccommodationInput>(current.value ? fromAcc(current.value) : blank())
+
+// Opções de preço ligadas por caixa de marcar. Desligar zera o campo (o site deixa de usar);
+// religar devolve o último valor ou uma sugestão para começar.
+const OFF = { included: ['included_guests', null], extra: ['extra_guest_price', null], weekend: ['weekend_price', null], cleaning: ['cleaning_fee', null], minNights: ['min_nights', 1], weekly: ['weekly_discount', null], monthly: ['monthly_discount', null] } as const
+type Opt = keyof typeof OFF
+const isOn = (o: Opt) => { const [key, off] = OFF[o]; return form[key] != null && form[key] !== off && form[key] !== 0 }
+const opts = reactive(Object.fromEntries(Object.keys(OFF).map(o => [o, isOn(o as Opt)])) as Record<Opt, boolean>)
+const syncOpts = () => (Object.keys(OFF) as Opt[]).forEach((o) => { opts[o] = isOn(o) })
+const stash: Partial<Record<Opt, number | null>> = {}
+const suggestion: Record<Opt, () => number> = {
+  included: () => Math.min(2, form.max_guests), extra: () => 8000, weekend: () => form.base_price, cleaning: () => 10000,
+  minNights: () => 2, weekly: () => 10, monthly: () => 20,
+}
+watch(() => ({ ...opts }), (now, before) => {
+  for (const o of Object.keys(OFF) as Opt[]) {
+    if (now[o] === before[o]) continue
+    const [key, off] = OFF[o]
+    // Ligar só preenche um campo vazio: ao desfazer ou salvar, o valor que voltou fica.
+    if (now[o]) {
+      if (form[key] == null || form[key] === off) (form as Record<string, unknown>)[key] = stash[o] ?? suggestion[o]()
+    }
+    else {
+      stash[o] = form[key] as number | null
+      ;(form as Record<string, unknown>)[key] = off
+    }
+  }
+  // Sem pessoas incluídas, não existe "pessoa a mais".
+  if (!now.included && opts.extra) opts.extra = false
+})
 const savedSnapshot = ref(JSON.stringify(form))
 const dirty = computed(() => JSON.stringify(form) !== savedSnapshot.value)
 const isNew = computed(() => !current.value)
@@ -43,6 +72,7 @@ async function save() {
     })
     current.value = res.data
     Object.assign(form, fromAcc(res.data))
+    syncOpts()
     savedSnapshot.value = JSON.stringify(form)
     message.value = created ? 'Acomodação criada. Agora adicione as fotos.' : 'Alterações salvas. Já estão no site.'
     emit('saved', res.data, created)
@@ -59,6 +89,7 @@ async function save() {
 
 function undo() {
   Object.assign(form, current.value ? fromAcc(current.value) : blank())
+  nextTick(syncOpts)
   errors.value = {}
 }
 
@@ -181,44 +212,54 @@ function back() {
 
       <section class="card">
         <h3>Hóspedes</h3>
-        <div class="row three">
-          <label for="acc-max">Capacidade máxima
-            <input id="acc-max" v-model.number="form.max_guests" type="number" min="1" max="50" required>
-          </label>
-          <label for="acc-incl">Incluídos na diária
-            <input id="acc-incl" v-model.number="form.included_guests" type="number" min="1" :max="form.max_guests" placeholder="Todos">
-            <small v-if="fieldError('included_guests')" class="err">{{ fieldError('included_guests') }}</small>
-          </label>
-          <label for="acc-extra">Por pessoa a mais, por diária
-            <AdminMoneyInput id="acc-extra" v-model="form.extra_guest_price" placeholder="A combinar" />
-          </label>
+        <label for="acc-max" class="narrow">Capacidade máxima
+          <input id="acc-max" v-model.number="form.max_guests" type="number" min="1" max="50" required>
+        </label>
+        <div class="options">
+          <AdminOption id="opt-incl" v-model="opts.included" label="A diária vale para menos pessoas" hint="Ex.: diária para 2, e quem passar disso paga à parte. Desligado, a diária vale para a lotação toda.">
+            <label for="acc-incl">Pessoas incluídas na diária
+              <input id="acc-incl" v-model.number="form.included_guests" type="number" min="1" :max="form.max_guests">
+              <small v-if="fieldError('included_guests')" class="err">{{ fieldError('included_guests') }}</small>
+            </label>
+          </AdminOption>
+          <AdminOption v-if="opts.included" id="opt-extra" v-model="opts.extra" label="Cobrar por pessoa a mais" hint="Desligado, o site avisa que o acréscimo é combinado na confirmação.">
+            <label for="acc-extra">Valor por pessoa a mais, por diária
+              <AdminMoneyInput id="acc-extra" v-model="form.extra_guest_price" />
+            </label>
+          </AdminOption>
         </div>
-        <p class="hint">Ex.: diária para 2 pessoas e R$ 80,00 por pessoa a mais. Sem valor, o site avisa que o acréscimo é combinado na confirmação.</p>
       </section>
 
       <section class="card">
         <h3>Preços</h3>
-        <div class="row">
-          <label for="acc-base">Diária
-            <AdminMoneyInput id="acc-base" v-model="form.base_price" required />
-            <small v-if="fieldError('base_price')" class="err">{{ fieldError('base_price') }}</small>
-          </label>
-          <label for="acc-weekend"><span>Diária de sexta e sábado <span class="opt">opcional</span></span>
-            <AdminMoneyInput id="acc-weekend" v-model="form.weekend_price" placeholder="Igual à diária" />
-          </label>
-          <label for="acc-clean"><span>Taxa de limpeza <span class="opt">por estadia</span></span>
-            <AdminMoneyInput id="acc-clean" v-model="form.cleaning_fee" placeholder="Sem taxa" />
-          </label>
-          <label for="acc-min">Mínimo de diárias
-            <input id="acc-min" v-model.number="form.min_nights" type="number" min="1" max="90" required>
-          </label>
-          <label for="acc-week"><span>Desconto semanal <span class="opt">7+ diárias</span></span>
-            <span class="pct"><input id="acc-week" v-model.number="form.weekly_discount" type="number" min="0" max="90" placeholder="0"><span aria-hidden="true">%</span></span>
-          </label>
-          <label for="acc-month"><span>Desconto mensal <span class="opt">28+ diárias</span></span>
-            <span class="pct"><input id="acc-month" v-model.number="form.monthly_discount" type="number" min="0" max="90" placeholder="0"><span aria-hidden="true">%</span></span>
-            <small v-if="fieldError('monthly_discount')" class="err">{{ fieldError('monthly_discount') }}</small>
-          </label>
+        <label for="acc-base" class="narrow">Diária
+          <AdminMoneyInput id="acc-base" v-model="form.base_price" required />
+          <small v-if="fieldError('base_price')" class="err">{{ fieldError('base_price') }}</small>
+        </label>
+        <p class="sub">Ligue só o que a sua pousada usa:</p>
+        <div class="options">
+          <AdminOption id="opt-weekend" v-model="opts.weekend" label="Preço diferente para sexta e sábado" hint="As noites de sexta e sábado passam a ter a diária daqui.">
+            <label for="acc-weekend">Diária de sexta e sábado <AdminMoneyInput id="acc-weekend" v-model="form.weekend_price" /></label>
+          </AdminOption>
+          <AdminOption id="opt-clean" v-model="opts.cleaning" label="Taxa de limpeza" hint="Cobrada uma vez por estadia, sem desconto.">
+            <label for="acc-clean">Valor da taxa <AdminMoneyInput id="acc-clean" v-model="form.cleaning_fee" /></label>
+          </AdminOption>
+          <AdminOption id="opt-min" v-model="opts.minNights" label="Mínimo de diárias" hint="Ex.: só aceitar reservas de 2 diárias ou mais.">
+            <label for="acc-min">Mínimo
+              <input id="acc-min" v-model.number="form.min_nights" type="number" min="2" max="90">
+            </label>
+          </AdminOption>
+          <AdminOption id="opt-week" v-model="opts.weekly" label="Desconto para uma semana ou mais" hint="Sobre as diárias, a partir de 7.">
+            <label for="acc-week">Desconto
+              <span class="pct"><input id="acc-week" v-model.number="form.weekly_discount" type="number" min="1" max="90"><span aria-hidden="true">%</span></span>
+            </label>
+          </AdminOption>
+          <AdminOption id="opt-month" v-model="opts.monthly" label="Desconto para um mês ou mais" hint="Sobre as diárias, a partir de 28. Vale no lugar do semanal.">
+            <label for="acc-month">Desconto
+              <span class="pct"><input id="acc-month" v-model.number="form.monthly_discount" type="number" min="1" max="90"><span aria-hidden="true">%</span></span>
+              <small v-if="fieldError('monthly_discount')" class="err">{{ fieldError('monthly_discount') }}</small>
+            </label>
+          </AdminOption>
         </div>
 
         <div class="sim" aria-live="polite">
@@ -281,6 +322,10 @@ label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; 
 .opt { font-weight: 400; color: var(--muted); }
 .err { color: var(--danger); font-weight: 700; }
 .hint { margin: 0; color: var(--muted); font-size: .88rem; font-weight: 400; }
+.options { display: grid; gap: .5rem; }
+.options :deep(.option) { box-shadow: inset 0 0 0 1px var(--a-sunk); }
+.narrow { max-width: 260px; }
+.sub { margin: .2rem 0 -.3rem; color: var(--muted); font-size: .88rem; font-weight: 600; }
 .row { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .pct { position: relative; display: block; }
 .pct span { position: absolute; right: .85rem; top: 50%; transform: translateY(-50%); color: var(--muted); }
