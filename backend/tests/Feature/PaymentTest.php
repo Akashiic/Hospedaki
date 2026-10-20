@@ -75,7 +75,8 @@ class PaymentTest extends TestCase
     private function fakeMercadoPago(string $status = 'approved', ?int $amount = 54000): void
     {
         Http::fake([
-            'api.mercadopago.com/v1/payments/*' => Http::response(['id' => 777, 'status' => $status, 'transaction_amount' => $amount / 100, 'external_reference' => 'hospedaki-1']),
+            // A referência é a do pagamento criado no teste: no Postgres os ids não recomeçam do 1.
+            'api.mercadopago.com/v1/payments/*' => fn () => Http::response(['id' => 777, 'status' => $status, 'transaction_amount' => $amount / 100, 'external_reference' => Payment::latest('id')->first()->reference()]),
             'api.mercadopago.com/v1/payments' => Http::response([
                 'id' => 777, 'status' => 'pending',
                 'point_of_interaction' => ['transaction_data' => ['qr_code' => '00020126PIXCOPIAECOLA', 'ticket_url' => 'https://mpago.la/x']],
@@ -134,7 +135,7 @@ class PaymentTest extends TestCase
             && $request['payment_method_id'] === 'pix'
             && $request['transaction_amount'] == 540
             && $request['payer']['email'] === 'ana@exemplo.com'
-            && $request->hasHeader('X-Idempotency-Key', 'hospedaki-1'));
+            && $request->hasHeader('X-Idempotency-Key', Payment::first()->reference()));
 
         // Gerar de novo devolve o mesmo Pix, sem outra cobrança.
         $this->postJson("/api/checkout/{$token}/pix")->assertOk();
@@ -258,7 +259,7 @@ class PaymentTest extends TestCase
     {
         $this->connect('stripe', ['stripe_secret' => 'whsec_x']);
         Http::fake([
-            'api.stripe.com/v1/payment_intents/*' => Http::response(['id' => 'pi_1', 'status' => 'succeeded', 'amount' => 54000, 'metadata' => ['payment' => 'hospedaki-1']]),
+            'api.stripe.com/v1/payment_intents/*' => fn () => Http::response(['id' => 'pi_1', 'status' => 'succeeded', 'amount' => 54000, 'metadata' => ['payment' => Payment::first()->reference()]]),
             'api.stripe.com/v1/payment_intents' => Http::response([
                 'id' => 'pi_1', 'status' => 'requires_action',
                 'next_action' => ['pix_display_qr_code' => ['data' => '000201STRIPEPIX', 'expires_at' => now()->addMinutes(30)->timestamp, 'hosted_instructions_url' => 'https://pay.stripe.com/x']],
