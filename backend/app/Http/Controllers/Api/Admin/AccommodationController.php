@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
-use App\Enums\BookingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AdminAccommodationResource;
 use App\Models\Accommodation;
@@ -12,6 +11,7 @@ use App\Models\Property;
 use App\Models\SeasonalPrice;
 use App\Services\DemoService;
 use App\Services\ImageService;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -26,6 +26,9 @@ use Illuminate\Validation\ValidationException;
  */
 class AccommodationController extends Controller
 {
+    /** De quanto em quanto tempo uma promoção em loop recomeça. */
+    public const LOOP_HOURS = [1, 6, 12, 24, 48, 72, 168];
+
     public function index(Request $request): AnonymousResourceCollection
     {
         return AdminAccommodationResource::collection($this->load($request->user()->property->accommodations()->get()));
@@ -238,10 +241,23 @@ class AccommodationController extends Controller
             'min_hours' => ['sometimes', 'integer', 'min:1', 'max:24'],
             'opens_at' => ['nullable', 'date_format:H:i'],
             'closes_at' => ['nullable', 'date_format:H:i', 'after:opens_at'],
+            // Pagamento online: formas aceitas, desconto no Pix e prazo da promoção (com loop opcional).
+            'accepts_pix' => ['sometimes', 'boolean'],
+            'accepts_card' => ['sometimes', 'boolean'],
+            'pix_discount' => ['sometimes', 'integer', 'min:0', 'max:50'],
+            'promo_ends_at' => ['nullable', 'date'],
+            'promo_loop' => ['sometimes', 'boolean'],
+            'promo_loop_hours' => ['sometimes', 'integer', Rule::in(self::LOOP_HOURS)],
         ], [
+            'pix_discount.max' => 'O desconto no Pix vai até 50%.',
+            'promo_loop_hours.in' => 'Escolha de quanto em quanto tempo a promoção recomeça.',
             'hourly_price.required_if' => 'Informe o preço da hora.',
             'closes_at.after' => 'O horário de fechar precisa ser depois do de abrir.',
         ]);
+
+        if (array_key_exists('promo_ends_at', $data)) {
+            $data['promo_ends_at'] = $data['promo_ends_at'] ? CarbonImmutable::parse($data['promo_ends_at'])->utc() : null;
+        }
 
         // Linhas em branco somem e repetidas viram uma só.
         $data['amenities'] = array_values(array_unique(array_filter(array_map(fn ($item) => trim((string) $item), $data['amenities'] ?? []), 'strlen')));
@@ -312,7 +328,7 @@ class AccommodationController extends Controller
             ->loadCount([
                 'bookings as bookings_count',
                 'bookings as upcoming_bookings_count' => fn ($query) => $query
-                    ->whereIn('status', BookingStatus::holdingDates())
+                    ->holdingDates()
                     ->whereDate('check_out', '>', now()->toDateString()),
             ]);
     }

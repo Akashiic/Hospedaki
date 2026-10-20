@@ -26,6 +26,13 @@ class AdminAccommodationResource extends JsonResource
             'property_check_in_time' => substr((string) $this->property->check_in_time, 0, 5),
             'property_check_out_time' => substr((string) $this->property->check_out_time, 0, 5),
             'sort_order' => $this->sort_order,
+            // Pagamento: o que o dono configurou (o "payment" do site mostra o que vale agora).
+            'accepts_pix' => $this->accepts_pix,
+            'accepts_card' => $this->accepts_card,
+            'pix_discount' => $this->pix_discount,
+            'promo_ends_at' => $this->promo_ends_at?->toAtomString(),
+            'promo_loop' => $this->promo_loop,
+            'promo_loop_hours' => $this->promo_loop_hours,
             'photos' => $this->photos->map(fn ($photo) => [
                 'id' => $photo->id,
                 'url' => PhotoUrl::from($photo->path),

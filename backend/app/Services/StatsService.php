@@ -119,9 +119,10 @@ class StatsService
 
         $stays = $confirmed->filter(fn (Booking $b) => ! $b->isHourly() && $inRange($b->check_in->toDateString()));
         $created = $all->filter(fn (Booking $b) => $inRange($b->created_at->setTimezone($today->timezone)->toDateString()));
-        // Pedidos decididos: aceitos (confirmados, mesmo que cancelados depois), recusados e vencidos sem resposta.
+        // Pedidos decididos: aceitos (confirmados, mesmo que cancelados depois), recusados, vencidos sem resposta
+        // e os que não foram pagos no prazo.
         $accepted = $created->filter(fn (Booking $b) => in_array($b->status, [BookingStatus::Confirmed, BookingStatus::Cancelled], true) && $b->confirmed_at)->count();
-        $declined = $created->filter(fn (Booking $b) => $b->status === BookingStatus::Declined
+        $declined = $created->filter(fn (Booking $b) => in_array($b->status, [BookingStatus::Declined, BookingStatus::Expired], true)
             || ($b->status === BookingStatus::Pending && $b->check_in->lt($today)))->count();
 
         return [

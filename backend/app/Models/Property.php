@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonImmutable;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -12,8 +13,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'name', 'tagline', 'slug', 'domain', 'description', 'highlights', 'story', 'story_title', 'extras', 'email', 'phone', 'whatsapp',
     'address', 'city', 'state', 'logo_path', 'primary_color', 'timezone',
-    'check_in_time', 'check_out_time', 'settings', 'active',
+    'check_in_time', 'check_out_time', 'settings', 'payment_credentials', 'active',
 ])]
+// Chaves dos gateways de pagamento: nunca saem inteiras numa resposta.
+#[Hidden(['payment_credentials'])]
 class Property extends Model
 {
     /** @use HasFactory<PropertyFactory> */
@@ -35,6 +38,7 @@ class Property extends Model
             'highlights' => 'array',
             'story' => 'array',
             'extras' => 'array',
+            'payment_credentials' => 'encrypted:array',
             'active' => 'boolean',
         ];
     }

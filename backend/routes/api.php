@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Api\BookingRequestController;
+use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\MediaController;
+use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\PropertyController;
 use Illuminate\Support\Facades\Route;
 
@@ -16,6 +18,19 @@ Route::prefix('properties/{property:slug}')->group(function () {
     Route::post('quote', [BookingRequestController::class, 'quote'])->middleware('throttle:60,1');
     Route::post('booking-requests', [BookingRequestController::class, 'store'])->middleware('throttle:10,1');
 });
+
+/*
+| Checkout: o hóspede paga a reserva pelo link com o token secreto dela.
+*/
+Route::prefix('checkout/{token}')->group(function () {
+    Route::get('/', [CheckoutController::class, 'show'])->middleware('throttle:60,1');
+    Route::post('pix', [CheckoutController::class, 'pix'])->middleware('throttle:10,1');
+    Route::post('card', [CheckoutController::class, 'card'])->middleware('throttle:10,1');
+    Route::post('simulate', [CheckoutController::class, 'simulate'])->middleware('throttle:10,1');
+});
+
+// Avisos do Mercado Pago e da Stripe quando um pagamento muda.
+Route::post('webhooks/{provider}/{property:slug}', PaymentWebhookController::class)->middleware('throttle:120,1');
 
 // Fotos enviadas pelo painel (guardadas no banco).
 Route::get('media/{media}', [MediaController::class, 'show'])->whereNumber('media');
@@ -54,6 +69,10 @@ Route::prefix('admin')->group(function () {
         Route::put('site/identity', [Admin\SiteController::class, 'updateIdentity']);
         Route::put('site/seo', [Admin\SiteController::class, 'updateSeo']);
         Route::put('site/pages/{page}', [Admin\SiteController::class, 'updatePage']);
+        Route::get('payments', [Admin\PaymentController::class, 'show']);
+        Route::put('payments/settings', [Admin\PaymentController::class, 'updateSettings']);
+        Route::put('payments/gateways/{provider}', [Admin\PaymentController::class, 'updateGateway'])->middleware('throttle:20,1');
+        Route::delete('payments/gateways/{provider}', [Admin\PaymentController::class, 'destroyGateway']);
         Route::post('site/images/{kind}', [Admin\SiteController::class, 'storeImage'])->middleware('throttle:30,1');
         Route::delete('site/images/{kind}', [Admin\SiteController::class, 'destroyImage']);
     });

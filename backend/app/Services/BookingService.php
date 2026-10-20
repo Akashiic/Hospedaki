@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -21,6 +22,7 @@ class BookingService
     public function __construct(
         private readonly PricingService $pricing,
         private readonly AvailabilityService $availability,
+        private readonly PaymentService $payments,
     ) {}
 
     /**
@@ -28,17 +30,29 @@ class BookingService
      * com valor informado). Pessoas a mais sem valor informado não entram no total e somam em
      * extra_guests_unpriced, para o site e o dono saberem que esse acréscimo fica a combinar.
      *
+     * Em payment vão as formas de pagamento online (vazio = o dono confirma o pedido) e o total no Pix.
+     *
      * @param  list<int>  $accommodationIds
-     * @return array{check_in: string, check_out: string, nights: int, total: int, extra_guests_unpriced: int, items: list<array{accommodation_id: int, name: string, subtotal: int, nights_total: int, discount: int, discount_percent: int, cleaning_fee: int, extra_guests: int, extra_guests_subtotal: int, nights: list<array{date: string, price: int}>}>}
+     * @return array{check_in: string, check_out: string, nights: int, total: int, extra_guests_unpriced: int, items: list<array{accommodation_id: int, name: string, subtotal: int, nights_total: int, discount: int, discount_percent: int, cleaning_fee: int, extra_guests: int, extra_guests_subtotal: int, nights: list<array{date: string, price: int}>}>, payment: array{methods: list<string>, pix_discount: int, pix_total: int, pix_percent: int}}
      */
     public function quote(Property $property, array $accommodationIds, string $checkIn, ?string $checkOut, int $guests, ?string $start = null, ?string $end = null): array
     {
         $accommodations = $this->findAccommodations($property, $accommodationIds);
 
-        if ($accommodations->contains(fn (Accommodation $a) => $a->isHourly())) {
-            return $this->hourlyQuote($property, $accommodations, CarbonImmutable::parse($checkIn), $guests, $start, $end);
-        }
+        $quote = $accommodations->contains(fn (Accommodation $a) => $a->isHourly())
+            ? $this->hourlyQuote($property, $accommodations, CarbonImmutable::parse($checkIn), $guests, $start, $end)
+            : $this->nightlyQuote($accommodations, $checkIn, $checkOut, $guests);
 
+        $subtotals = array_column($quote['items'], 'subtotal', 'accommodation_id');
+
+        return $quote + ['payment' => $this->payments->quoteSummary($property, $accommodations, $subtotals)];
+    }
+
+    /**
+     * @param  Collection<int, Accommodation>  $accommodations
+     */
+    private function nightlyQuote(Collection $accommodations, string $checkIn, ?string $checkOut, int $guests): array
+    {
         if (! $checkOut) {
             throw ValidationException::withMessages(['check_out' => 'Escolha a data de saída.']);
         }
@@ -151,7 +165,9 @@ class BookingService
     }
 
     /**
-     * Cria um pedido de reserva pendente. O dono confirma ou recusa depois.
+     * Cria um pedido de reserva. Sem pagamento online, fica pendente e o dono confirma ou recusa.
+     * Com pagamento online, fica aguardando pagamento (segurando as datas pelo prazo) e se
+     * confirma sozinho quando o gateway aprova; o dono só é avisado depois de pago.
      *
      * @param  array{accommodation_ids: list<int>, check_in: string, check_out?: ?string, start_time?: ?string, end_time?: ?string, arrival_time?: ?string, guests: int, guest_name: string, guest_email?: ?string, guest_phone: string, notes?: ?string}  $data
      */
@@ -177,9 +193,12 @@ class BookingService
 
             $quote = $this->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'] ?? null, $data['guests'], $data['start_time'] ?? null, $data['end_time'] ?? null);
             $hourly = isset($quote['start_time']);
+            $pays = $quote['payment']['methods'] !== [];
 
             $booking = $property->bookings()->create([
-                'status' => BookingStatus::Pending,
+                'status' => $pays ? BookingStatus::AwaitingPayment : BookingStatus::Pending,
+                'checkout_token' => $pays ? Str::random(40) : null,
+                'payment_due_at' => $pays ? now()->addMinutes(PaymentService::HOLD_MINUTES) : null,
                 'check_in' => $quote['check_in'],
                 'check_out' => $quote['check_out'],
                 'start_time' => $quote['start_time'] ?? null,
@@ -201,6 +220,10 @@ class BookingService
 
             return $booking->load('accommodations');
         });
+
+        if ($booking->status === BookingStatus::AwaitingPayment) {
+            return $booking;
+        }
 
         // Uma falha no envio do aviso não pode perder o pedido do hóspede.
         try {

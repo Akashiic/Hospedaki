@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Database\Factories\AccommodationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'property_id', 'name', 'slug', 'shared_unit', 'best_for', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
     'weekend_price', 'extra_guest_price', 'cleaning_fee', 'weekly_discount', 'monthly_discount', 'min_nights', 'sort_order', 'active',
     'booking_mode', 'check_in_time', 'check_out_time', 'hourly_price', 'min_hours', 'opens_at', 'closes_at',
+    'accepts_pix', 'accepts_card', 'pix_discount', 'promo_ends_at', 'promo_loop', 'promo_loop_hours',
 ])]
 class Accommodation extends Model
 {
@@ -36,6 +39,11 @@ class Accommodation extends Model
     protected $attributes = [
         'booking_mode' => self::NIGHTLY,
         'min_hours' => 1,
+        'accepts_pix' => true,
+        'accepts_card' => true,
+        'pix_discount' => 0,
+        'promo_loop' => false,
+        'promo_loop_hours' => 24,
     ];
 
     protected function casts(): array
@@ -54,6 +62,12 @@ class Accommodation extends Model
             'hourly_price' => 'integer',
             'min_hours' => 'integer',
             'active' => 'boolean',
+            'accepts_pix' => 'boolean',
+            'accepts_card' => 'boolean',
+            'pix_discount' => 'integer',
+            'promo_ends_at' => 'immutable_datetime',
+            'promo_loop' => 'boolean',
+            'promo_loop_hours' => 'integer',
         ];
     }
 
@@ -82,6 +96,34 @@ class Accommodation extends Model
     public function closesAt(): string
     {
         return substr((string) ($this->closes_at ?? self::DEFAULT_CLOSES_AT), 0, 5);
+    }
+
+    /**
+     * Desconto no Pix valendo agora: o percentual e quando a promoção acaba (null = sem prazo).
+     *
+     * Com prazo, o desconto some quando ele passa. Com o timer em loop, a promoção recomeça na
+     * hora em que acaba e dura promo_loop_hours de novo; o fim mostrado é o do ciclo atual.
+     *
+     * @return array{percent: int, ends_at: ?CarbonImmutable, loop: bool}|null
+     */
+    public function pixPromo(?CarbonInterface $now = null): ?array
+    {
+        if (! $this->accepts_pix || $this->pix_discount <= 0) {
+            return null;
+        }
+
+        $now = CarbonImmutable::parse($now ?? now());
+        $ends = $this->promo_ends_at;
+
+        if ($ends && $ends->lte($now)) {
+            if (! $this->promo_loop) {
+                return null;
+            }
+            $cycle = max(1, $this->promo_loop_hours) * 3600;
+            $ends = $ends->addSeconds((intdiv((int) $ends->diffInSeconds($now), $cycle) + 1) * $cycle);
+        }
+
+        return ['percent' => $this->pix_discount, 'ends_at' => $ends, 'loop' => $this->promo_loop && $ends !== null];
     }
 
     public function property(): BelongsTo

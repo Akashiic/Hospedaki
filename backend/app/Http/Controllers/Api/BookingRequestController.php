@@ -27,6 +27,9 @@ class BookingRequestController extends Controller
     {
         $booking = $this->bookings->request($property, $request->validated());
 
-        return (new BookingResource($booking))->response()->setStatusCode(201);
+        // Com pagamento online, o site leva o hóspede para o checkout com este token.
+        return (new BookingResource($booking))
+            ->additional(['checkout' => $booking->checkout_token ? ['token' => $booking->checkout_token, 'due_at' => $booking->payment_due_at->toAtomString()] : null])
+            ->response()->setStatusCode(201);
     }
 }

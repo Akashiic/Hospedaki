@@ -3,6 +3,8 @@
 namespace App\Http\Resources;
 
 use App\Models\Accommodation;
+use App\Models\Payment;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -46,6 +48,26 @@ class AccommodationResource extends JsonResource
                 'url' => PhotoUrl::from($photo->path),
                 'caption' => $photo->caption,
             ])),
+            'payment' => $this->payment(),
+        ];
+    }
+
+    /**
+     * Como se paga online (vazio = pedido que o dono confirma) e a promoção do Pix valendo agora,
+     * com o fim do ciclo atual. Em loop, o site recomeça o timer sozinho a cada loop_hours.
+     *
+     * @return array{methods: list<string>, pix_discount: int, promo_ends_at: ?string, promo_loop_hours: ?int}
+     */
+    private function payment(): array
+    {
+        $methods = app(PaymentService::class)->methodsFor($this->property, [$this->resource]);
+        $promo = in_array(Payment::PIX, $methods, true) ? $this->pixPromo() : null;
+
+        return [
+            'methods' => $methods,
+            'pix_discount' => $promo['percent'] ?? 0,
+            'promo_ends_at' => ($promo['ends_at'] ?? null)?->toAtomString(),
+            'promo_loop_hours' => ($promo['loop'] ?? false) ? $this->promo_loop_hours : null,
         ];
     }
 }

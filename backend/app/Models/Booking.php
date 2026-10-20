@@ -4,15 +4,17 @@ namespace App\Models;
 
 use App\Enums\BookingStatus;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 #[Fillable([
-    'property_id', 'code', 'status', 'check_in', 'check_out', 'arrival_time', 'start_time', 'end_time', 'guests', 'extra_guests_unpriced',
+    'property_id', 'code', 'checkout_token', 'status', 'check_in', 'check_out', 'arrival_time', 'start_time', 'end_time', 'guests', 'extra_guests_unpriced',
     'guest_name', 'guest_email', 'guest_phone', 'notes', 'total',
-    'confirmed_at', 'cancelled_at',
+    'confirmed_at', 'cancelled_at', 'payment_due_at', 'paid_at', 'payment_method', 'pix_discount',
 ])]
 class Booking extends Model
 {
@@ -21,6 +23,7 @@ class Booking extends Model
      */
     protected $attributes = [
         'extra_guests_unpriced' => 0,
+        'pix_discount' => 0,
     ];
 
     protected function casts(): array
@@ -34,6 +37,9 @@ class Booking extends Model
             'total' => 'integer',
             'confirmed_at' => 'datetime',
             'cancelled_at' => 'datetime',
+            'payment_due_at' => 'datetime',
+            'paid_at' => 'datetime',
+            'pix_discount' => 'integer',
         ];
     }
 
@@ -54,6 +60,28 @@ class Booking extends Model
         return $this->belongsToMany(Accommodation::class, 'booking_accommodation')
             ->withPivot('subtotal')
             ->withTimestamps();
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * Reservas que ocupam o calendário: pedidos pendentes e confirmadas, e as que esperam o
+     * pagamento enquanto o prazo não passou (as vencidas viram Expired depois, mas já não seguram).
+     */
+    public function scopeHoldingDates(Builder $query): void
+    {
+        $query->where(fn (Builder $q) => $q
+            ->whereIn('status', [BookingStatus::Pending, BookingStatus::Confirmed])
+            ->orWhere(fn (Builder $q) => $q->where('status', BookingStatus::AwaitingPayment)->where('payment_due_at', '>', now())));
+    }
+
+    /** Esperando o pagamento e ainda dentro do prazo. */
+    public function awaitsPayment(): bool
+    {
+        return $this->status === BookingStatus::AwaitingPayment && $this->payment_due_at?->isFuture();
     }
 
     public function nights(): int
