@@ -13,6 +13,7 @@ const scope = ref<BookingScope>('upcoming')
 const bookings = ref<AdminBooking[]>([])
 const counts = ref<Partial<Record<BookingScope, number>>>({})
 const search = ref('')
+const view = useViewMode('reservas')
 const loading = ref(true)
 const error = ref('')
 const busyId = ref<number | null>(null)
@@ -89,6 +90,7 @@ async function cancel(booking: AdminBooking) {
         <span class="sr-only">Buscar reserva</span>
         <input id="booking-search" v-model="search" type="search" placeholder="Buscar por nome, código, telefone ou acomodação" autocomplete="off">
       </label>
+      <AdminViewToggle v-model="view" />
       <Transition name="a-tab">
         <p v-if="!loading && shown.length" class="summary">
           {{ plural(shown.length, 'reserva', 'reservas') }}<template v-if="confirmedTotal"> · <strong>{{ formatMoney(confirmedTotal) }}</strong> confirmados</template>
@@ -100,12 +102,12 @@ async function cancel(booking: AdminBooking) {
       <p>Não foi possível carregar as reservas. {{ error }}</p>
       <button type="button" class="btn btn-sm" @click="load">Tentar de novo</button>
     </div>
-    <div v-else-if="loading && !bookings.length" class="skel" aria-busy="true"><span v-for="n in 3" :key="n" class="a-skeleton" /></div>
+    <AdminLoading v-else-if="loading && !bookings.length" text="Carregando reservas..." :cards="2" height="190px" />
     <div v-else-if="!shown.length" class="a-card empty">
       <span class="empty-ico"><CalendarSearch :size="28" aria-hidden="true" /></span>
       <p>{{ emptyText }}</p>
     </div>
-    <TransitionGroup v-else tag="div" name="a-list" class="list" :class="{ stale: loading }">
+    <TransitionGroup v-else tag="div" name="a-list" class="items" :class="[view, { stale: loading }]">
       <AdminBookingItem
         v-for="(booking, i) in shown"
         :key="booking.id"
@@ -121,7 +123,7 @@ async function cancel(booking: AdminBooking) {
 </template>
 
 <style scoped lang="scss">
-.bookings { display: grid; gap: 1.1rem; max-width: 980px; }
+.bookings { display: grid; gap: 1.1rem; max-width: 1240px; }
 .page-head h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0 0 .3rem; }
 .page-head p { margin: 0; color: var(--muted); }
 .filters { display: flex; gap: .4rem; overflow-x: auto; padding: .2rem .1rem .4rem; margin: 0 -.1rem; scrollbar-width: none; }
@@ -137,15 +139,17 @@ async function cancel(booking: AdminBooking) {
 .n { min-width: 1.4rem; padding: .05rem .4rem; border-radius: 999px; background: var(--a-sunk); color: var(--muted); font-size: .74rem; text-align: center; }
 [aria-pressed="true"] .n { background: rgb(255 255 255 / .16); color: var(--on-night); }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; }
-.search { position: relative; flex: 1 1 280px; }
+.search { position: relative; flex: 1 1 280px; max-width: 640px; }
 .search svg { position: absolute; left: .9rem; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
 .search input { padding-left: 2.6rem; border: 0; border-radius: 14px; box-shadow: var(--a-shadow); min-height: 46px; }
 .summary { margin: 0; color: var(--muted); font-size: .9rem; }
 .summary strong { color: var(--text); }
-.list { position: relative; display: grid; gap: 1rem; transition: opacity $dur-sm $ease-move; }
-.list.stale { opacity: .55; }
-.skel { display: grid; gap: 1rem; }
-.skel span { height: 200px; border-radius: var(--a-radius); }
+.items { position: relative; display: grid; gap: 1rem; transition: opacity $dur-sm $ease-move; }
+// Lista com largura de leitura; grade com colunas de no mínimo 320 px (o cartão se ajeita à coluna).
+.items.list { max-width: 980px; }
+.items.grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); align-items: start; }
+.summary { flex-basis: 100%; }
+.items.stale { opacity: .55; }
 .empty { display: grid; justify-items: center; gap: .6rem; padding: 2.4rem 1.2rem; text-align: center; color: var(--muted); }
 .empty p { margin: 0; }
 .empty-ico { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 18px; background: var(--a-sunk); color: var(--brand-text); }

@@ -82,20 +82,31 @@ export function useAdminToken() {
   return useCookie<string | null>('hospedaki_admin', { maxAge: 60 * 60 * 24 * 30, sameSite: 'lax', secure: !import.meta.dev })
 }
 
+/** Quantas requisições do painel estão em andamento (a barra de progresso no topo lê daqui). */
+export function useAdminBusy() {
+  return useState('admin-inflight', () => 0)
+}
+
 /** Cliente da API do painel do dono. Sem login válido, volta para a tela de entrar. */
 export function useAdminApi() {
   const config = useRuntimeConfig().public
   const token = useAdminToken()
+  const inflight = useAdminBusy()
+  // Toda requisição conta na barra de progresso enquanto não volta.
+  const track = <T>(request: Promise<T>) => {
+    inflight.value++
+    return request.finally(() => { inflight.value = Math.max(0, inflight.value - 1) })
+  }
 
   if (config.demo) {
     // Carregado só na prévia, para não pesar no site de verdade.
     return (async <T>(path: string, options?: Record<string, any>) => {
       const { demoFetch } = await import('~/demo/demoApi')
-      return demoFetch<T>(`/admin${path}`, options)
+      return track(demoFetch<T>(`/admin${path}`, options))
     }) as unknown as typeof $fetch
   }
 
-  return $fetch.create({
+  const fetcher = $fetch.create({
     baseURL: `${config.apiBase}/admin`,
     headers: { Accept: 'application/json' },
     onRequest({ options }) {
@@ -108,4 +119,5 @@ export function useAdminApi() {
       }
     },
   })
+  return ((url: string, options?: Record<string, any>) => track(fetcher(url, options))) as typeof $fetch
 }

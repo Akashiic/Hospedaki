@@ -88,7 +88,7 @@ const whatsapp = computed(() => {
 </template>
 
 <style scoped lang="scss">
-.item { padding: 1.1rem 1.2rem; display: grid; gap: .9rem; min-width: 0; overflow: hidden; }
+.item { padding: 1.1rem 1.2rem; display: grid; gap: .9rem; min-width: 0; overflow: hidden; container-type: inline-size; }
 // Faixa de cor da situação à esquerda.
 .item::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--tone, var(--line)); }
 .request { --tone: var(--warn); }
@@ -106,10 +106,15 @@ h3 { margin: 0; font-size: 1.3rem; line-height: 1.15; overflow: hidden; text-ove
 .upcoming .status { background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand-text); }
 .ongoing .status { background: var(--night); color: var(--amber-soft); }
 .declined .status, .cancelled .status { background: color-mix(in srgb, var(--danger) 10%, white); color: var(--danger); }
-@include below(sm) { .status { position: absolute; top: .9rem; right: .9rem; } header { padding-right: 6.5rem; } }
+@container (max-width: 440px) { .status { position: absolute; top: .9rem; right: .9rem; } header { padding-right: 6.5rem; } }
 
 .stay { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .6rem 1.2rem; padding: .8rem .9rem; border-radius: 14px; background: var(--a-sunk); }
-@include below(md) { .stay { grid-template-columns: minmax(0, 1fr) auto; .facts { grid-column: 1 / -1; grid-row: 2; } } }
+// O cartão se ajusta à própria largura (lista larga ou coluna da grade), não à da tela.
+@container (max-width: 600px) { .stay { grid-template-columns: minmax(0, 1fr) auto; .facts { grid-column: 1 / -1; grid-row: 2; } } }
+@container (max-width: 380px) {
+  .stay { grid-template-columns: minmax(0, 1fr); .total { justify-items: start; text-align: left; } }
+  .d strong { font-size: 1.15rem; }
+}
 .dates { display: flex; align-items: center; gap: .6rem; }
 .d { display: grid; line-height: 1.15; }
 .d small { font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }

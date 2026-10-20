@@ -38,7 +38,8 @@
 
 // Esqueleto de carregamento: blocos claros com um brilho que passa (transform numa camada).
 .a-skeleton {
-  position: relative; overflow: hidden; background: var(--a-sunk); border-radius: var(--a-radius-sm);
+  // Escuro o bastante para aparecer sobre o fundo do painel e sobre os cartões brancos.
+  position: relative; overflow: hidden; background: color-mix(in srgb, var(--brand) 10%, #e4e3dc); border-radius: var(--a-radius-sm);
   &::after {
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / .65), transparent);

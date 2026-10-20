@@ -19,6 +19,8 @@ function go(next: AdminTab) {
   if (import.meta.client) window.scrollTo({ top: 0 })
 }
 
+const requestsView = useViewMode('pedidos')
+
 const me = ref<AdminMe | null>(null)
 const pending = ref<AdminBooking[]>([])
 const busyId = ref<number | null>(null)
@@ -100,17 +102,20 @@ const notify = (text: string) => toast.show(text, /não|erro|falh/i.test(text) ?
         <AdminOverview v-if="tab === 'inicio'" :me="me" :today="today" @go="go" />
 
         <section v-else-if="tab === 'pedidos'" class="requests">
-          <header class="page-head a-rise">
-            <h1>Pedidos</h1>
-            <p>Pedidos de reserva esperando sua resposta. As datas ficam seguras para o hóspede até você confirmar ou recusar.</p>
+          <header class="page-head with-tools a-rise">
+            <div>
+              <h1>Pedidos</h1>
+              <p>Pedidos de reserva esperando sua resposta. As datas ficam seguras para o hóspede até você confirmar ou recusar.</p>
+            </div>
+            <AdminViewToggle v-if="pending.length > 1" v-model="requestsView" />
           </header>
-          <div v-if="!loaded" class="skel"><span v-for="n in 2" :key="n" class="a-skeleton" /></div>
+          <AdminLoading v-if="!loaded" text="Carregando pedidos..." :cards="2" height="210px" />
           <div v-else-if="!pending.length" class="a-card empty a-rise" style="--i: 1">
             <span class="empty-ico"><Inbox :size="30" /></span>
             <h2>Tudo respondido!</h2>
             <p>Quando chegar um pedido novo, você recebe um e-mail e ele aparece aqui.</p>
           </div>
-          <TransitionGroup v-else tag="div" name="a-list" class="list">
+          <TransitionGroup v-else tag="div" name="a-list" class="items" :class="requestsView">
             <AdminBookingItem
               v-for="(booking, i) in pending"
               :key="booking.id"
@@ -138,10 +143,11 @@ const notify = (text: string) => toast.show(text, /não|erro|falh/i.test(text) ?
 .view { display: grid; gap: 1.2rem; }
 .page-head h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0 0 .3rem; }
 .page-head p { margin: 0; color: var(--muted); max-width: 60ch; }
-.requests { display: grid; gap: 1.2rem; max-width: 920px; }
-.list { position: relative; display: grid; gap: 1rem; }
-.skel { display: grid; gap: 1rem; }
-.skel span { height: 220px; border-radius: var(--a-radius); }
+.requests { display: grid; gap: 1.2rem; max-width: 1240px; }
+.page-head.with-tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: .8rem; }
+.items { position: relative; display: grid; gap: 1rem; }
+.items.list { max-width: 980px; }
+.items.grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
 .empty { display: grid; justify-items: center; gap: .4rem; padding: 2.6rem 1.2rem; text-align: center; }
 .empty h2 { margin: .4rem 0 0; font-size: 1.6rem; }
 .empty p { margin: 0; color: var(--muted); }
