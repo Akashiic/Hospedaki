@@ -62,6 +62,25 @@ class AdminAccommodationsTest extends TestCase
         $this->assertSame('chale-do-lago-2', $this->postJson('/api/admin/accommodations', $this->payload())->json('data.slug'));
     }
 
+    public function test_google_details_are_cleaned_and_published(): void
+    {
+        $created = $this->postJson('/api/admin/accommodations', $this->payload(['details' => [
+            'kind' => 'chalet', 'bedrooms' => 2, 'bathrooms' => null, 'area' => 98, 'pets' => false,
+            'beds' => [['type' => 'king', 'count' => 1], ['type' => 'single', 'count' => 1], ['type' => 'single', 'count' => 1]],
+        ]]))->assertCreated()->json('data');
+
+        $expected = ['kind' => 'chalet', 'bedrooms' => 2, 'area' => 98, 'beds' => [['type' => 'king', 'count' => 1], ['type' => 'single', 'count' => 2]], 'pets' => false];
+        $this->assertSame($expected, $created['details']);
+        $this->assertSame($expected, $this->getJson('/api/properties/pousada')->json('data.accommodations.0.details'));
+
+        // Tudo em branco: a ficha some.
+        $this->putJson("/api/admin/accommodations/{$created['id']}", $this->payload(['details' => ['kind' => null, 'beds' => []]]))
+            ->assertOk()->assertJsonPath('data.details', null);
+
+        $this->postJson('/api/admin/accommodations', $this->payload(['details' => ['kind' => 'castle', 'beds' => [['type' => 'hammock', 'count' => 1]]]]))
+            ->assertUnprocessable()->assertJsonValidationErrors(['details.kind', 'details.beds.0.type']);
+    }
+
     public function test_validation_speaks_portuguese(): void
     {
         $this->postJson('/api/admin/accommodations', $this->payload(['name' => '', 'included_guests' => 9, 'weekly_discount' => 95]))

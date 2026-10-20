@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AccommodationInput, AdminAccommodation, AdminPayments } from '~/composables/useAdminApi'
-import { CreditCard, QrCode } from 'lucide-vue-next'
+import type { AccommodationKind, BedType } from '~/utils/lodgingSchema'
+import { CreditCard, QrCode, Search, X } from 'lucide-vue-next'
 
 // Formulário de uma acomodação: dados, hóspedes, preços (com simulação do que o hóspede paga),
 // temporadas e fotos. Nova acomodação: primeiro salva os dados, depois libera fotos e temporadas.
@@ -10,14 +11,14 @@ const emit = defineEmits<{ saved: [acc: AdminAccommodation, created: boolean], d
 const api = useAdminApi()
 
 const blank = (): AccommodationInput => ({
-  name: '', description: '', amenities: [], max_guests: 2, included_guests: null,
+  name: '', description: '', amenities: [], details: { beds: [] }, max_guests: 2, included_guests: null,
   base_price: 0, weekend_price: null, extra_guest_price: null, cleaning_fee: null,
   weekly_discount: null, monthly_discount: null, min_nights: 1, best_for: null, active: true,
   booking_mode: 'nightly', check_in_time: null, check_out_time: null, hourly_price: null, min_hours: 1, opens_at: '08:00', closes_at: '22:00',
   accepts_pix: true, accepts_card: true, pix_discount: 0, promo_ends_at: null, promo_loop: false, promo_loop_hours: 24,
 })
 const fromAcc = (a: AdminAccommodation): AccommodationInput => ({
-  name: a.name, description: a.description ?? '', amenities: [...a.amenities], max_guests: a.max_guests,
+  name: a.name, description: a.description ?? '', amenities: [...a.amenities], details: { ...a.details, beds: (a.details?.beds ?? []).map(b => ({ ...b })) }, max_guests: a.max_guests,
   included_guests: a.included_guests, base_price: a.base_price, weekend_price: a.weekend_price,
   extra_guest_price: a.extra_guest_price, cleaning_fee: a.cleaning_fee, weekly_discount: a.weekly_discount,
   monthly_discount: a.monthly_discount, min_nights: a.min_nights, best_for: a.best_for, active: a.active,
@@ -193,6 +194,24 @@ function removeAmenity(i: number) {
   form.amenities.splice(i, 1)
 }
 
+// ── Ficha para o Google: tipo, quartos, banheiros, área, camas, pets e fumantes ──
+const KINDS: { value: AccommodationKind, label: string }[] = [
+  { value: 'room', label: 'Quarto' }, { value: 'suite', label: 'Suíte' }, { value: 'chalet', label: 'Chalé' },
+  { value: 'house', label: 'Casa' }, { value: 'apartment', label: 'Apartamento' }, { value: 'camping', label: 'Camping' },
+  { value: 'venue', label: 'Espaço para eventos' },
+]
+const BEDS: { value: BedType, label: string }[] = [
+  { value: 'king', label: 'King' }, { value: 'queen', label: 'Queen' }, { value: 'double', label: 'Casal' },
+  { value: 'single', label: 'Solteiro' }, { value: 'sofa_bed', label: 'Sofá-cama' }, { value: 'bunk', label: 'Beliche' }, { value: 'crib', label: 'Berço' },
+]
+const details = computed(() => form.details!)
+function addBed() {
+  const used = new Set(details.value.beds?.map(b => b.type))
+  details.value.beds = [...(details.value.beds ?? []), { type: BEDS.find(b => !used.has(b.value))?.value ?? 'single', count: 1 }]
+}
+// Número vazio no campo vira null (não informado), não zero.
+const num = (v: unknown) => (v === '' || v == null ? undefined : Number(v))
+
 // ── Simulação: quanto o hóspede paga com os preços do formulário (2 pessoas) ──
 const simulation = computed(() => {
   const week = form.base_price
@@ -288,6 +307,64 @@ function back() {
               {{ form.active ? 'Publicada' : 'Oculta (não aparece nem recebe reservas)' }}
             </button>
           </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <h3>Ficha para o Google</h3>
+          <p class="hint"><Search :size="14" aria-hidden="true" /> Vai nos dados estruturados da página (Schema.org): o Google entende o tipo, quem cabe, as camas e a área. Deixe em branco o que não souber.</p>
+        </div>
+        <div class="row">
+          <label for="acc-kind">Tipo
+            <select id="acc-kind" v-model="details.kind">
+              <option :value="undefined">{{ hourly ? 'Automático (espaço para eventos)' : 'Automático (acomodação)' }}</option>
+              <option v-for="k in KINDS" :key="k.value" :value="k.value">{{ k.label }}</option>
+            </select>
+          </label>
+          <label for="acc-area"><span>Área <span class="opt">m²</span></span>
+            <input id="acc-area" :value="details.area ?? ''" type="number" min="1" max="100000" inputmode="numeric" placeholder="Ex.: 45" @input="details.area = num(($event.target as HTMLInputElement).value)">
+            <small v-if="fieldError('details.area')" class="err">{{ fieldError('details.area') }}</small>
+          </label>
+        </div>
+        <div v-if="details.kind !== 'venue' && !(hourly && !details.kind)" class="row">
+          <label for="acc-bedrooms">Quartos
+            <input id="acc-bedrooms" :value="details.bedrooms ?? ''" type="number" min="0" max="50" inputmode="numeric" @input="details.bedrooms = num(($event.target as HTMLInputElement).value)">
+          </label>
+          <label for="acc-bathrooms">Banheiros
+            <input id="acc-bathrooms" :value="details.bathrooms ?? ''" type="number" min="0" max="50" inputmode="numeric" @input="details.bathrooms = num(($event.target as HTMLInputElement).value)">
+          </label>
+        </div>
+        <div v-if="details.kind !== 'venue' && !(hourly && !details.kind)" class="field">
+          <span class="label">Camas</span>
+          <ul v-if="details.beds?.length" class="beds">
+            <li v-for="(bed, i) in details.beds" :key="i">
+              <label :for="`acc-bed-${i}`" class="sr-only">Tipo da cama {{ i + 1 }}</label>
+              <select :id="`acc-bed-${i}`" v-model="bed.type">
+                <option v-for="b in BEDS" :key="b.value" :value="b.value">{{ b.label }}</option>
+              </select>
+              <label :for="`acc-bed-count-${i}`" class="sr-only">Quantidade</label>
+              <input :id="`acc-bed-count-${i}`" v-model.number="bed.count" type="number" min="1" max="50" inputmode="numeric" class="count">
+              <button type="button" class="remove" :aria-label="`Remover cama ${i + 1}`" @click="details.beds!.splice(i, 1)"><X :size="16" /></button>
+            </li>
+          </ul>
+          <button v-if="(details.beds?.length ?? 0) < 10" type="button" class="btn btn-ghost btn-sm add-bed" @click="addBed">+ Adicionar cama</button>
+        </div>
+        <div class="row">
+          <label for="acc-pets">Pets
+            <select id="acc-pets" v-model="details.pets">
+              <option :value="undefined">Não informar</option>
+              <option :value="true">Aceita pets</option>
+              <option :value="false">Não aceita pets</option>
+            </select>
+          </label>
+          <label for="acc-smoking">Fumantes
+            <select id="acc-smoking" v-model="details.smoking">
+              <option :value="undefined">Não informar</option>
+              <option :value="true">Pode fumar</option>
+              <option :value="false">Proibido fumar</option>
+            </select>
+          </label>
         </div>
       </section>
 
@@ -536,6 +613,13 @@ label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; 
 .row { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .pct { position: relative; display: block; }
 .pct span { position: absolute; right: .85rem; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.card-head { display: grid; gap: .2rem; }
+.card-head .hint { display: flex; gap: .35rem; align-items: baseline; }
+.beds { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; max-width: 520px; }
+.beds li { display: grid; grid-template-columns: minmax(0, 1fr) 84px 40px; gap: .4rem; align-items: center; }
+.beds .remove { display: grid; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.beds .remove:hover { background: var(--a-sunk); color: var(--text); }
+.add-bed { justify-self: start; }
 .tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
 .tags li { display: inline-flex; align-items: center; gap: .2rem; background: var(--soft); border-radius: 999px; padding: .15rem .2rem .15rem .75rem; font-weight: 500; }
 .tags button { width: 30px; height: 30px; border: 0; background: none; border-radius: 50%; font-size: 1.1rem; cursor: pointer; color: var(--muted); }

@@ -221,6 +221,17 @@ class AccommodationController extends Controller
             'description' => ['nullable', 'string', 'max:3000'],
             'amenities' => ['nullable', 'array', 'max:30'],
             'amenities.*' => ['nullable', 'string', 'max:80'],
+            // Ficha para o Google: tudo opcional.
+            'details' => ['nullable', 'array'],
+            'details.kind' => ['nullable', Rule::in(Accommodation::KINDS)],
+            'details.bedrooms' => ['nullable', 'integer', 'min:0', 'max:50'],
+            'details.bathrooms' => ['nullable', 'integer', 'min:0', 'max:50'],
+            'details.area' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'details.beds' => ['nullable', 'array', 'max:10'],
+            'details.beds.*.type' => ['required', Rule::in(Accommodation::BED_TYPES)],
+            'details.beds.*.count' => ['required', 'integer', 'min:1', 'max:50'],
+            'details.pets' => ['nullable', 'boolean'],
+            'details.smoking' => ['nullable', 'boolean'],
             // Espaços de evento recebem bem mais gente que um quarto.
             'max_guests' => ['required', 'integer', 'min:1', 'max:500'],
             'included_guests' => ['nullable', 'integer', 'min:1', 'lte:max_guests'],
@@ -253,6 +264,8 @@ class AccommodationController extends Controller
             'promo_loop_hours.in' => 'Escolha de quanto em quanto tempo a promoção recomeça.',
             'hourly_price.required_if' => 'Informe o preço da hora.',
             'closes_at.after' => 'O horário de fechar precisa ser depois do de abrir.',
+            'details.area.min' => 'A área precisa ser de pelo menos 1 m².',
+            'details.beds.max' => 'Até 10 tipos de cama.',
         ]);
 
         if (array_key_exists('promo_ends_at', $data)) {
@@ -261,6 +274,10 @@ class AccommodationController extends Controller
 
         // Linhas em branco somem e repetidas viram uma só.
         $data['amenities'] = array_values(array_unique(array_filter(array_map(fn ($item) => trim((string) $item), $data['amenities'] ?? []), 'strlen')));
+
+        if (array_key_exists('details', $data)) {
+            $data['details'] = Accommodation::normalizeDetails($data['details']);
+        }
 
         return $data;
     }

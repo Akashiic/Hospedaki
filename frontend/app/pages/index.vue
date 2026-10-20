@@ -23,6 +23,7 @@ const staysInStory = computed(() => shown.value.includes('story') && shown.value
 const exploreTarget = computed(() => shown.value.includes('story') ? 'um-dia' : 'acomodacoes-home')
 
 await useSitePage('inicio', { image: () => heroSlides.value[0]?.url, noindex: () => !!preview.value })
+useCatalogSchema(property.value)
 useHead({
   link: heroSlides.value[0] && !heroSlides.value[0].url.startsWith('data:')
     ? [{ rel: 'preload', as: 'image', href: heroSlides.value[0].url, fetchpriority: 'high' }]

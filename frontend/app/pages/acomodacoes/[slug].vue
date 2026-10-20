@@ -21,17 +21,32 @@ useSeoMeta({
   // Acomodação com o mesmo nome da pousada não repete o nome no título.
   title: acc.value.name === property.value.name ? acc.value.name : `${acc.value.name} ${property.value.seo?.separator ?? '·'} ${property.value.name}`,
   description: acc.value.description ?? undefined,
-  ogImage: acc.value.photos[0]?.url,
+  ogImage: absoluteSiteUrl(acc.value.photos[0]?.url, schemaOrigin()),
+  ogImageAlt: acc.value.photos[0]?.caption ?? acc.value.name,
 })
 // Acomodações seguem a página "Acomodações": fora do Google lá, fora aqui também.
 if (property.value.pages?.acomodacoes?.index === false) useRobotsRule('noindex, follow')
-// Trilha "Início › Acomodações › Chalé" nos resultados do Google.
-if (property.value.seo?.structured_data !== false) {
-  useSchemaOrg([defineBreadcrumb({ itemListElement: [
-    { name: 'Início', item: '/' },
-    { name: 'Acomodações', item: '/acomodacoes' },
-    { name: acc.value.name },
-  ] })])
+// Para o Google: a acomodação completa (tipo, ficha, comodidades, fotos e preço), a página como
+// ItemPage sobre ela e a trilha "Início › Acomodações › Chalé" nos resultados.
+if (structuredDataOn(property.value)) {
+  const origin = schemaOrigin()
+  const photo = acc.value.photos[0]?.url
+  useSchemaOrg([
+    accommodationSchema(acc.value, origin),
+    defineWebPage({
+      '@type': 'ItemPage',
+      'inLanguage': 'pt-BR',
+      'about': { '@id': identityId(origin) },
+      'mainEntity': { '@id': accommodationId(origin, acc.value.slug) },
+      'dateModified': acc.value.updated_at ?? undefined,
+      'primaryImageOfPage': photo ? { '@type': 'ImageObject', 'url': photo.startsWith('/') ? `${origin}${photo}` : photo } : undefined,
+    }),
+    defineBreadcrumb({ itemListElement: [
+      { name: 'Início', item: '/' },
+      { name: 'Acomodações', item: '/acomodacoes' },
+      { name: acc.value.name },
+    ] }),
+  ])
 }
 </script>
 

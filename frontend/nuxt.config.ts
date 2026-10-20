@@ -63,16 +63,26 @@ export default defineNuxtConfig({
     fallbackTitle: false,
     redirectToCanonicalSiteUrl: false,
   },
-  // Imagem de compartilhamento é enviada pelo dono; gerar imagens exigiria um renderizador
-  // e um segredo em produção. Markdown para IA e proteção de versão também ficam desligados.
+  // Imagem de compartilhamento é enviada pelo dono (ou a foto da página); gerar imagens exigiria
+  // um renderizador e um segredo em produção. A Vercel já cuida das versões (skew protection).
   ogImage: false,
-  aiReady: false,
   skewProtection: false,
+  // AI Ready: /llms.txt com as páginas do mapa do site e uma versão em Markdown de cada página
+  // (/o-lugar.md), para buscas com IA. O "Robôs de IA" do painel continua valendo no robots.txt;
+  // o Content-Signal fixo fica de fora para não contradizer essa escolha.
+  aiReady: {
+    contentSignal: false,
+    llmsFullTxt: false,
+    agentSkills: false,
+    mcpServerCard: false,
+  },
   // O painel do dono e a tela de login: só no navegador, nunca no Google, nunca dentro de
   // outro site (clickjacking) e sem cache em proxies.
   routeRules: {
     '/painel': { ssr: false, robots: false, sitemap: false, headers: PANEL_HEADERS },
     '/painel/**': { ssr: false, robots: false, sitemap: false, headers: PANEL_HEADERS },
+    // A versão em Markdown (AI Ready) do painel: vazia, mas também fora do Google.
+    '/painel.md': { robots: false, sitemap: false, headers: PANEL_HEADERS },
     // Checkout: página pessoal de cada reserva (o link leva o token). Fora do Google e do cache,
     // sem mandar o endereço com o token para outros sites (Referrer-Policy).
     '/pagamento/**': { ssr: false, robots: false, sitemap: false, headers: CHECKOUT_HEADERS },
