@@ -47,11 +47,15 @@ useHead(() => {
 // servidor monta com os dados da pousada (server/plugins/site-config.ts).
 useHead({ titleTemplate: '%s' })
 
-// Dados estruturados: a pousada como hospedagem (tipo, endereço, preços, check-in...).
+// Dados estruturados: o site e a pousada como hospedagem, com tudo aninhado (endereço, mapa,
+// fotos, diferenciais, contato, ação de reservar, acomodações). Desenho em utils/lodgingSchema.ts.
 // Desligáveis em "Seu site → SEO".
-if (property.value.seo?.structured_data !== false) {
-  const origin = (useSiteConfig().url || useRequestURL().origin).replace(/\/$/, '')
-  useSchemaOrg([defineLocalBusiness(lodgingSchema(property.value, property.value.seo?.schema_type ?? 'BedAndBreakfast', origin) as Parameters<typeof defineLocalBusiness>[0])])
+if (structuredDataOn(property.value)) {
+  const origin = schemaOrigin()
+  useSchemaOrg([
+    defineWebSite({ inLanguage: 'pt-BR' }),
+    defineLocalBusiness(lodgingSchema(property.value, property.value.seo?.schema_type ?? 'BedAndBreakfast', origin) as Parameters<typeof defineLocalBusiness>[0]),
+  ])
 }
 
 // Google Analytics e Pixel do Meta: os IDs da instalação (variáveis de ambiente) ou os do painel.

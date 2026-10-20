@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
-    'property_id', 'name', 'slug', 'shared_unit', 'best_for', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
+    'property_id', 'name', 'slug', 'shared_unit', 'best_for', 'description', 'amenities', 'details', 'max_guests', 'included_guests', 'base_price',
     'weekend_price', 'extra_guest_price', 'cleaning_fee', 'weekly_discount', 'monthly_discount', 'min_nights', 'sort_order', 'active',
     'booking_mode', 'check_in_time', 'check_out_time', 'hourly_price', 'min_hours', 'opens_at', 'closes_at',
     'accepts_pix', 'accepts_card', 'pix_discount', 'promo_ends_at', 'promo_loop', 'promo_loop_hours',
@@ -33,6 +33,12 @@ class Accommodation extends Model
 
     public const DEFAULT_CLOSES_AT = '22:00';
 
+    /** Tipos da ficha para o Google (viram o @type do Schema.org no site). */
+    public const KINDS = ['room', 'suite', 'chalet', 'house', 'apartment', 'camping', 'venue'];
+
+    /** Camas da ficha (BedDetails.typeOfBed). */
+    public const BED_TYPES = ['king', 'queen', 'double', 'single', 'sofa_bed', 'bunk', 'crib'];
+
     /**
      * @var array<string, mixed>
      */
@@ -50,6 +56,7 @@ class Accommodation extends Model
     {
         return [
             'amenities' => 'array',
+            'details' => 'array',
             'max_guests' => 'integer',
             'included_guests' => 'integer',
             'base_price' => 'integer',
@@ -69,6 +76,40 @@ class Accommodation extends Model
             'promo_loop' => 'boolean',
             'promo_loop_hours' => 'integer',
         ];
+    }
+
+    /**
+     * Ficha para o Google sem campos vazios: camas iguais somadas, nada preenchido = null.
+     *
+     * @param  array<string, mixed>|null  $details
+     * @return array{kind?: string, bedrooms?: int, bathrooms?: int, area?: int, beds?: list<array{type: string, count: int}>, pets?: bool, smoking?: bool}|null
+     */
+    public static function normalizeDetails(?array $details): ?array
+    {
+        if (! $details) {
+            return null;
+        }
+
+        $beds = [];
+        foreach ($details['beds'] ?? [] as $bed) {
+            $type = (string) ($bed['type'] ?? '');
+            $count = (int) ($bed['count'] ?? 0);
+            if (in_array($type, self::BED_TYPES, true) && $count > 0) {
+                $beds[$type] = ($beds[$type] ?? 0) + $count;
+            }
+        }
+
+        $clean = array_filter([
+            'kind' => in_array($details['kind'] ?? null, self::KINDS, true) ? $details['kind'] : null,
+            'bedrooms' => isset($details['bedrooms']) ? (int) $details['bedrooms'] : null,
+            'bathrooms' => isset($details['bathrooms']) ? (int) $details['bathrooms'] : null,
+            'area' => isset($details['area']) ? (int) $details['area'] : null,
+            'beds' => array_map(fn ($type, $count) => ['type' => $type, 'count' => $count], array_keys($beds), $beds) ?: null,
+            'pets' => isset($details['pets']) ? (bool) $details['pets'] : null,
+            'smoking' => isset($details['smoking']) ? (bool) $details['smoking'] : null,
+        ], fn ($value) => $value !== null);
+
+        return $clean ?: null;
     }
 
     public function isHourly(): bool

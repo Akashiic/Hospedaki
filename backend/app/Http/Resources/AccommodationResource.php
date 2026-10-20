@@ -25,6 +25,8 @@ class AccommodationResource extends JsonResource
             // Acomodações com o mesmo valor ficam no mesmo imóvel e não são reservadas juntas.
             'shared_unit' => $this->shared_unit,
             'amenities' => $this->amenities ?? [],
+            // Ficha para o Google (tipo, quartos, banheiros, área, camas, pets, fumantes); null = não preenchida.
+            'details' => Accommodation::normalizeDetails($this->details),
             'max_guests' => $this->max_guests,
             // Por diária (estadia) ou por hora (day use, eventos).
             'booking_mode' => $this->booking_mode,

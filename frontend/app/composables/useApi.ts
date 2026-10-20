@@ -1,4 +1,5 @@
 import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
+import type { AccommodationDetails } from '~/utils/lodgingSchema'
 import type { SocialNetwork } from '~/utils/social'
 
 export interface Photo {
@@ -25,6 +26,10 @@ export interface Accommodation {
   /** Acréscimo por pessoa a mais, por diária, em centavos; null = ainda não informado. */
   extra_guest_price: number | null
   amenities: string[]
+  /** Ficha para o Google (tipo, quartos, banheiros, área, camas, pets, fumantes); null = não preenchida. */
+  details?: AccommodationDetails | null
+  /** Última mudança (mapa do site e dateModified da página). */
+  updated_at?: string | null
   /** Indicação da pousada para a escolha da capa; sem ela, vale a capacidade. */
   best_for?: 'casal' | 'familia' | null
   /** Acomodações com o mesmo valor dividem o imóvel (o Espaço inclui o apartamento) e não são reservadas juntas. */

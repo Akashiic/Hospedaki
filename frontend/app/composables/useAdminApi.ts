@@ -1,3 +1,4 @@
+import type { AccommodationDetails } from '~/utils/lodgingSchema'
 import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
 import type { SocialNetwork } from '~/utils/social'
 
@@ -63,6 +64,8 @@ export interface AdminAccommodation {
   slug: string
   description: string | null
   amenities: string[]
+  /** Ficha para o Google (Schema.org); null = não preenchida. */
+  details: AccommodationDetails | null
   max_guests: number
   included_guests: number | null
   base_price: number
@@ -103,7 +106,7 @@ export interface AdminAccommodation {
 
 /** Campos que o formulário envia ao criar ou salvar. */
 export type AccommodationInput = Pick<AdminAccommodation,
-  'name' | 'description' | 'amenities' | 'max_guests' | 'included_guests' | 'base_price' | 'weekend_price'
+  'name' | 'description' | 'amenities' | 'details' | 'max_guests' | 'included_guests' | 'base_price' | 'weekend_price'
   | 'extra_guest_price' | 'cleaning_fee' | 'weekly_discount' | 'monthly_discount' | 'min_nights' | 'best_for' | 'active'
   | 'booking_mode' | 'check_in_time' | 'check_out_time' | 'hourly_price' | 'min_hours' | 'opens_at' | 'closes_at'
   | 'accepts_pix' | 'accepts_card' | 'pix_discount' | 'promo_ends_at' | 'promo_loop' | 'promo_loop_hours'>

@@ -3,6 +3,8 @@ const { property } = await useProperty()
 
 const image = computed(() => property.value.accommodations[0]?.photos[0]?.url)
 const page = await useSitePage('acomodacoes', { image: () => image.value })
+// Cada acomodação e a lista delas, na ordem do catálogo, para o Google.
+useCatalogSchema(property.value, { list: true })
 </script>
 
 <template>
