@@ -1,13 +1,24 @@
 <script setup lang="ts">
 import type { AdminSiteIdentity } from '~/composables/useAdminApi'
 
-// "Seu site → Configurações": logo e ícone (salvam na hora), nome, frase, cor e contato
-// (salvam juntos pela barra do pé).
-defineProps<{ demo?: boolean }>()
+// "Seu site → Configurações": Identidade (logo, ícone e imagem de compartilhamento, que salvam
+// na hora, mais nome, frase, cor e apresentação) e Contato. As duas telas gravam os mesmos
+// dados da pousada pela barra do pé; cada uma mostra só os seus campos.
+const props = defineProps<{ section: 'identidade' | 'contato', demo?: boolean }>()
 const emit = defineEmits<{ message: [text: string], changed: [] }>()
 
 const { site, loadError, load, send } = useAdminSite()
 onMounted(load)
+
+const HEAD = {
+  identidade: { title: 'Identidade', text: 'A cara do seu site: logo, ícone, a foto dos links compartilhados, o nome, a frase de destaque e a cor.' },
+  contato: { title: 'Contato', text: 'Como o hóspede fala com você. Aparece no rodapé, na página de contato e nos botões de WhatsApp.' },
+}
+
+// Prévia do link compartilhado: o título e a descrição da página inicial.
+const home = computed(() => site.value
+  ? pageContent('inicio', { ...site.value.identity, accommodations: [], seo: site.value.seo }, site.value.pages.inicio)
+  : null)
 
 const FIELDS = ['name', 'tagline', 'description', 'primary_color', 'email', 'phone', 'whatsapp', 'address', 'city', 'state'] as const
 type IdentityForm = Record<typeof FIELDS[number], string | null>
@@ -36,7 +47,7 @@ async function save() {
   try {
     await send('/site/identity', { method: 'PUT', body: { ...form.value } })
     form.value = pick()
-    emit('message', 'Configurações salvas. O site já está atualizado.')
+    emit('message', `${HEAD[props.section].title}: alterações salvas. O site já está atualizado.`)
     emit('changed')
   }
   catch (e) {
@@ -64,8 +75,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 <template>
   <section class="settings">
     <header class="a-head a-rise">
-      <h1>Configurações</h1>
-      <p>A cara do seu site: logo, ícone, nome, cor e os contatos que aparecem para o hóspede.</p>
+      <h1>{{ HEAD[section].title }}</h1>
+      <p>{{ HEAD[section].text }}</p>
     </header>
 
     <div v-if="loadError" class="a-card load-error" role="alert">
@@ -75,8 +86,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
     <AdminLoading v-else-if="!site" text="Carregando configurações..." :cards="2" height="180px" />
 
     <template v-else>
-      <section class="a-section a-rise" style="--i: 1">
-        <h2>Logo e ícone</h2>
+      <section v-if="section === 'identidade'" class="a-section a-rise" style="--i: 1">
+        <h2>Imagens do site</h2>
         <p class="a-hint">Mudam na hora, sem precisar salvar.</p>
         <AdminImageSlot kind="logo" :url="site.identity.logo_url" label="Logo" hint="Aparece no menu do site, no lugar do nome. PNG com fundo transparente fica melhor." :demo="demo" @message="emit('message', $event)" />
         <div class="logo-preview" aria-hidden="true">
@@ -98,10 +109,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
             <span class="x">×</span>
           </div>
         </div>
+        <hr>
+        <AdminImageSlot kind="share" :url="site.identity.share_image_url" label="Imagem de compartilhamento" hint="A foto que aparece quando o link do site é enviado no WhatsApp, Instagram ou Facebook. É recortada em 1200 × 630." :demo="demo" @message="emit('message', $event)" />
+        <AdminSharePreview v-if="home" class="share-preview" :title="home.seoTitle" :description="home.seoDescription" :image="site.identity.share_image_url" />
       </section>
 
       <form class="a-form" @submit.prevent="save">
-        <section class="a-section a-rise" style="--i: 2">
+        <section v-if="section === 'identidade'" class="a-section a-rise" style="--i: 2">
           <h2>Nome e cor</h2>
           <AdminTextField id="site-name" v-model="form.name" label="Nome da pousada" :max="80" :error="err('name')" />
           <AdminTextField id="site-tagline" v-model="form.tagline" label="Frase de destaque" :max="140" placeholder="Ex.: Piscina, fogueira e vista para as montanhas" hint="O título grande da capa do site." :error="err('tagline')" />
@@ -132,20 +146,25 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
           </div>
         </section>
 
-        <section class="a-section a-rise" style="--i: 3">
+        <section v-if="section === 'identidade'" class="a-section a-rise" style="--i: 3">
           <h2>Sobre a pousada</h2>
           <AdminTextField id="site-desc" v-model="form.description" label="Apresentação" :max="1200" :rows="5" placeholder="O que a pousada tem de especial, onde fica, para quem é..." hint="Aparece em &quot;O lugar&quot; e é o resumo padrão para o Google." :error="err('description')" />
         </section>
 
-        <section class="a-section a-rise" style="--i: 4">
-          <h2>Contato</h2>
-          <p class="a-hint">Aparecem no rodapé, na página de contato e nos botões de WhatsApp. Deixe em branco o que não usa.</p>
+        <section v-if="section === 'contato'" class="a-section a-rise" style="--i: 1">
+          <h2>Canais</h2>
+          <p class="a-hint">Deixe em branco o que não usa.</p>
           <div class="a-row">
             <AdminTextField id="site-whatsapp" v-model="form.whatsapp" label="WhatsApp" type="tel" inputmode="numeric" placeholder="5511999990000" hint="Só números, com 55 e o DDD." :error="err('whatsapp')" />
             <AdminTextField id="site-phone" v-model="form.phone" label="Telefone" type="tel" inputmode="tel" placeholder="1140001234" :error="err('phone')" />
             <AdminTextField id="site-email" v-model="form.email" label="E-mail" type="email" inputmode="email" placeholder="contato@suapousada.com.br" :error="err('email')" />
           </div>
-          <AdminTextField id="site-address" v-model="form.address" label="Endereço" :max="160" placeholder="Rua, número" :error="err('address')" />
+        </section>
+
+        <section v-if="section === 'contato'" class="a-section a-rise" style="--i: 2">
+          <h2>Endereço</h2>
+          <p class="a-hint">Vai para o mapa na página de contato e para os dados que o Google lê da pousada.</p>
+          <AdminTextField id="site-address" v-model="form.address" label="Rua e número" :max="160" placeholder="Rua, número" :error="err('address')" />
           <div class="a-row">
             <AdminTextField id="site-city" v-model="form.city" label="Cidade" :max="80" :error="err('city')" />
             <AdminTextField id="site-state" v-model="form.state" label="Estado (UF)" :max="2" :count="false" placeholder="SP" :error="err('state')" />
@@ -160,6 +179,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 
 <style scoped lang="scss">
 .settings { display: grid; gap: 1.2rem; max-width: 900px; }
+.share-preview { justify-items: start; max-width: 420px; }
 hr { border: 0; border-top: 1px solid var(--a-sunk); margin: .2rem 0; width: 100%; }
 // Prévia do logo no menu do site (sobre a foto escura da capa).
 .logo-preview .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 64px; padding: .7rem 1rem; border-radius: 14px; }

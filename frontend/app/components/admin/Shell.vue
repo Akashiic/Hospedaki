@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { AdminTab } from '~/composables/useAdminApi'
-import { BedDouble, CalendarCheck, CalendarX2, ExternalLink, House, Inbox, LogOut, Menu, PanelsTopLeft, Search, SlidersHorizontal, X } from 'lucide-vue-next'
+import { BedDouble, CalendarCheck, CalendarX2, ExternalLink, House, Inbox, LogOut, Menu, X } from 'lucide-vue-next'
 
 // Moldura do painel: barra lateral com ícones no computador; no celular, barra no alto com o
 // nome da pousada e navegação embaixo (as quatro abas do dia a dia e "Mais" com o resto).
@@ -14,13 +14,6 @@ const items: { tab: AdminTab, label: string, icon: Component, mobile?: boolean }
   { tab: 'reservas', label: 'Reservas', icon: CalendarCheck, mobile: true },
   { tab: 'acomodacoes', label: 'Acomodações', icon: BedDouble, mobile: true },
   { tab: 'bloqueios', label: 'Datas bloqueadas', icon: CalendarX2 },
-]
-
-// "Seu site": tudo o que muda o site público, num grupo à parte no menu.
-const siteItems: { tab: AdminTab, label: string, icon: Component }[] = [
-  { tab: 'paginas', label: 'Páginas', icon: PanelsTopLeft },
-  { tab: 'configuracoes', label: 'Configurações', icon: SlidersHorizontal },
-  { tab: 'seo', label: 'SEO', icon: Search },
 ]
 
 // Barra fina no topo enquanto alguma requisição do painel está em andamento. Só aparece
@@ -63,13 +56,8 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
           <span>{{ item.label }}</span>
           <span v-if="item.tab === 'pedidos' && pending" class="badge">{{ pending }}</span>
         </button>
-        <p id="nav-site" class="group">Seu site</p>
-        <div class="sub" role="group" aria-labelledby="nav-site">
-          <button v-for="item in siteItems" :key="item.tab" type="button" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
-            <component :is="item.icon" :size="20" aria-hidden="true" />
-            <span>{{ item.label }}</span>
-          </button>
-        </div>
+        <!-- "Seu site" é um dropdown, com Configurações como outro dropdown dentro dele. -->
+        <AdminSiteMenu class="site-menu" :tab="tab" variant="side" @go="go" />
       </nav>
       <div class="foot">
         <a href="/" target="_blank" rel="noopener" class="ghost"><ExternalLink :size="18" aria-hidden="true" /> Ver o site</a>
@@ -112,10 +100,7 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
           <button v-for="item in items.filter(i => !i.mobile)" :key="item.tab" type="button" class="row" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
             <component :is="item.icon" :size="20" aria-hidden="true" /> {{ item.label }}
           </button>
-          <p class="group">Seu site</p>
-          <button v-for="item in siteItems" :key="item.tab" type="button" class="row" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
-            <component :is="item.icon" :size="20" aria-hidden="true" /> {{ item.label }}
-          </button>
+          <AdminSiteMenu :tab="tab" variant="sheet" @go="go" />
           <a href="/" target="_blank" rel="noopener" class="row"><ExternalLink :size="20" aria-hidden="true" /> Ver o site</a>
           <button type="button" class="row danger" @click="emit('logout')"><LogOut :size="20" aria-hidden="true" /> Sair</button>
         </div>
@@ -164,12 +149,11 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
   &[aria-current="page"] svg { color: var(--brand-text); }
   .badge { margin-left: auto; }
 }
-// Título do grupo "Seu site" e os itens dele, um pouco recuados.
-.group { @include eyebrow(var(--muted), sm); margin: 1rem 0 .3rem; padding: 0 .8rem; }
-.sub { display: grid; gap: .2rem; }
+.site-menu { margin-top: .2rem; }
+// A barra lateral rola quando o menu aberto não cabe na altura da tela.
+.side { overflow-y: auto; }
 .mark.img { background: var(--a-card); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
 .mark img { width: 100%; height: 100%; object-fit: cover; }
-.sheet .group { margin: .6rem 0 .1rem; padding: 0 .4rem; }
 .row[aria-current="page"] { background: var(--a-sunk); }
 .foot { margin-top: auto; display: grid; gap: .6rem; }
 .ghost { display: flex; align-items: center; gap: .6rem; min-height: 40px; padding: 0 .8rem; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; font-size: .9rem; }
@@ -215,6 +199,7 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
 .sheet {
   position: relative; display: grid; gap: .2rem; padding: 1rem var(--gutter-r) calc(1rem + env(safe-area-inset-bottom, 0px)) var(--gutter);
   background: var(--a-card); border-radius: 22px 22px 0 0; box-shadow: 0 -20px 40px -20px rgb(0 0 0 / .3);
+  max-height: 85vh; overflow-y: auto;
 }
 .close { position: absolute; top: .6rem; right: .6rem; }
 .row { display: flex; align-items: center; gap: .8rem; min-height: 52px; padding: 0 .4rem; border: 0; background: none; font: inherit; font-weight: 600; color: var(--text); text-decoration: none; cursor: pointer; border-radius: 12px; }

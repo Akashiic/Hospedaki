@@ -12,13 +12,16 @@ const route = useRoute()
 const router = useRouter()
 
 // A aba fica no endereço (/painel?aba=reservas): recarregar a página ou voltar não perde o lugar.
-const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'bloqueios', 'acomodacoes', 'paginas', 'configuracoes', 'seo']
-// Links antigos (?aba=pagina, de antes do "Seu site") abrem a página inicial em Páginas.
+const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'bloqueios', 'acomodacoes', 'paginas', 'identidade', 'contato', 'seo', 'integracoes']
+// Links antigos: ?aba=pagina (antes do "Seu site") abre o Início em Páginas, e
+// ?aba=configuracoes (antes de virar submenu) abre Identidade.
+const LEGACY: Record<string, Record<string, string>> = { pagina: { aba: 'paginas', pagina: 'inicio' }, configuracoes: { aba: 'identidade' } }
 const tab = computed<AdminTab>(() => {
-  const aba = route.query.aba === 'pagina' ? 'paginas' : route.query.aba as AdminTab
+  const aba = (LEGACY[route.query.aba as string]?.aba ?? route.query.aba) as AdminTab
   return TABS.includes(aba) ? aba : 'inicio'
 })
-if (route.query.aba === 'pagina') router.replace({ query: { aba: 'paginas', pagina: 'inicio' } })
+const legacy = LEGACY[route.query.aba as string]
+if (legacy) router.replace({ query: legacy })
 function go(next: AdminTab) {
   if (next !== tab.value) router.push({ query: next === 'inicio' ? {} : { aba: next } })
   if (import.meta.client) window.scrollTo({ top: 0 })
@@ -140,8 +143,8 @@ const notify = (text: string) => toast.show(text, /não|erro|falh/i.test(text) ?
         <AdminBlocks v-else-if="tab === 'bloqueios'" :me="me" />
         <AdminAccommodations v-else-if="tab === 'acomodacoes'" :demo="me?.property.demo" @message="notify" @changed="load" />
         <AdminSitePages v-else-if="tab === 'paginas'" :me="me" :demo="me?.property.demo" @message="notify" />
-        <AdminSiteSettings v-else-if="tab === 'configuracoes'" :demo="me?.property.demo" @message="notify" @changed="load" />
-        <AdminSiteSeo v-else-if="tab === 'seo'" :demo="me?.property.demo" :accommodations="me?.property.accommodations ?? []" @message="notify" />
+        <AdminSiteSettings v-else-if="tab === 'identidade' || tab === 'contato'" :section="tab" :demo="me?.property.demo" @message="notify" @changed="load" />
+        <AdminSiteSeo v-else-if="tab === 'seo' || tab === 'integracoes'" :section="tab" :accommodations="me?.property.accommodations ?? []" @message="notify" />
       </div>
     </Transition>
   </AdminShell>

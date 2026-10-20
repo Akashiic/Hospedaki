@@ -118,7 +118,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
           <div class="preview-block">
             <p class="a-label">Enviada no WhatsApp</p>
             <AdminSharePreview :title="content.seoTitle" :description="content.seoDescription" :image="site?.identity.share_image_url ?? null" />
-            <p v-if="!site?.identity.share_image_url" class="a-hint">Sem imagem de compartilhamento, o site usa a foto da página. Escolha uma em <NuxtLink :to="{ query: { aba: 'seo' } }">SEO</NuxtLink>.</p>
+            <p v-if="!site?.identity.share_image_url" class="a-hint">Sem imagem de compartilhamento, o site usa a foto da página. Escolha uma em <NuxtLink :to="{ query: { aba: 'identidade' } }">Identidade</NuxtLink>.</p>
           </div>
         </aside>
 
