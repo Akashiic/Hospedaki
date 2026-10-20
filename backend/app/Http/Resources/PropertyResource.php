@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Models\Property;
 use App\Services\DemoService;
 use App\Support\HomeLayout;
+use App\Support\SiteSettings;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,7 +36,11 @@ class PropertyResource extends JsonResource
             'address' => $this->address,
             'city' => $this->city,
             'state' => $this->state,
-            'logo_url' => PhotoUrl::from($this->logo_path),
+            // Logo do menu, ícone da aba do navegador e imagem que aparece ao compartilhar o link.
+            ...SiteSettings::imageUrls($this->resource),
+            // Textos, SEO e presença no menu de cada página, escolhidos em "Seu site" no painel.
+            'pages' => SiteSettings::pages($this->settings['pages'] ?? null),
+            'seo' => SiteSettings::seo($this->settings['seo'] ?? null),
             'primary_color' => $this->primary_color,
             'check_in_time' => substr((string) $this->check_in_time, 0, 5),
             'check_out_time' => substr((string) $this->check_out_time, 0, 5),

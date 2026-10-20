@@ -7,11 +7,14 @@ use App\Models\Accommodation;
 use App\Models\BlockedDate;
 use App\Models\Booking;
 use App\Models\Property;
+use App\Models\User;
 use App\Services\DemoService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DemoModeTest extends TestCase
@@ -129,5 +132,35 @@ class DemoModeTest extends TestCase
         $this->assertTrue($accommodations->every->active);
         $this->assertSame(49700, $accommodations->first()->base_price);
         $this->assertSame(7, $property->bookings()->count());
+    }
+
+    public function test_reset_restores_the_site_identity_pages_and_seo(): void
+    {
+        $this->seed();
+        config(['demo.property_slug' => DatabaseSeeder::SLUG]);
+        $property = Property::where('slug', DatabaseSeeder::SLUG)->firstOrFail();
+        $demo = app(DemoService::class);
+        $demo->reset($property);
+
+        // Um visitante troca o nome e a cor, tira o contato do menu e esconde o site do Google.
+        $property->update(['name' => 'Bagunça', 'primary_color' => '#ff0000', 'whatsapp' => null, 'settings' => [
+            'pages' => ['contato' => ['menu' => false]],
+            'seo' => ['indexable' => false],
+        ]]);
+
+        $demo->reset($property);
+        $property->refresh();
+
+        $this->assertSame(['Espaço Bela Vista', '#2f6f4f', '5511950211636'], [$property->name, $property->primary_color, $property->whatsapp]);
+        $this->assertNull($property->settings);
+    }
+
+    public function test_demo_blocks_site_image_uploads(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['property_id' => $this->property->id]));
+
+        $this->postJson('/api/admin/site/images/logo', ['photo' => UploadedFile::fake()->image('logo.png', 400, 100)])
+            ->assertJsonValidationErrors('photo');
+        $this->assertNull($this->property->fresh()->logo_path);
     }
 }

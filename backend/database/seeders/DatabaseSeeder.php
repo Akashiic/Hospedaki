@@ -6,6 +6,7 @@ use App\Models\Accommodation;
 use App\Models\Media;
 use App\Models\Property;
 use App\Models\User;
+use App\Support\SiteSettings;
 use Illuminate\Database\Seeder;
 
 /**
@@ -25,7 +26,39 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         // Só cria o que falta: o seed roda a cada deploy e não pode desfazer o que o dono mudou no painel.
-        $property = Property::firstOrCreate(['slug' => self::SLUG], [
+        $property = Property::firstOrCreate(['slug' => self::SLUG], $this->details());
+
+        $this->photos($property, [
+            ['/fotos/espaco-1.jpg', 'Piscina e salão de festas à noite', true],
+            ['/fotos/lugar-1.jpg', 'Vista da pousada para a represa', true],
+            ['/fotos/espaco-2.jpg', 'Piscina com vista para as montanhas', true],
+            ['/fotos/chale-1.jpg', 'Varanda do Chalé Master com vista para as montanhas', true],
+            ['/fotos/espaco-9.jpg', 'Deck iluminado à noite', true],
+            ['/fotos/lugar-2.jpg', 'Pôr do sol visto da pousada', false],
+            ['/fotos/espaco-7.jpg', 'Área da fogueira', false],
+            ['/fotos/espaco-8.jpg', 'Pátio com palmeiras imperiais', false],
+            ['/fotos/chale-2.jpg', 'Hidromassagem do Chalé Master', false],
+        ]);
+
+        $this->accommodations($property);
+
+        // A senha só é definida quando o usuário é criado: rodar o seed de novo não pode
+        // trocar a senha do dono pela padrão, que está no README público.
+        User::firstOrCreate(['email' => 'dono@exemplo.com.br'], fn () => [
+            'property_id' => $property->id,
+            'name' => 'Dono da Pousada',
+            'password' => $this->ownerPassword(),
+        ]);
+    }
+
+    /**
+     * Nome, textos e contato da pousada, como no site deles.
+     *
+     * @return array<string, mixed>
+     */
+    private function details(): array
+    {
+        return [
             'name' => 'Espaço Bela Vista',
             'tagline' => 'Piscina, fogueira e vista para as montanhas em Mairiporã',
             'description' => 'Uma pousada ao lado de uma reserva ambiental, a 5 minutos do centro de Mairiporã e a 45 do aeroporto de Guarulhos. Chalé com hidromassagem para o casal, espaço com piscina e salão de festas para a família e opções econômicas para quem vem a um casamento na região. Reserve direto com a gente, sem taxa de aplicativo.',
@@ -70,29 +103,16 @@ class DatabaseSeeder extends Seeder
             'address' => 'R. Custódio, 180',
             'city' => 'Mairiporã',
             'state' => 'SP',
-        ]);
+            'primary_color' => '#2f6f4f',
+        ];
+    }
 
-        $this->photos($property, [
-            ['/fotos/espaco-1.jpg', 'Piscina e salão de festas à noite', true],
-            ['/fotos/lugar-1.jpg', 'Vista da pousada para a represa', true],
-            ['/fotos/espaco-2.jpg', 'Piscina com vista para as montanhas', true],
-            ['/fotos/chale-1.jpg', 'Varanda do Chalé Master com vista para as montanhas', true],
-            ['/fotos/espaco-9.jpg', 'Deck iluminado à noite', true],
-            ['/fotos/lugar-2.jpg', 'Pôr do sol visto da pousada', false],
-            ['/fotos/espaco-7.jpg', 'Área da fogueira', false],
-            ['/fotos/espaco-8.jpg', 'Pátio com palmeiras imperiais', false],
-            ['/fotos/chale-2.jpg', 'Hidromassagem do Chalé Master', false],
-        ]);
-
-        $this->accommodations($property);
-
-        // A senha só é definida quando o usuário é criado: rodar o seed de novo não pode
-        // trocar a senha do dono pela padrão, que está no README público.
-        User::firstOrCreate(['email' => 'dono@exemplo.com.br'], fn () => [
-            'property_id' => $property->id,
-            'name' => 'Dono da Pousada',
-            'password' => $this->ownerPassword(),
-        ]);
+    /**
+     * Devolve à demonstração o nome, as cores e o contato originais (o painel deixa mudar tudo isso).
+     */
+    public function restoreIdentity(Property $property): void
+    {
+        $property->update([...array_intersect_key($this->details(), array_flip(SiteSettings::IDENTITY)), 'logo_path' => null]);
     }
 
     /**

@@ -1,9 +1,15 @@
-// Carrega Google Analytics 4 e Pixel do Meta só quando os IDs estão configurados.
-export default defineNuxtPlugin(() => {
-  const { gaId, metaPixelId } = useRuntimeConfig().public
+let loaded = false
+
+/** Carrega Google Analytics 4 e Pixel do Meta só quando os IDs estão configurados (uma vez por visita). */
+export function loadAnalytics({ gaId, metaPixelId }: { gaId?: string | null, metaPixelId?: string | null }) {
+  if (loaded || !import.meta.client) return
+  loaded = true
 
   if (gaId) {
-    useHead({ script: [{ src: `https://www.googletagmanager.com/gtag/js?id=${gaId}`, async: true }] })
+    const script = document.createElement('script')
+    script.async = true
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`
+    document.head.appendChild(script)
     const w = window as unknown as { dataLayer: unknown[] }
     w.dataLayer = w.dataLayer || []
     window.gtag = function gtag() {
@@ -35,4 +41,4 @@ export default defineNuxtPlugin(() => {
     window.fbq!('init', metaPixelId)
     window.fbq!('track', 'PageView')
   }
-})
+}

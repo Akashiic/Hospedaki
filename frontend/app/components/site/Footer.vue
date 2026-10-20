@@ -2,6 +2,8 @@
 import type { Property } from '~/composables/useApi'
 
 const props = defineProps<{ property: Property, showCall?: boolean }>()
+// As mesmas páginas do menu, sem o Início (o nome da pousada já leva até ele).
+const links = computed(() => menuPages(props.property.pages).filter(p => p.key !== 'inicio'))
 // Ano no fuso da pousada: o mesmo no servidor e na hidratação, sem depender do relógio do navegador.
 const year = useState('footer-year', () => todayIn(props.property.timezone).slice(0, 4))
 
@@ -40,10 +42,7 @@ const phoneLabel = computed(() => formatPhone(props.property.whatsapp))
       </div>
       <nav aria-label="Rodapé">
         <p class="label">Navegue</p>
-        <NuxtLink to="/o-lugar">O lugar</NuxtLink>
-        <NuxtLink to="/acomodacoes">Acomodações</NuxtLink>
-        <NuxtLink to="/reservar">Reservar</NuxtLink>
-        <NuxtLink to="/contato">Contato</NuxtLink>
+        <NuxtLink v-for="page in links" :key="page.key" :to="page.path">{{ page.label }}</NuxtLink>
       </nav>
     </div>
 

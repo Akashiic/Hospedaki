@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Property;
 use App\Models\User;
 use App\Services\DemoService;
+use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -62,6 +63,8 @@ class AuthController extends Controller
                 'name' => $user->property->name,
                 'slug' => $user->property->slug,
                 'primary_color' => $user->property->primary_color,
+                // O ícone do site também marca o painel.
+                'icon_url' => SiteSettings::imageUrls($user->property)['icon_url'],
                 'demo' => $demo->isDemo($user->property),
                 // Fuso da pousada: o painel calcula "hoje" igual à API (reserva em andamento, concluída...).
                 'timezone' => $user->property->timezone ?: Property::DEFAULT_TIMEZONE,

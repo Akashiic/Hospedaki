@@ -1,16 +1,17 @@
 <script setup lang="ts">
 const { property, gallery, whatsappLink } = await useProperty()
 
-useSeoMeta({ title: `O lugar · ${property.value.name}`, description: property.value.description ?? undefined })
+const image = computed(() => gallery.value[1]?.url ?? gallery.value[0]?.url)
+const page = await useSitePage('lugar', { image: () => image.value })
 </script>
 
 <template>
   <div>
     <SitePageHeader
-      eyebrow="O lugar"
-      :title="property.tagline ?? property.name"
-      :lead="[property.city, property.state].filter(Boolean).join(', ') || null"
-      :image="gallery[1]?.url ?? gallery[0]?.url"
+      :eyebrow="page.eyebrow"
+      :title="page.title"
+      :lead="page.lead"
+      :image="image"
     />
     <SiteIntro :property="property" />
     <LazySiteGallery v-if="gallery.length > 1" hydrate-on-visible :photos="gallery" />

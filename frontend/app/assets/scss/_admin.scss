@@ -96,3 +96,32 @@
   .a-skeleton::after { animation: none; }
 }
 @keyframes a-fade { from { opacity: 0; } }
+
+// ── Formulários de "Seu site": seções em cartão, campos com contador e barra de salvar fixa ──
+.a-form { display: grid; gap: 1rem; }
+.a-section {
+  display: grid; gap: .9rem; min-width: 0; margin: 0; padding: 1.2rem;
+  background: var(--a-card); border-radius: var(--a-radius); box-shadow: var(--a-shadow);
+  > h2 { margin: 0; font-family: var(--font-body); font-size: 1.15rem; font-weight: 700; }
+  > h2 + .a-hint { margin-top: -.6rem; }
+}
+.a-field { display: grid; gap: .3rem; min-width: 0; align-content: start; }
+.a-field-head { display: flex; justify-content: space-between; align-items: baseline; gap: .6rem; }
+.a-field-head label, .a-label { font-weight: 700; font-size: .88rem; }
+.a-count { font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; &.near { color: var(--warn-ink); font-weight: 700; } }
+.a-hint { margin: 0; color: var(--muted); font-size: .84rem; font-weight: 400; line-height: 1.45; }
+.a-err { color: var(--danger); font-weight: 700; font-size: .84rem; }
+.a-row { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.a-head { display: grid; gap: .3rem; }
+.a-head h1 { @include display(clamp(2rem, 4vw, 2.8rem)); margin: 0; }
+.a-head p { margin: 0; color: var(--muted); max-width: 62ch; }
+.a-head a, .a-hint a { color: var(--brand-text); font-weight: 700; text-underline-offset: 3px; }
+.a-back { justify-self: start; display: inline-flex; align-items: center; gap: .3rem; min-height: 40px; padding: 0; border: 0; background: none; font: inherit; font-weight: 700; color: var(--brand-text); cursor: pointer; text-decoration: none; }
+.a-savebar {
+  position: sticky; bottom: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  padding: .7rem .8rem calc(.7rem + env(safe-area-inset-bottom, 0px));
+  background: var(--a-card); border-radius: var(--a-radius); box-shadow: 0 -8px 24px rgb(0 0 0 / .06);
+  // No celular fica acima da navegação de baixo do painel.
+  @include below(lg) { bottom: calc(4.9rem + env(safe-area-inset-bottom, 0px)); }
+}
+.a-status { margin: 0 auto 0 0; font-size: .86rem; color: var(--muted); &.dirty { color: var(--warn-ink); font-weight: 700; } &.error { color: var(--danger); font-weight: 700; } }

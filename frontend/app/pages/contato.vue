@@ -1,19 +1,8 @@
 <script setup lang="ts">
 const { property, whatsappLink, gallery } = await useProperty()
 
-// Só os canais que a pousada cadastrou.
-const channels = [
-  property.value.whatsapp && 'WhatsApp',
-  property.value.phone && 'telefone',
-  property.value.email && 'e-mail',
-  (property.value.address || property.value.city) && 'endereço',
-].filter(Boolean) as string[]
-useSeoMeta({
-  title: `Contato · ${property.value.name}`,
-  description: channels.length
-    ? `${property.value.name}: ${channels.length > 1 ? `${channels.slice(0, -1).join(', ')} e ${channels.at(-1)}` : channels[0]}. Fale com a gente e reserve direto.`
-    : undefined,
-})
+const image = computed(() => gallery.value[3]?.url ?? gallery.value[0]?.url)
+const page = await useSitePage('contato', { image: () => image.value })
 
 const mapsLink = computed(() => {
   const q = [property.value.address, property.value.city, property.value.state].filter(Boolean).join(', ')
@@ -30,7 +19,7 @@ const steps = [
 
 <template>
   <div>
-    <SitePageHeader compact eyebrow="Contato" title="Fale com a gente" :image="gallery[3]?.url ?? gallery[0]?.url" />
+    <SitePageHeader compact :eyebrow="page.eyebrow" :title="page.title" :lead="page.lead" :image="image" />
 
     <section class="container contact">
       <div v-reveal class="card main">

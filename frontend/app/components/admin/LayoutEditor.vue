@@ -4,6 +4,8 @@ import type { HomeSection, SectionKey } from '~/utils/homeLayout'
 
 // Editor da página inicial: o dono liga, desliga e reordena as seções, vê o resultado ao vivo
 // na prévia (o site de verdade, com o layout ainda não salvo em ?layout=) e salva quando gostar.
+// Dentro de "Seu site → Páginas → Início" o título vem da página; sozinho, o editor mostra o seu.
+defineProps<{ embedded?: boolean }>()
 const emit = defineEmits<{ saved: [message: string] }>()
 
 const api = useAdminApi()
@@ -155,7 +157,7 @@ const scale = computed(() => stageWidth.value ? Math.min(1, stageWidth.value / f
 
     <template v-else>
       <div class="side">
-        <header class="intro a-rise">
+        <header v-if="!embedded" class="intro a-rise">
           <h1>Página inicial</h1>
           <p>Escolha o que aparece na página inicial do seu site e em que ordem. A prévia mostra o resultado antes de salvar.</p>
         </header>
