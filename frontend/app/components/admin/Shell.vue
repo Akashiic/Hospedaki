@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { AdminTab } from '~/composables/useAdminApi'
-import { BedDouble, CalendarCheck, CalendarX2, ExternalLink, House, Inbox, LayoutTemplate, LogOut, Menu, X } from 'lucide-vue-next'
+import { BedDouble, CalendarCheck, CalendarX2, ExternalLink, House, Inbox, LogOut, Menu, PanelsTopLeft, Search, SlidersHorizontal, X } from 'lucide-vue-next'
 
 // Moldura do painel: barra lateral com ícones no computador; no celular, barra no alto com o
 // nome da pousada e navegação embaixo (as quatro abas do dia a dia e "Mais" com o resto).
-const props = defineProps<{ tab: AdminTab, propertyName: string | null, userName: string | null, pending: number, demo?: boolean }>()
+const props = defineProps<{ tab: AdminTab, propertyName: string | null, userName: string | null, pending: number, demo?: boolean, iconUrl?: string | null }>()
 const emit = defineEmits<{ go: [tab: AdminTab], logout: [] }>()
 
 const items: { tab: AdminTab, label: string, icon: Component, mobile?: boolean }[] = [
@@ -14,7 +14,13 @@ const items: { tab: AdminTab, label: string, icon: Component, mobile?: boolean }
   { tab: 'reservas', label: 'Reservas', icon: CalendarCheck, mobile: true },
   { tab: 'acomodacoes', label: 'Acomodações', icon: BedDouble, mobile: true },
   { tab: 'bloqueios', label: 'Datas bloqueadas', icon: CalendarX2 },
-  { tab: 'pagina', label: 'Página inicial', icon: LayoutTemplate },
+]
+
+// "Seu site": tudo o que muda o site público, num grupo à parte no menu.
+const siteItems: { tab: AdminTab, label: string, icon: Component }[] = [
+  { tab: 'paginas', label: 'Páginas', icon: PanelsTopLeft },
+  { tab: 'configuracoes', label: 'Configurações', icon: SlidersHorizontal },
+  { tab: 'seo', label: 'SEO', icon: Search },
 ]
 
 // Barra fina no topo enquanto alguma requisição do painel está em andamento. Só aparece
@@ -45,7 +51,7 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
     </Transition>
     <aside class="side" aria-label="Menu do painel">
       <div class="brand">
-        <span class="mark" aria-hidden="true">{{ (propertyName ?? 'P').slice(0, 1) }}</span>
+        <span class="mark" :class="{ img: iconUrl }" aria-hidden="true"><img v-if="iconUrl" :src="iconUrl" alt=""><template v-else>{{ (propertyName ?? 'P').slice(0, 1) }}</template></span>
         <div>
           <p class="eyebrow">Painel</p>
           <strong>{{ propertyName ?? 'Sua pousada' }}</strong>
@@ -57,6 +63,13 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
           <span>{{ item.label }}</span>
           <span v-if="item.tab === 'pedidos' && pending" class="badge">{{ pending }}</span>
         </button>
+        <p id="nav-site" class="group">Seu site</p>
+        <div class="sub" role="group" aria-labelledby="nav-site">
+          <button v-for="item in siteItems" :key="item.tab" type="button" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
+            <component :is="item.icon" :size="20" aria-hidden="true" />
+            <span>{{ item.label }}</span>
+          </button>
+        </div>
       </nav>
       <div class="foot">
         <a href="/" target="_blank" rel="noopener" class="ghost"><ExternalLink :size="18" aria-hidden="true" /> Ver o site</a>
@@ -69,7 +82,7 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
     </aside>
 
     <header class="top">
-      <span class="mark" aria-hidden="true">{{ (propertyName ?? 'P').slice(0, 1) }}</span>
+      <span class="mark" :class="{ img: iconUrl }" aria-hidden="true"><img v-if="iconUrl" :src="iconUrl" alt=""><template v-else>{{ (propertyName ?? 'P').slice(0, 1) }}</template></span>
       <strong>{{ propertyName ?? 'Painel' }}</strong>
       <a href="/" target="_blank" rel="noopener" class="icon" aria-label="Ver o site"><ExternalLink :size="20" /></a>
     </header>
@@ -96,7 +109,11 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
       <div v-if="more" class="sheet-wrap" @click.self="more = false">
         <div class="sheet" role="dialog" aria-label="Mais opções">
           <button type="button" class="close icon" aria-label="Fechar" @click="more = false"><X :size="20" /></button>
-          <button v-for="item in items.filter(i => !i.mobile)" :key="item.tab" type="button" class="row" @click="go(item.tab)">
+          <button v-for="item in items.filter(i => !i.mobile)" :key="item.tab" type="button" class="row" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
+            <component :is="item.icon" :size="20" aria-hidden="true" /> {{ item.label }}
+          </button>
+          <p class="group">Seu site</p>
+          <button v-for="item in siteItems" :key="item.tab" type="button" class="row" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
             <component :is="item.icon" :size="20" aria-hidden="true" /> {{ item.label }}
           </button>
           <a href="/" target="_blank" rel="noopener" class="row"><ExternalLink :size="20" aria-hidden="true" /> Ver o site</a>
@@ -147,6 +164,13 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
   &[aria-current="page"] svg { color: var(--brand-text); }
   .badge { margin-left: auto; }
 }
+// Título do grupo "Seu site" e os itens dele, um pouco recuados.
+.group { @include eyebrow(var(--muted), sm); margin: 1rem 0 .3rem; padding: 0 .8rem; }
+.sub { display: grid; gap: .2rem; }
+.mark.img { background: var(--a-card); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
+.mark img { width: 100%; height: 100%; object-fit: cover; }
+.sheet .group { margin: .6rem 0 .1rem; padding: 0 .4rem; }
+.row[aria-current="page"] { background: var(--a-sunk); }
 .foot { margin-top: auto; display: grid; gap: .6rem; }
 .ghost { display: flex; align-items: center; gap: .6rem; min-height: 40px; padding: 0 .8rem; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; font-size: .9rem; }
 .me { display: flex; align-items: center; gap: .6rem; padding: .6rem .5rem .2rem; border-top: 1px solid var(--line); }

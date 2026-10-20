@@ -48,5 +48,11 @@ Route::prefix('admin')->group(function () {
         Route::delete('accommodations/{accommodation}/seasons/{season}', [Admin\AccommodationController::class, 'destroySeason']);
         Route::get('layout', [Admin\LayoutController::class, 'show']);
         Route::put('layout', [Admin\LayoutController::class, 'update']);
+        Route::get('site', [Admin\SiteController::class, 'show']);
+        Route::put('site/identity', [Admin\SiteController::class, 'updateIdentity']);
+        Route::put('site/seo', [Admin\SiteController::class, 'updateSeo']);
+        Route::put('site/pages/{page}', [Admin\SiteController::class, 'updatePage']);
+        Route::post('site/images/{kind}', [Admin\SiteController::class, 'storeImage'])->middleware('throttle:30,1');
+        Route::delete('site/images/{kind}', [Admin\SiteController::class, 'destroyImage']);
     });
 });

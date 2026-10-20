@@ -86,13 +86,15 @@ class DemoService
             $property->bookings()->delete();
             BlockedDate::whereIn('accommodation_id', $property->accommodations()->select('id'))->delete();
             $this->user($property)->tokens()->delete();
-            // O layout da página inicial volta ao padrão: um visitante pode ter escondido tudo.
+            // Layout da home, textos das páginas e SEO voltam ao padrão: um visitante pode ter
+            // escondido tudo ou trocado o nome da pousada.
             $settings = $property->settings ?? [];
-            unset($settings['home_sections']);
+            unset($settings['home_sections'], $settings['pages'], $settings['seo']);
             $property->update(['settings' => $settings ?: null]);
 
             // Visitantes podem editar, ocultar ou excluir acomodações pelo painel: voltam as originais.
             if ($property->slug === DatabaseSeeder::SLUG) {
+                app(DatabaseSeeder::class)->restoreIdentity($property);
                 app(DatabaseSeeder::class)->restoreAccommodations($property);
             }
 

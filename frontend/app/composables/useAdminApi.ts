@@ -1,3 +1,5 @@
+import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
+
 export interface AdminBooking {
   id: number
   code: string
@@ -17,8 +19,8 @@ export interface AdminBooking {
   created_at: string
 }
 
-/** Abas do painel (o nome vai na URL: /painel?aba=reservas). */
-export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'bloqueios' | 'acomodacoes' | 'pagina'
+/** Abas do painel (o nome vai na URL: /painel?aba=reservas). As três últimas formam "Seu site". */
+export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'configuracoes' | 'seo'
 
 export interface AdminBlock {
   id: number
@@ -71,8 +73,34 @@ export type AccommodationInput = Pick<AdminAccommodation,
 
 export interface AdminMe {
   user: { name: string, email: string }
-  property: { name: string, slug: string, primary_color: string, demo?: boolean, timezone?: string, accommodations: { id: number, name: string }[] }
+  property: { name: string, slug: string, primary_color: string, icon_url?: string | null, demo?: boolean, timezone?: string, accommodations: { id: number, name: string }[] }
 }
+
+/** Nome, cores, contato e imagens do site ("Seu site → Configurações"). */
+export interface AdminSiteIdentity {
+  name: string
+  tagline: string | null
+  description: string | null
+  primary_color: string
+  email: string | null
+  phone: string | null
+  whatsapp: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  logo_url: string | null
+  icon_url: string | null
+  share_image_url: string | null
+}
+
+/** Tudo de "Seu site", como a API devolve em cada leitura e em cada gravação. */
+export interface AdminSite {
+  identity: AdminSiteIdentity
+  pages: Record<PageKey, PageSettings>
+  seo: SiteSeo
+}
+
+export type SiteImageKind = 'logo' | 'icon' | 'share'
 
 /** Token do painel, guardado num cookie do navegador do dono. */
 export function useAdminToken() {

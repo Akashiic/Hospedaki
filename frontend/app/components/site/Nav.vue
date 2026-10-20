@@ -1,6 +1,8 @@
 <script setup lang="ts">
 // Menu fixo: transparente sobre a capa, ganha fundo ao rolar. No celular abre em tela cheia.
-defineProps<{ name: string, logoUrl: string | null }>()
+import type { PageKey, PageSettings } from '~/utils/sitePages'
+
+const props = defineProps<{ name: string, logoUrl: string | null, pages?: Record<PageKey, PageSettings> }>()
 const solid = ref(false)
 const open = ref(false)
 const route = useRoute()
@@ -8,12 +10,8 @@ const root = ref<HTMLElement>()
 const burger = ref<HTMLButtonElement>()
 const sheet = ref<HTMLElement>()
 
-const links = [
-  { to: '/', label: 'Início' },
-  { to: '/o-lugar', label: 'O lugar' },
-  { to: '/acomodacoes', label: 'Acomodações' },
-  { to: '/contato', label: 'Contato' },
-]
+// Páginas que o dono deixou no menu ("Seu site → Páginas"). Reservar tem botão próprio.
+const links = computed(() => menuPages(props.pages).filter(p => p.key !== 'reservar').map(p => ({ to: p.path, label: p.label })))
 
 // Fecha o menu do celular ao trocar de página.
 watch(() => route.fullPath, () => { open.value = false })

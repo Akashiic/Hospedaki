@@ -1,3 +1,5 @@
+import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
+
 export interface Photo {
   url: string
   caption: string | null
@@ -59,6 +61,13 @@ export interface Property {
   city: string | null
   state: string | null
   logo_url: string | null
+  /** Ícone da aba do navegador (quadrado, PNG). */
+  icon_url?: string | null
+  /** Imagem que aparece ao compartilhar o link (WhatsApp, redes), 1200 × 630. */
+  share_image_url?: string | null
+  /** Textos, SEO e presença no menu de cada página, escolhidos em "Seu site" no painel. */
+  pages?: Record<PageKey, PageSettings>
+  seo?: SiteSeo
   primary_color: string
   /** Fuso da pousada (IANA): define o "hoje" do calendário, igual ao do backend. */
   timezone: string
@@ -128,6 +137,11 @@ export function apiError(error: unknown) {
   const data = (error as { data?: { message?: string, errors?: Record<string, string[]> } }).data
   const first = data?.errors ? Object.values(data.errors)[0]?.[0] : undefined
   return first ?? data?.message ?? 'Não foi possível concluir. Tente novamente.'
+}
+
+/** Erros de validação por campo ({ name: ['mensagem'] }), para mostrar cada um embaixo do seu campo. */
+export function apiFieldErrors(error: unknown): Record<string, string[]> {
+  return (error as { data?: { errors?: Record<string, string[]> } }).data?.errors ?? {}
 }
 
 /** Telefone brasileiro legível: 5511950211636 → (11) 95021-1636. */

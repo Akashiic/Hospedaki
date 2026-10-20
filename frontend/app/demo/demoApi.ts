@@ -4,6 +4,7 @@ import type { Accommodation, Property, Quote, QuoteItem } from '~/composables/us
 import { addDaysIso, addMonthsIso, nightsBetween, todayIn, weekdayOf } from '~/utils/dates'
 import { type BookingScope, inScope } from '~/utils/bookings'
 import { normalizeLayout } from '~/utils/homeLayout'
+import { type PageKey, SITE_PAGES } from '~/utils/sitePages'
 import { plural, stayCharges } from '~/utils/pricing'
 import { dawnScene, goldenScene, interiorScene, nightScene, porchScene, trailScene } from './illustrations'
 
@@ -327,6 +328,32 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
     if (sub === 'seasons' && method === 'PUT') Object.assign(seasons.find(x => x.id === Number(subId)) ?? notFound(), body)
     if (sub === 'seasons' && method === 'DELETE') seasons.splice(seasons.findIndex(x => x.id === Number(subId)), 1)
     return { data: adminAccommodation(acc) } as T
+  }
+
+  // Painel: "Seu site" (na prévia, as mudanças valem só enquanto a aba estiver aberta).
+  const siteMatch = route.match(/^\/admin\/site(?:\/(identity|seo|pages|images)(?:\/(\w+))?)?$/)
+  if (siteMatch) {
+    const [, part, key] = siteMatch
+    const pages = (property.pages ??= Object.fromEntries(SITE_PAGES.map(p => [p.key, { menu: true, eyebrow: null, title: null, lead: null, seo_title: null, seo_description: null }])) as NonNullable<Property['pages']>)
+    const seo = (property.seo ??= { description: null, indexable: true, google_verification: null, ga_id: null, meta_pixel_id: null })
+    if (part === 'identity' && method === 'PUT') Object.assign(property, body)
+    if (part === 'seo' && method === 'PUT') Object.assign(seo, body)
+    if (part === 'pages' && method === 'PUT') {
+      const page = pages[key as PageKey] ?? notFound()
+      Object.assign(page, body)
+      if (!SITE_PAGES.find(p => p.key === key)?.menuOptional) page.menu = true
+    }
+    if (part === 'images' && method === 'POST') fail('photo', 'Na prévia o envio de imagens fica desligado.')
+    if (part === 'images' && method === 'DELETE') {
+      if (key === 'logo') property.logo_url = null
+      else property[key === 'icon' ? 'icon_url' : 'share_image_url'] = null
+    }
+    const { name, tagline, description, primary_color, email, phone, whatsapp, address, city, state, logo_url } = property
+    return {
+      identity: { name, tagline, description, primary_color, email, phone, whatsapp, address, city, state, logo_url, icon_url: property.icon_url ?? null, share_image_url: property.share_image_url ?? null },
+      pages,
+      seo,
+    } as T
   }
 
   Object.assign(handlers, {

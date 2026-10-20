@@ -158,7 +158,7 @@ const accNames = (b: AdminBooking) => b.accommodations.map(a => a.name).join(' +
     <section class="quick a-rise" style="--i: 7" aria-label="Atalhos">
       <button type="button" class="a-card a-lift" @click="emit('go', 'bloqueios')"><CalendarX2 :size="20" /> Bloquear datas</button>
       <button type="button" class="a-card a-lift" @click="emit('go', 'acomodacoes')"><BedDouble :size="20" /> Acomodações e preços</button>
-      <button type="button" class="a-card a-lift" @click="emit('go', 'pagina')"><LayoutTemplate :size="20" /> Personalizar a página</button>
+      <button type="button" class="a-card a-lift" @click="emit('go', 'paginas')"><LayoutTemplate :size="20" /> Personalizar o site</button>
     </section>
   </div>
 </template>

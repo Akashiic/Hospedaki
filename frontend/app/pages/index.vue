@@ -22,14 +22,7 @@ const staysInStory = computed(() => shown.value.includes('story') && shown.value
 // "Conhecer" e a escolha da capa levam ao dia na pousada ou, sem ele, às acomodações.
 const exploreTarget = computed(() => shown.value.includes('story') ? 'um-dia' : 'acomodacoes-home')
 
-useSeoMeta({
-  title: property.value.tagline ? `${property.value.name} · ${property.value.tagline}` : property.value.name,
-  description: property.value.description ?? undefined,
-  ogTitle: property.value.name,
-  ogDescription: property.value.description ?? undefined,
-  ogImage: heroSlides.value[0]?.url,
-  robots: preview.value ? 'noindex' : undefined,
-})
+await useSitePage('inicio', { image: () => heroSlides.value[0]?.url, noindex: () => !!preview.value })
 useHead({
   link: heroSlides.value[0] && !heroSlides.value[0].url.startsWith('data:')
     ? [{ rel: 'preload', as: 'image', href: heroSlides.value[0].url, fetchpriority: 'high' }]

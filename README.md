@@ -21,7 +21,10 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - Painel do dono em `/painel`: entrar, ver pedidos, confirmar, recusar, falar com o hóspede pelo WhatsApp e bloquear datas.
 - Aba **Reservas** no painel: filtros Próximas, Em andamento, Concluídas, Passadas (inclui pedidos que venceram sem resposta) e Canceladas, com contagem e busca por nome, código, telefone ou acomodação.
 - Aba **Acomodações** no painel: criar, editar, ocultar do site e excluir (só sem reservas no histórico), mudar a ordem, enviar e ordenar fotos e cadastrar temporadas e feriados. Preços: diária, diária de sexta e sábado, valor por pessoa a mais, taxa de limpeza, mínimo de diárias, desconto semanal (7+ diárias) e mensal (28+), e preço e mínimo próprios por temporada. O formulário simula quanto o hóspede paga.
-- Página inicial personalizável pelo dono (aba **Página inicial** do painel): ligar, desligar e reordenar as seções (capa, "Um dia aqui", acomodações, sobre o lugar, galeria e serviços opcionais), com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas. A capa fica sempre no topo e seções sem conteúdo ficam fora do site.
+- **Seu site** no painel, com três telas:
+  - **Páginas**: cada página do site (Início, O lugar, Acomodações, Reservar, Contato) com os textos da abertura, o título e a descrição no Google e a opção de sair do menu, com prévia do Google e do WhatsApp. Na página inicial, as seções podem ser ligadas, desligadas e reordenadas, com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas (a capa fica sempre no topo e seções sem conteúdo ficam fora do site).
+  - **Configurações**: logo, ícone da aba do navegador, nome, frase de destaque, cor principal, apresentação e contatos.
+  - **SEO**: imagem de compartilhamento, descrição padrão, "Aparecer no Google", verificação do Search Console, Google Analytics e Pixel do Meta. O `robots.txt` e o `sitemap.xml` são gerados pelo site e seguem essas escolhas.
 - Aviso por e-mail para o dono a cada pedido novo.
 - Google Analytics 4 e Pixel do Meta: basta informar os IDs. O envio de um pedido conta como conversão ("Lead").
 
