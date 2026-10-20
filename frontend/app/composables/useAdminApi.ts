@@ -19,8 +19,11 @@ export interface AdminBooking {
   created_at: string
 }
 
-/** Abas do painel (o nome vai na URL: /painel?aba=reservas). As três últimas formam "Seu site". */
-export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'configuracoes' | 'seo'
+/**
+ * Abas do painel (o nome vai na URL: /painel?aba=reservas). "Seu site" reúne Páginas e
+ * Configurações (identidade, contato, SEO e integrações).
+ */
+export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes'
 
 export interface AdminBlock {
   id: number

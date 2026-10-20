@@ -3,10 +3,11 @@ import type { Property } from '~/composables/useApi'
 import type { SiteSeo } from '~/utils/sitePages'
 import { Bot, FileCode2, LockKeyhole, Map as MapIcon, RefreshCw, Sparkles } from 'lucide-vue-next'
 
-// "Seu site → SEO": como o site aparece no Google e o que os robôs podem ler. Controla o Nuxt SEO
-// do site público: robots.txt (robôs de busca e de IA), sitemap.xml, dados estruturados
-// (Schema.org), separador dos títulos, verificação do Search Console, Analytics e Pixel.
-const props = defineProps<{ demo?: boolean, accommodations: { name: string }[] }>()
+// "Seu site → Configurações → SEO": como o site aparece no Google e o que os robôs podem ler.
+// Controla o Nuxt SEO do site público: robots.txt (robôs de busca e de IA), sitemap.xml, dados
+// estruturados (Schema.org) e separador dos títulos. "Integrações" usa o mesmo formulário para
+// Search Console, Analytics e Pixel; cada tela mostra só os seus campos.
+const props = defineProps<{ section: 'seo' | 'integracoes', accommodations: { name: string }[] }>()
 const emit = defineEmits<{ message: [text: string] }>()
 
 const { site, loadError, load, send } = useAdminSite()
@@ -54,9 +55,11 @@ async function save() {
   try {
     await send('/site/seo', { method: 'PUT', body: { ...form.value } })
     form.value = copy()
-    emit('message', 'SEO salvo. Robots e mapa do site se atualizam em alguns minutos; o Google lê na próxima visita dele.')
+    emit('message', props.section === 'seo'
+      ? 'SEO salvo. Robots e mapa do site se atualizam em alguns minutos; o Google lê na próxima visita dele.'
+      : 'Integrações salvas. Já valem para as próximas visitas ao site.')
     // O site guarda os dados da pousada por um minuto: a prévia ao vivo espera um pouco.
-    setTimeout(refreshLive, 65_000)
+    if (props.section === 'seo') setTimeout(refreshLive, 65_000)
   }
   catch (e) {
     error.value = apiError(e)
@@ -98,12 +101,13 @@ async function refreshLive() {
     liveLoading.value = false
   }
 }
-onMounted(refreshLive)
+onMounted(() => { if (props.section === 'seo') refreshLive() })
 
 // Dados que o Google lê da pousada (Schema.org), montados como o site monta.
 const siteApi = useApi()
 const publicProperty = ref<Property | null>(null)
 onMounted(async () => {
+  if (props.section !== 'seo') return
   publicProperty.value = await siteApi<{ data: Property }>('/').then(r => r.data).catch(() => null)
 })
 const schema = computed(() => {
@@ -130,9 +134,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 
 <template>
   <section class="seo">
-    <header class="a-head a-rise">
+    <header v-if="section === 'seo'" class="a-head a-rise">
       <h1>SEO</h1>
       <p>Como o seu site aparece no Google e o que os robôs podem ler. O texto de cada página e quais páginas aparecem no Google ficam em <NuxtLink :to="{ query: { aba: 'paginas' } }">Páginas</NuxtLink>.</p>
+    </header>
+    <header v-else class="a-head a-rise">
+      <h1>Integrações</h1>
+      <p>Ferramentas do Google e do Meta ligadas ao seu site. Pode deixar em branco o que não usa.</p>
     </header>
 
     <div v-if="loadError" class="a-card load-error" role="alert">
@@ -141,16 +149,10 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
     </div>
     <AdminLoading v-else-if="!site || !form" text="Carregando SEO..." :cards="2" height="180px" />
 
-    <div v-else class="layout">
+    <div v-else class="layout" :class="section">
       <div class="col">
-        <section class="a-section a-rise" style="--i: 1">
-          <h2>Imagem de compartilhamento</h2>
-          <p class="a-hint">A foto que aparece quando o link do site é enviado no WhatsApp, Instagram ou Facebook. Muda na hora.</p>
-          <AdminImageSlot kind="share" :url="site.identity.share_image_url" label="Imagem de compartilhamento" hide-label hint="Uma foto bonita na horizontal. Ela é recortada em 1200 × 630." :demo="demo" @message="emit('message', $event)" />
-        </section>
-
         <form class="a-form" @submit.prevent="save">
-          <section class="a-section a-rise" style="--i: 2">
+          <section v-if="section === 'seo'" class="a-section a-rise" style="--i: 1">
             <h2>No Google</h2>
             <AdminOption id="seo-index" v-model="form.indexable" label="Aparecer no Google" hint="Desligue só enquanto o site estiver em montagem. Desligado, o robots.txt fecha o site e toda página recebe noindex." />
             <p v-if="!form.indexable" class="warn" role="status">O site vai sumir da busca do Google. Quem tem o link continua entrando normalmente.</p>
@@ -164,7 +166,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
             </div>
           </section>
 
-          <section class="a-section a-rise" style="--i: 3">
+          <section v-if="section === 'seo'" class="a-section a-rise" style="--i: 2">
             <h2><Bot :size="20" aria-hidden="true" /> Robôs de IA</h2>
             <p class="a-hint">ChatGPT, Gemini, Claude e outros têm robôs que leem sites. Você escolhe o que eles podem fazer com o seu.</p>
             <div class="choices" role="radiogroup" aria-label="Robôs de IA">
@@ -176,7 +178,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
             </div>
           </section>
 
-          <section class="a-section a-rise" style="--i: 4">
+          <section v-if="section === 'seo'" class="a-section a-rise" style="--i: 3">
             <h2><Sparkles :size="20" aria-hidden="true" /> Dados estruturados</h2>
             <p class="a-hint">Informações em formato que o Google entende (Schema.org): ajudam a mostrar endereço, telefone e preço da pousada direto na busca e no Maps.</p>
             <AdminOption id="seo-schema" v-model="form.structured_data" label="Enviar os dados da pousada ao Google">
@@ -192,18 +194,17 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
                 <dd>{{ f.value ?? 'Não cadastrado' }}</dd>
               </div>
             </dl>
-            <p v-if="form.structured_data" class="a-hint">Os dados vêm de <NuxtLink :to="{ query: { aba: 'configuracoes' } }">Configurações</NuxtLink> e das acomodações. <a :href="`https://search.google.com/test/rich-results?url=${encodeURIComponent(origin + '/')}`" target="_blank" rel="noopener">Testar no Google ↗</a></p>
+            <p v-if="form.structured_data" class="a-hint">Os dados vêm de <NuxtLink :to="{ query: { aba: 'identidade' } }">Identidade</NuxtLink>, <NuxtLink :to="{ query: { aba: 'contato' } }">Contato</NuxtLink> e das acomodações. <a :href="`https://search.google.com/test/rich-results?url=${encodeURIComponent(origin + '/')}`" target="_blank" rel="noopener">Testar no Google ↗</a></p>
           </section>
 
-          <section class="a-section a-rise" style="--i: 5">
+          <section v-if="section === 'seo'" class="a-section a-rise" style="--i: 4">
             <h2><MapIcon :size="20" aria-hidden="true" /> Mapa do site</h2>
             <p class="a-hint">A lista de páginas que o Google deve visitar, montada sozinha com as páginas e as acomodações publicadas.</p>
             <AdminOption id="seo-sitemap-images" v-model="form.sitemap_images" label="Incluir as fotos" hint="As fotos das acomodações entram no mapa e podem aparecer no Google Imagens." />
           </section>
 
-          <section class="a-section a-rise" style="--i: 6">
-            <h2>Ferramentas do Google e do Meta</h2>
-            <p class="a-hint">Para quem usa essas ferramentas. Pode deixar em branco.</p>
+          <section v-if="section === 'integracoes'" class="a-section a-rise" style="--i: 1">
+            <h2>Google e Meta</h2>
             <AdminTextField id="seo-google" v-model="form.google_verification" label="Verificação do Google Search Console" placeholder="Cole a tag ou só o código" hint="No Search Console, escolha &quot;Tag HTML&quot; e cole aqui. Depois envie o mapa do site (sitemap.xml) por lá." :error="err('google_verification')" />
             <div class="a-row">
               <AdminTextField id="seo-ga" v-model="form.ga_id" label="Google Analytics (GA4)" placeholder="G-XXXXXXXXXX" hint="Conta as visitas e os pedidos de reserva." :error="err('ga_id')" />
@@ -215,14 +216,10 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
         </form>
       </div>
 
-      <aside class="previews a-rise" style="--i: 2" aria-label="Prévias e o que está no ar">
+      <aside v-if="section === 'seo'" class="previews a-rise" style="--i: 2" aria-label="Prévias e o que está no ar">
         <div v-if="home" class="preview-block">
           <p class="a-label">Página inicial no Google</p>
           <AdminGooglePreview :title="home.seoTitle" :description="home.seoDescription" path="/" :name="site.identity.name" :icon-url="site.identity.icon_url" />
-        </div>
-        <div v-if="home" class="preview-block">
-          <p class="a-label">Link enviado no WhatsApp</p>
-          <AdminSharePreview :title="home.seoTitle" :description="home.seoDescription" :image="site.identity.share_image_url" />
         </div>
 
         <div class="live a-section">
@@ -268,6 +265,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 <style scoped lang="scss">
 .seo { display: grid; gap: 1.2rem; max-width: 1240px; }
 .layout { display: grid; gap: 1rem; align-items: start; grid-template-columns: minmax(0, 1fr); @include above(lg) { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); } }
+.layout.integracoes { max-width: 820px; @include above(lg) { grid-template-columns: minmax(0, 1fr); } }
 .col { display: grid; gap: 1rem; min-width: 0; }
 .previews { display: grid; gap: 1rem; min-width: 0; }
 .preview-block { display: grid; gap: .45rem; }
