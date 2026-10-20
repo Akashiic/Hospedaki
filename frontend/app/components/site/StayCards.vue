@@ -24,6 +24,7 @@ const ordered = computed(() => props.highlight
       </div>
       <div class="body">
         <span v-if="acc.id === highlight" class="badge">Para vocês</span>
+        <SitePromoPixOffer v-if="acc.payment?.pix_discount" variant="badge" :percent="acc.payment.pix_discount" class="pix" />
         <h3>{{ acc.name }}</h3>
         <p class="meta">{{ guestCopy.card(acc) }}</p>
         <span class="more">Conhecer <span class="arrow">→</span></span>
@@ -55,6 +56,7 @@ const ordered = computed(() => props.highlight
 .media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgb(8 12 10 / 0) 30%, rgb(8 12 10 / .55) 60%, rgb(8 12 10 / .9)); }
 .card:hover .media img { transform: scale($zoom-sm); }
 .body { position: absolute; inset: auto 0 0; padding: clamp(1.2rem, 3vw, 2rem); display: grid; gap: .3rem; }
+.pix { justify-self: start; margin-bottom: .5rem; }
 .badge { @include eyebrow(var(--night), sm); justify-self: start; margin-bottom: .6rem; padding: .3rem .65rem; border-radius: 999px; background: var(--amber); }
 h3 { @include display(clamp(2rem, 3.6vw, 3rem)); margin: 0; }
 .meta { margin: 0; color: rgb(255 255 255 / .82); }

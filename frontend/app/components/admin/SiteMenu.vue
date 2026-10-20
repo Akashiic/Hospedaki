@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { AdminTab } from '~/composables/useAdminApi'
-import { ChevronDown, Globe, Palette, PanelsTopLeft, Phone, Plug, Search, SlidersHorizontal } from 'lucide-vue-next'
+import { ChevronDown, CreditCard, Globe, Palette, PanelsTopLeft, Phone, Plug, Search, SlidersHorizontal } from 'lucide-vue-next'
 
 // "Seu site" no menu do painel: um dropdown com Páginas e Configurações, que é outro dropdown
-// (Identidade, Contato, SEO e Integrações). Abre sozinho quando a aba atual está dentro dele.
+// (Identidade, Contato, SEO, Integrações e Pagamentos, a parte avançada). Abre sozinho quando a aba atual está dentro dele.
 // O mesmo menu serve a barra lateral (computador) e a folha "Mais" (celular).
 const props = defineProps<{ tab: AdminTab, variant: 'side' | 'sheet' }>()
 const emit = defineEmits<{ go: [tab: AdminTab] }>()
@@ -14,6 +14,7 @@ const settings: { tab: AdminTab, label: string, icon: Component }[] = [
   { tab: 'contato', label: 'Contato', icon: Phone },
   { tab: 'seo', label: 'SEO', icon: Search },
   { tab: 'integracoes', label: 'Integrações', icon: Plug },
+  { tab: 'pagamentos', label: 'Pagamentos', icon: CreditCard },
 ]
 
 const inSettings = computed(() => settings.some(i => i.tab === props.tab))

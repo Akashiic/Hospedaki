@@ -44,6 +44,13 @@
   --warn: #d99a1e;
   --warn-soft: #fbefd3;
   --warn-ink: #7a5208;
+  // Sucesso (pago, conectado) e o verde-água do Pix, com texto escuro/branco em contraste AA.
+  --ok-soft: #e1f3e7;
+  --ok-ink: #1d5a37;
+  --pix: #0b7a6e;
+  --pix-deep: #075e55;
+  --pix-soft: #dcf2ee;
+  --pix-ink: #ffffff;
   // Anel de foco: tinta escura nas superfícies claras; as superfícies escuras trocam para --focus-dark.
   --focus: var(--text);
   --focus-dark: #ffffff;

@@ -4,10 +4,10 @@
 export type BookingScope = 'requests' | 'upcoming' | 'ongoing' | 'completed' | 'past' | 'cancelled' | 'all'
 
 /** Onde a reserva está hoje: o status salvo cruzado com as datas. */
-export type BookingPhase = 'request' | 'expired' | 'upcoming' | 'ongoing' | 'completed' | 'declined' | 'cancelled'
+export type BookingPhase = 'request' | 'expired' | 'paying' | 'unpaid' | 'upcoming' | 'ongoing' | 'completed' | 'declined' | 'cancelled'
 
 interface Dated {
-  status: 'pending' | 'confirmed' | 'declined' | 'cancelled'
+  status: 'pending' | 'awaiting_payment' | 'confirmed' | 'declined' | 'cancelled' | 'expired'
   check_in: string
   check_out: string
   /** Reserva por hora: começa e termina no mesmo dia. */
@@ -27,6 +27,9 @@ function endDay(b: Dated): string {
 
 export function bookingPhase(b: Dated, today: string): BookingPhase {
   if (b.status === 'declined' || b.status === 'cancelled') return b.status
+  // Pagamento online: esperando o hóspede pagar, ou passou do prazo sem pagar.
+  if (b.status === 'awaiting_payment') return 'paying'
+  if (b.status === 'expired') return 'unpaid'
   if (b.status === 'pending') return b.check_in < today ? 'expired' : 'request'
   if (endDay(b) <= today) return 'completed'
   return b.check_in <= today ? 'ongoing' : 'upcoming'
@@ -40,7 +43,7 @@ export function inScope(b: Dated, scope: BookingScope, today: string): boolean {
     case 'ongoing': return phase === 'ongoing'
     case 'completed': return phase === 'completed'
     case 'past': return endDay(b) <= today || phase === 'expired'
-    case 'cancelled': return phase === 'declined' || phase === 'cancelled'
+    case 'cancelled': return phase === 'declined' || phase === 'cancelled' || phase === 'unpaid'
     default: return true
   }
 }
@@ -51,13 +54,15 @@ export const BOOKING_SCOPES: { scope: BookingScope, label: string, empty: string
   { scope: 'ongoing', label: 'Em andamento', empty: 'Nenhum hóspede na pousada agora.' },
   { scope: 'completed', label: 'Concluídas', empty: 'Nenhuma estadia concluída ainda.' },
   { scope: 'past', label: 'Passadas', empty: 'Nada no passado ainda.' },
-  { scope: 'cancelled', label: 'Canceladas', empty: 'Nenhuma reserva cancelada ou recusada.' },
+  { scope: 'cancelled', label: 'Canceladas', empty: 'Nenhuma reserva cancelada, recusada ou sem pagamento.' },
   { scope: 'all', label: 'Todas', empty: 'Nenhuma reserva ainda.' },
 ]
 
 export const PHASE_LABEL: Record<BookingPhase, string> = {
   request: 'Aguardando você',
   expired: 'Venceu sem resposta',
+  paying: 'Aguardando pagamento',
+  unpaid: 'Não foi pago',
   upcoming: 'Confirmada',
   ongoing: 'Hospedado agora',
   completed: 'Concluída',

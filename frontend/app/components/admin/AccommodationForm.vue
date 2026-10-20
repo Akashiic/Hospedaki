@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { AccommodationInput, AdminAccommodation } from '~/composables/useAdminApi'
+import type { AccommodationInput, AdminAccommodation, AdminPayments } from '~/composables/useAdminApi'
+import { CreditCard, QrCode } from 'lucide-vue-next'
 
 // Formulário de uma acomodação: dados, hóspedes, preços (com simulação do que o hóspede paga),
 // temporadas e fotos. Nova acomodação: primeiro salva os dados, depois libera fotos e temporadas.
@@ -13,6 +14,7 @@ const blank = (): AccommodationInput => ({
   base_price: 0, weekend_price: null, extra_guest_price: null, cleaning_fee: null,
   weekly_discount: null, monthly_discount: null, min_nights: 1, best_for: null, active: true,
   booking_mode: 'nightly', check_in_time: null, check_out_time: null, hourly_price: null, min_hours: 1, opens_at: '08:00', closes_at: '22:00',
+  accepts_pix: true, accepts_card: true, pix_discount: 0, promo_ends_at: null, promo_loop: false, promo_loop_hours: 24,
 })
 const fromAcc = (a: AdminAccommodation): AccommodationInput => ({
   name: a.name, description: a.description ?? '', amenities: [...a.amenities], max_guests: a.max_guests,
@@ -21,6 +23,8 @@ const fromAcc = (a: AdminAccommodation): AccommodationInput => ({
   monthly_discount: a.monthly_discount, min_nights: a.min_nights, best_for: a.best_for, active: a.active,
   booking_mode: a.booking_mode, check_in_time: a.check_in_time, check_out_time: a.check_out_time, hourly_price: a.hourly_price,
   min_hours: a.min_hours, opens_at: a.opens_at, closes_at: a.closes_at,
+  accepts_pix: a.accepts_pix, accepts_card: a.accepts_card, pix_discount: a.pix_discount, promo_ends_at: a.promo_ends_at,
+  promo_loop: a.promo_loop, promo_loop_hours: a.promo_loop_hours,
 })
 
 const current = ref<AdminAccommodation | null>(props.accommodation)
@@ -80,6 +84,48 @@ const hourSimulation = computed(() => [Math.max(form.min_hours, 4), Math.max(for
   .filter((h, i, all) => all.indexOf(h) === i)
   .map(h => ({ hours: h, total: h * (form.hourly_price ?? 0) + (form.cleaning_fee ?? 0) })))
 
+// ── Pagamento ──
+// Quem cobra o Pix e o cartão vem de "Seu site → Pagamentos"; aqui o dono escolhe o que esta
+// acomodação aceita, o desconto no Pix e o prazo da promoção (o timer do site).
+const payments = ref<AdminPayments | null>(null)
+onMounted(async () => {
+  payments.value = await api<AdminPayments>('/payments').catch(() => null)
+})
+const gatewayOn = computed(() => !!payments.value && (!!payments.value.pix || !!payments.value.card))
+const pixDiscountOn = ref(form.pix_discount > 0)
+watch(pixDiscountOn, (on) => {
+  if (on && !form.pix_discount) form.pix_discount = 5
+  if (!on) {
+    form.pix_discount = 0
+    promoOn.value = false
+  }
+})
+const promoOn = ref(form.promo_ends_at != null)
+// Começa terminando à meia-noite de hoje (no horário do computador do dono).
+const tonight = () => { const d = new Date(); d.setHours(23, 59, 0, 0); return d.toISOString() }
+watch(promoOn, (on) => {
+  if (on) form.promo_ends_at ??= tonight()
+  else {
+    form.promo_ends_at = null
+    form.promo_loop = false
+  }
+})
+// <input type="datetime-local"> fala no horário local, sem fuso: converte de e para ISO.
+const promoLocal = computed({
+  get: () => {
+    if (!form.promo_ends_at) return ''
+    const d = new Date(form.promo_ends_at)
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+  },
+  set: (v: string) => { form.promo_ends_at = v ? new Date(v).toISOString() : null },
+})
+const promoOver = computed(() => !!form.promo_ends_at && !form.promo_loop && Date.parse(form.promo_ends_at) <= Date.now())
+const LOOP_OPTIONS = [
+  { hours: 1, label: 'a cada hora' }, { hours: 6, label: 'a cada 6 horas' }, { hours: 12, label: 'a cada 12 horas' },
+  { hours: 24, label: 'todo dia' }, { hours: 48, label: 'a cada 2 dias' }, { hours: 72, label: 'a cada 3 dias' }, { hours: 168, label: 'toda semana' },
+]
+const previewPrice = computed(() => hourly.value ? form.hourly_price : form.base_price)
+
 const savedSnapshot = ref(JSON.stringify(form))
 const dirty = computed(() => JSON.stringify(form) !== savedSnapshot.value)
 const isNew = computed(() => !current.value)
@@ -103,6 +149,8 @@ async function save() {
     Object.assign(form, fromAcc(res.data))
     syncOpts()
     ownTimes.value = form.check_in_time != null || form.check_out_time != null
+    pixDiscountOn.value = form.pix_discount > 0
+    promoOn.value = form.promo_ends_at != null
     savedSnapshot.value = JSON.stringify(form)
     message.value = created ? 'Acomodação criada. Agora adicione as fotos.' : 'Alterações salvas. Já estão no site.'
     emit('saved', res.data, created)
@@ -120,6 +168,8 @@ async function save() {
 function undo() {
   Object.assign(form, current.value ? fromAcc(current.value) : blank())
   ownTimes.value = form.check_in_time != null || form.check_out_time != null
+  pixDiscountOn.value = form.pix_discount > 0
+  promoOn.value = form.promo_ends_at != null
   nextTick(syncOpts)
   errors.value = {}
 }
@@ -381,6 +431,57 @@ function back() {
       </section>
       </template>
 
+      <section class="card">
+        <h3>Pagamento</h3>
+        <p v-if="payments && !gatewayOn" class="notice">
+          O site ainda não recebe pagamentos: os pedidos esperam a sua confirmação. Para receber no Pix e no cartão, conecte o Mercado Pago ou a Stripe em
+          <NuxtLink :to="{ query: { aba: 'pagamentos' } }">Seu site → Pagamentos</NuxtLink>. O que você escolher aqui já fica pronto.
+        </p>
+        <div class="options">
+          <AdminOption id="opt-pix" v-model="form.accepts_pix" label="Aceitar Pix" :hint="payments?.pix ? undefined : 'O Pix ainda não está ligado em Pagamentos.'">
+            <div class="pay-opts">
+              <AdminOption id="opt-pix-discount" v-model="pixDiscountOn" label="Desconto no Pix" hint="Aparece num selo colorido na acomodação e vale no checkout.">
+                <label for="acc-pix-discount" class="narrow">Desconto
+                  <span class="pct"><input id="acc-pix-discount" v-model.number="form.pix_discount" type="number" min="1" max="50"><span aria-hidden="true">%</span></span>
+                  <small v-if="fieldError('pix_discount')" class="err">{{ fieldError('pix_discount') }}</small>
+                </label>
+              </AdminOption>
+              <AdminOption v-if="pixDiscountOn" id="opt-promo" v-model="promoOn" label="Promoção com prazo" hint="Mostra um timer até o fim da promoção. Acabou o prazo, o desconto acaba junto.">
+                <div class="promo-fields">
+                  <label for="acc-promo-end">Termina em
+                    <input id="acc-promo-end" v-model="promoLocal" type="datetime-local" required>
+                    <small v-if="fieldError('promo_ends_at')" class="err">{{ fieldError('promo_ends_at') }}</small>
+                  </label>
+                  <AdminOption id="opt-loop" v-model="form.promo_loop" label="Recomeçar o timer quando acabar (loop)" hint="A promoção se renova sozinha: ao zerar, o timer volta a contar.">
+                    <label for="acc-loop-hours" class="narrow">Recomeça
+                      <select id="acc-loop-hours" v-model.number="form.promo_loop_hours">
+                        <option v-for="o in LOOP_OPTIONS" :key="o.hours" :value="o.hours">{{ o.label }}</option>
+                      </select>
+                    </label>
+                    <p class="hint law">Use o loop para ofertas que se renovam de verdade, como um desconto do dia. Anunciar um prazo que não existe pode ser propaganda enganosa (Código de Defesa do Consumidor, art. 37).</p>
+                  </AdminOption>
+                  <p v-if="promoOver" class="warn-note" role="status">Esse prazo já passou: o desconto não aparece no site. Escolha uma data futura ou ligue o loop.</p>
+                </div>
+              </AdminOption>
+            </div>
+          </AdminOption>
+          <AdminOption id="opt-card" v-model="form.accepts_card" label="Aceitar cartão de crédito" :hint="payments?.card ? (payments.installments > 1 ? `Em até ${payments.installments}x, como está em Pagamentos.` : 'À vista.') : 'O cartão ainda não está ligado em Pagamentos.'" />
+        </div>
+        <p v-if="!form.accepts_pix && !form.accepts_card" class="hint">Sem Pix e sem cartão, os pedidos desta acomodação esperam a sua confirmação, como antes.</p>
+
+        <div v-if="form.accepts_pix && pixDiscountOn && form.pix_discount > 0 && !promoOver" class="preview">
+          <p class="sim-title">Como aparece no site</p>
+          <SitePromoPixOffer
+            :percent="form.pix_discount"
+            :ends-at="promoOn ? form.promo_ends_at : null"
+            :loop-hours="form.promo_loop ? form.promo_loop_hours : null"
+            :price="previewPrice"
+            :unit="hourly ? 'a hora no Pix' : 'a diária no Pix'"
+          />
+        </div>
+        <p class="methods-line"><QrCode :size="16" aria-hidden="true" /> Pix {{ payments?.pix ? 'ligado' : 'desligado' }} · <CreditCard :size="16" aria-hidden="true" /> Cartão {{ payments?.card ? 'ligado' : 'desligado' }} no site</p>
+      </section>
+
       <div class="savebar">
         <p class="status" :class="{ dirty, error: Object.keys(errors).length }" role="status">
           {{ message || (dirty ? 'Alterações não salvas' : isNew ? 'Preencha e salve para criar' : 'Tudo salvo') }}
@@ -479,4 +580,12 @@ label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; 
   &:has(.native:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
 }
 .native { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.notice { margin: 0; padding: .7rem .9rem; border-radius: 12px; background: var(--warn-soft); color: var(--warn-ink); font-size: .88rem; font-weight: 500; }
+.notice a { color: inherit; font-weight: 700; }
+.pay-opts, .promo-fields { display: grid; gap: .6rem; }
+.pay-opts :deep(.option) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--line) 70%, transparent); background: var(--a-card); }
+.law { font-size: .8rem; margin-top: .4rem; }
+.warn-note { margin: 0; padding: .55rem .75rem; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); font-size: .84rem; font-weight: 600; }
+.preview { display: grid; gap: .6rem; padding: 1rem; border-radius: 14px; background: var(--a-sunk); }
+.methods-line { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; color: var(--muted); font-size: .84rem; }
 </style>

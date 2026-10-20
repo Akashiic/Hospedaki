@@ -1,9 +1,11 @@
 import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
 
+export type BookingStatus = 'pending' | 'awaiting_payment' | 'confirmed' | 'declined' | 'cancelled' | 'expired'
+
 export interface AdminBooking {
   id: number
   code: string
-  status: 'pending' | 'confirmed' | 'declined' | 'cancelled'
+  status: BookingStatus
   check_in: string
   check_out: string
   nights: number
@@ -21,6 +23,11 @@ export interface AdminBooking {
   /** Pessoas a mais cujo acréscimo não entrou no total: combinar com o hóspede. */
   extra_guests_unpriced: number
   accommodations: { id: number, name: string, subtotal: number }[]
+  /** Pagamento online: prazo para pagar, quando e como foi pago e o desconto do Pix (centavos). */
+  payment_due_at?: string | null
+  paid_at?: string | null
+  payment_method?: 'pix' | 'card' | null
+  pix_discount?: number
   created_at: string
 }
 
@@ -28,7 +35,7 @@ export interface AdminBooking {
  * Abas do painel (o nome vai na URL: /painel?aba=reservas). "Seu site" reúne Páginas e
  * Configurações (identidade, contato, SEO e integrações).
  */
-export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'estatisticas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes'
+export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'estatisticas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes' | 'pagamentos'
 
 export interface AdminBlock {
   id: number
@@ -78,6 +85,13 @@ export interface AdminAccommodation {
   min_hours: number
   opens_at: string
   closes_at: string
+  /** Pagamento online: formas aceitas, desconto no Pix (%) e prazo da promoção (ISO; null = sem prazo). */
+  accepts_pix: boolean
+  accepts_card: boolean
+  pix_discount: number
+  promo_ends_at: string | null
+  promo_loop: boolean
+  promo_loop_hours: number
   active: boolean
   sort_order: number
   photos: { id: number, url: string, caption: string | null }[]
@@ -90,7 +104,8 @@ export interface AdminAccommodation {
 export type AccommodationInput = Pick<AdminAccommodation,
   'name' | 'description' | 'amenities' | 'max_guests' | 'included_guests' | 'base_price' | 'weekend_price'
   | 'extra_guest_price' | 'cleaning_fee' | 'weekly_discount' | 'monthly_discount' | 'min_nights' | 'best_for' | 'active'
-  | 'booking_mode' | 'check_in_time' | 'check_out_time' | 'hourly_price' | 'min_hours' | 'opens_at' | 'closes_at'>
+  | 'booking_mode' | 'check_in_time' | 'check_out_time' | 'hourly_price' | 'min_hours' | 'opens_at' | 'closes_at'
+  | 'accepts_pix' | 'accepts_card' | 'pix_discount' | 'promo_ends_at' | 'promo_loop' | 'promo_loop_hours'>
 
 export interface AdminMe {
   user: { name: string, email: string }
@@ -119,6 +134,21 @@ export interface AdminSite {
   identity: AdminSiteIdentity
   pages: Record<PageKey, PageSettings>
   seo: SiteSeo
+}
+
+export type PaymentProvider = 'mercadopago' | 'stripe' | 'simulated'
+
+/** "Seu site → Configurações → Pagamentos". As chaves secretas voltam só com o final (hint). */
+export interface AdminPayments {
+  demo: boolean
+  configured: PaymentProvider[]
+  pix: PaymentProvider | null
+  card: PaymentProvider | null
+  installments: number
+  gateways: {
+    mercadopago: { configured: boolean, public_key: string | null, access_token_hint: string | null, webhook_secret: boolean, test: boolean, webhook_url: string }
+    stripe: { configured: boolean, publishable_key: string | null, secret_key_hint: string | null, webhook_secret: boolean, test: boolean, webhook_url: string }
+  }
 }
 
 export type SiteImageKind = 'logo' | 'icon' | 'share'

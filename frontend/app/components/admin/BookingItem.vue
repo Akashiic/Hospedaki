@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminBooking } from '~/composables/useAdminApi'
-import { ArrowRight, Check, Clock, MessageCircle, Moon, PartyPopper, Users, X } from 'lucide-vue-next'
+import { ArrowRight, Check, Clock, CreditCard, MessageCircle, Moon, PartyPopper, QrCode, Users, X } from 'lucide-vue-next'
 
 // today: "hoje" no fuso da pousada, para saber se a estadia já começou ou terminou.
 const props = defineProps<{ booking: AdminBooking, today: string, busy?: boolean }>()
@@ -63,6 +63,12 @@ const whatsapp = computed(() => {
         <strong>{{ formatMoney(booking.total) }}</strong>
         <!-- O total salvo não inclui o acréscimo das pessoas a mais sem valor cadastrado. -->
         <small v-if="booking.extra_guests_unpriced > 0" class="unpriced">{{ guestCopy.panelUnpriced(booking.extra_guests_unpriced) }}</small>
+        <!-- Pagamento online: como foi pago (com o desconto do Pix) ou até quando o hóspede tem para pagar. -->
+        <small v-if="booking.paid_at" class="paid">
+          <component :is="booking.payment_method === 'pix' ? QrCode : CreditCard" :size="14" aria-hidden="true" />
+          Pago {{ booking.payment_method === 'pix' ? 'no Pix' : 'no cartão' }}<template v-if="booking.pix_discount"> · −{{ formatMoney(booking.pix_discount) }}</template>
+        </small>
+        <small v-else-if="phase === 'paying' && booking.payment_due_at" class="due">paga até {{ new Date(booking.payment_due_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}</small>
       </div>
     </div>
 
@@ -81,12 +87,12 @@ const whatsapp = computed(() => {
           <button type="button" class="btn btn-ghost btn-sm" :disabled="busy" @click="askingDecline = true"><X :size="16" aria-hidden="true" /> Recusar</button>
           <button type="button" class="btn btn-sm" :disabled="busy" @click="emit('confirm')"><Check :size="16" aria-hidden="true" /> {{ busy ? 'Confirmando...' : 'Confirmar' }}</button>
         </div>
-        <div v-else-if="(phase === 'upcoming' || phase === 'ongoing') && askingDecline" key="ask2" class="actions">
-          <span class="ask">Cancelar e liberar as datas?</span>
+        <div v-else-if="(phase === 'upcoming' || phase === 'ongoing' || phase === 'paying') && askingDecline" key="ask2" class="actions">
+          <span class="ask">{{ booking.paid_at ? 'Cancelar? O estorno é feito no painel do gateway.' : 'Cancelar e liberar as datas?' }}</span>
           <button type="button" class="btn btn-sm danger" :disabled="busy" @click="emit('decline')">Sim, cancelar</button>
           <button type="button" class="btn btn-ghost btn-sm" @click="askingDecline = false">Voltar</button>
         </div>
-        <div v-else-if="phase === 'upcoming' || phase === 'ongoing'" key="conf" class="actions">
+        <div v-else-if="phase === 'upcoming' || phase === 'ongoing' || phase === 'paying'" key="conf" class="actions">
           <button type="button" class="btn btn-ghost btn-sm" @click="askingDecline = true">Cancelar reserva</button>
         </div>
       </Transition>
@@ -101,6 +107,7 @@ const whatsapp = computed(() => {
 .request { --tone: var(--warn); }
 .upcoming { --tone: var(--brand); }
 .ongoing { --tone: var(--amber); }
+.paying { --tone: var(--pix); }
 
 header { display: flex; align-items: center; gap: .8rem; }
 .avatar { display: grid; place-items: center; flex: none; width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand-text); font-weight: 800; font-size: .88rem; }
@@ -112,7 +119,10 @@ h3 { margin: 0; font-size: 1.3rem; line-height: 1.15; overflow: hidden; text-ove
 .request .status { background: var(--warn-soft); color: var(--warn-ink); }
 .upcoming .status { background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand-text); }
 .ongoing .status { background: var(--night); color: var(--amber-soft); }
-.declined .status, .cancelled .status { background: color-mix(in srgb, var(--danger) 10%, white); color: var(--danger); }
+.paying .status { background: var(--pix-soft); color: var(--pix-deep); }
+.paid { display: inline-flex; align-items: center; gap: .3rem; color: var(--ok-ink); font-weight: 700; }
+.due { color: var(--pix-deep); font-weight: 700; }
+.declined .status, .cancelled .status, .unpaid .status { background: color-mix(in srgb, var(--danger) 10%, white); color: var(--danger); }
 @container (max-width: 440px) { .status { position: absolute; top: .9rem; right: .9rem; } header { padding-right: 6.5rem; } }
 
 .stay { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .6rem 1.2rem; padding: .8rem .9rem; border-radius: 14px; background: var(--a-sunk); }

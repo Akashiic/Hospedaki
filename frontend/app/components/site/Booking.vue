@@ -128,7 +128,7 @@ async function submit() {
   sending.value = true
   errorMessage.value = ''
   try {
-    const res = await api<{ data: { code: string, total: number, extra_guests_unpriced?: number } }>('/booking-requests', {
+    const res = await api<{ data: { code: string, total: number, extra_guests_unpriced?: number }, checkout?: { token: string } | null }>('/booking-requests', {
       method: 'POST',
       body: {
         accommodation_ids: selected.value,
@@ -140,6 +140,11 @@ async function submit() {
       },
     })
     tracking.bookingRequested(res.data.total)
+    // Com pagamento online, o próximo passo é o checkout (as datas ficam seguras pelo prazo).
+    if (res.checkout?.token) {
+      await navigateTo(`/pagamento/${res.checkout.token}`)
+      return
+    }
     done.value = { code: res.data.code, extraUnpriced: res.data.extra_guests_unpriced ?? quote.value?.extra_guests_unpriced ?? 0 }
   }
   catch (e) {
@@ -149,6 +154,13 @@ async function submit() {
     sending.value = false
   }
 }
+
+// Com gateway configurado, o pedido vira pagamento online (Pix e/ou cartão) no checkout.
+const pays = computed(() => !!quote.value?.payment?.methods.length)
+const payWith = computed(() => {
+  const m = quote.value?.payment?.methods ?? []
+  return m.length === 2 ? 'no Pix ou no cartão' : m[0] === 'pix' ? 'no Pix' : 'no cartão'
+})
 
 // Pessoas cobertas pelo total quando parte do acréscimo ainda não tem valor.
 const coveredGuests = computed(() => quote.value ? quote.value.guests - quote.value.extra_guests_unpriced : 0)
@@ -265,6 +277,10 @@ const whatsappLink = computed(() => {
                     <span>{{ quote.extra_guests_unpriced > 0 ? guestCopy.quoteTotal(coveredGuests) : 'Total' }}</span>
                     <span>{{ formatMoney(quote.total) }}</span>
                   </p>
+                  <p v-if="pays && quote.payment!.pix_discount > 0" class="line pix">
+                    <span>No Pix <span class="pix-tag">−{{ quote.payment!.pix_percent }}%</span></span>
+                    <span>{{ formatMoney(quote.payment!.pix_total) }}</span>
+                  </p>
                   <p v-if="quote.extra_guests_unpriced > 0" class="note">{{ guestCopy.quoteNote(quote.extra_guests_unpriced) }}</p>
                 </div>
               </Transition>
@@ -272,8 +288,9 @@ const whatsappLink = computed(() => {
             <p v-if="errorMessage" id="booking-error" class="error" role="alert">{{ errorMessage }}</p>
 
             <button class="btn" :disabled="!quote || sending" :aria-describedby="errorMessage ? 'booking-error' : undefined">
-              {{ sending ? 'Enviando...' : 'Enviar pedido de reserva' }}
+              {{ sending ? 'Enviando...' : pays ? 'Continuar para o pagamento' : 'Enviar pedido de reserva' }}
             </button>
+            <p v-if="pays" class="note">Você paga no próximo passo, {{ payWith }}, aqui no site. As datas ficam guardadas para você por 30 minutos.</p>
           </form>
         </div>
       </Transition>
@@ -304,6 +321,8 @@ const whatsappLink = computed(() => {
 .line { display: flex; justify-content: space-between; gap: 1rem; margin: 0; font-variant-numeric: tabular-nums; }
 .line.total { font-family: var(--font-display); font-size: 1.7rem; line-height: 1.15; align-items: baseline; border-top: 1px solid var(--line); padding-top: .5rem; margin-top: .2rem; }
 .note { margin: 0; color: var(--muted); font-size: .88rem; }
+.line.pix { color: var(--pix-deep); font-weight: 800; align-items: center; }
+.pix-tag { display: inline-block; margin-left: .3rem; padding: .1rem .45rem; border-radius: 999px; background: var(--pix); color: var(--pix-ink); font-size: .78rem; }
 .demo-note { margin: 0; padding: .6rem .8rem; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); font-size: .88rem; }
 .error { color: var(--danger); font-weight: 700; margin: 0; }
 .success, .empty { max-width: 640px; }

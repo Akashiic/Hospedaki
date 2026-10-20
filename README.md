@@ -17,19 +17,22 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - Calendário separado por acomodação, com opção de reservar mais de uma ao mesmo tempo.
 - Preço por diária, com valor diferente para fim de semana (noites de sexta e sábado) e para temporadas (réveillon, feriados, férias).
 - Pedido de reserva sem pagamento online: as datas ficam seguras até o dono confirmar ou recusar.
+- **Pagamento online** pelo Mercado Pago ou pela Stripe, no Pix (QR Code e copia e cola) e no cartão, num checkout do próprio site (`/pagamento/{token}`). Com um gateway conectado, o pedido segura as datas por 30 minutos e se confirma sozinho quando o pagamento é aprovado (webhook assinado ou consulta do checkout, sempre conferida na API do gateway e com o valor certo); sem pagar no prazo, expira e libera as datas. Os campos do cartão são do próprio gateway: o número nunca passa pelo Hospedaki. Na demonstração, Pix e cartão são simulados.
+- Desconto no Pix por acomodação, com selo colorido no site e, se houver prazo, um timer de placas que viram até o fim da promoção (que pode recomeçar sozinho, em loop).
 - Datas bloqueadas pelo dono (manutenção, uso próprio, reserva feita no Airbnb/Booking).
 - Painel do dono em `/painel`: entrar, ver pedidos, confirmar, recusar, falar com o hóspede pelo WhatsApp e bloquear datas.
 - Aba **Reservas** no painel: filtros Próximas, Em andamento, Concluídas, Passadas (inclui pedidos que venceram sem resposta) e Canceladas, com contagem e busca por nome, código, telefone ou acomodação.
 - Aba **Acomodações** no painel: criar, editar, ocultar do site e excluir (só sem reservas no histórico), mudar a ordem, enviar e ordenar fotos e cadastrar temporadas e feriados. Preços: diária, diária de sexta e sábado, valor por pessoa a mais, taxa de limpeza, mínimo de diárias, desconto semanal (7+ diárias) e mensal (28+), e preço e mínimo próprios por temporada. O formulário simula quanto o hóspede paga.
-- **Seu site** no painel, um menu que abre com **Páginas** e **Configurações** (outro menu: Identidade, Contato, SEO e Integrações):
+- **Seu site** no painel, um menu que abre com **Páginas** e **Configurações** (outro menu: Identidade, Contato, SEO, Integrações e Pagamentos):
   - **Páginas**: cada página do site (Início, O lugar, Acomodações, Reservar, Contato) com os textos da abertura, o título e a descrição no Google e a opção de sair do menu, com prévia do Google e do WhatsApp. Na página inicial, as seções podem ser ligadas, desligadas e reordenadas, com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas (a capa fica sempre no topo e seções sem conteúdo ficam fora do site).
   - **Identidade**: logo, ícone da aba do navegador, imagem de compartilhamento, nome, frase de destaque, cor principal e apresentação. **Contato**: WhatsApp, telefone, e-mail e endereço. **Integrações**: Search Console, Google Analytics e Pixel do Meta.
+  - **Pagamentos** (avançado): conectar o Mercado Pago e a Stripe (as chaves são testadas ao salvar, ficam criptografadas e nunca voltam inteiras), escolher quem cobra o Pix e quem cobra o cartão, parcelamento e o endereço de webhook de cada um.
   - **SEO**: descrição padrão, separador dos títulos, "Aparecer no Google", robôs de IA (liberar, bloquear o treino ou bloquear todos), dados estruturados (Schema.org, com o tipo de hospedagem) e fotos no mapa do site, com o `robots.txt` e o `sitemap.xml` que estão no ar. Cada página também pode sair do Google em **Páginas**.
 - SEO com [Nuxt SEO](https://nuxtseo.com) (`@nuxtjs/seo`: robots, sitemap, Schema.org e tags padrão). As escolhas do painel valem por requisição (`frontend/server/plugins`). Em produção, defina `NUXT_SITE_URL` com o endereço público do site. O painel e o login nunca são indexados: `X-Robots-Tag: noindex`, meta noindex, fora do mapa do site, sem iframe e sem cache; a API também responde com noindex.
 - Aviso por e-mail para o dono a cada pedido novo.
 - Google Analytics 4 e Pixel do Meta: basta informar os IDs. O envio de um pedido conta como conversão ("Lead").
 
-Ficam para as próximas versões: pagamento por Pix, sincronização de calendário com Airbnb/Booking, edição dos textos da pousada pelo painel e aviso automático por WhatsApp.
+Ficam para as próximas versões: estorno pelo painel, sincronização de calendário com Airbnb/Booking, edição dos textos da pousada pelo painel e aviso automático por WhatsApp.
 
 ## Estrutura
 
@@ -112,7 +115,8 @@ Nunca coloque senhas ou chaves no repositório: elas ficam só nos arquivos `.en
 | `accommodations` | Chalé, espaço, quarto: capacidade, comodidades (`amenities`), preço base, preço de fim de semana, mínimo de diárias |
 | `accommodation_photos` | Fotos de cada acomodação |
 | `seasonal_prices` | Preço de temporada por período (substitui o preço normal nessas datas) |
-| `bookings` | Pedido de reserva: hóspede, datas, total e status (`pending`, `confirmed`, `declined`, `cancelled`) |
+| `bookings` | Pedido de reserva: hóspede, datas, total e status (`pending`, `awaiting_payment`, `confirmed`, `declined`, `cancelled`, `expired`), com o prazo para pagar, o token do checkout e como foi pago |
+| `payments` | Cada tentativa de pagamento (um Pix gerado, um cartão passado): gateway, forma, valor, desconto do Pix e situação |
 | `booking_accommodation` | Quais acomodações entram em cada reserva e o valor de cada uma |
 | `blocked_dates` | Períodos bloqueados pelo dono |
 
@@ -129,7 +133,10 @@ Site público (`{slug}` = pousada):
 | GET | `/api/properties/{slug}` | Dados da pousada e acomodações |
 | GET | `/api/properties/{slug}/availability?from=&to=` | Noites indisponíveis por acomodação |
 | POST | `/api/properties/{slug}/quote` | Calcula o valor da estadia |
-| POST | `/api/properties/{slug}/booking-requests` | Envia o pedido de reserva |
+| POST | `/api/properties/{slug}/booking-requests` | Envia o pedido de reserva (com pagamento online, devolve o token do checkout) |
+| GET | `/api/checkout/{token}?refresh=1` | Situação do checkout (com `refresh`, consulta o gateway) |
+| POST | `/api/checkout/{token}/pix` · `/card` | Gera o Pix ou cobra o cartão |
+| POST | `/api/webhooks/{mercadopago\|stripe}/{slug}` | Avisos dos gateways |
 
 Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`):
 
@@ -144,6 +151,8 @@ Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`)
 | GET / PUT | `/api/admin/layout` | Ordem e visibilidade das seções da página inicial |
 | POST | `/api/admin/demo-login` | Entrar na pousada de demonstração, sem senha (só com `DEMO_MODE`) |
 | GET | `/api/admin/me` | Usuário e pousada logados |
+| GET / PUT | `/api/admin/payments` · `/payments/settings` | Gateways e quem cobra o Pix e o cartão |
+| PUT / DELETE | `/api/admin/payments/gateways/{mercadopago\|stripe}` | Conectar (testa as chaves) ou desconectar |
 | POST | `/api/admin/logout` | Sair |
 | GET | `/api/admin/bookings?status=pending&upcoming=1` | Listar pedidos |
 | POST | `/api/admin/bookings/{id}/confirm` | Confirmar pedido |
