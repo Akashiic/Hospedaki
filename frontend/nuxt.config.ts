@@ -12,6 +12,15 @@ const PANEL_HEADERS = {
   'Cache-Control': 'no-store',
 }
 
+// Só a origem vai como referência (os SDKs dos gateways conferem de onde vem), nunca o caminho
+// com o token da reserva.
+const CHECKOUT_HEADERS = {
+  'X-Robots-Tag': 'noindex, nofollow, noarchive',
+  'Referrer-Policy': 'strict-origin',
+  'X-Content-Type-Options': 'nosniff',
+  'Cache-Control': 'no-store',
+}
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: !demo,
@@ -64,6 +73,9 @@ export default defineNuxtConfig({
   routeRules: {
     '/painel': { ssr: false, robots: false, sitemap: false, headers: PANEL_HEADERS },
     '/painel/**': { ssr: false, robots: false, sitemap: false, headers: PANEL_HEADERS },
+    // Checkout: página pessoal de cada reserva (o link leva o token). Fora do Google e do cache,
+    // sem mandar o endereço com o token para outros sites (Referrer-Policy).
+    '/pagamento/**': { ssr: false, robots: false, sitemap: false, headers: CHECKOUT_HEADERS },
   },
   css: ['~/assets/scss/main.scss'],
   vite: {

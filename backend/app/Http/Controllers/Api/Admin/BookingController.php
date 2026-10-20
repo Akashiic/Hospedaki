@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\BookingResource;
 use App\Models\Booking;
 use App\Services\BookingService;
+use App\Services\PaymentService;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -14,7 +15,7 @@ use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
-    public function __construct(private readonly BookingService $bookings) {}
+    public function __construct(private readonly BookingService $bookings, private readonly PaymentService $payments) {}
 
     /** Filtros da aba Reservas do painel. */
     public const SCOPES = ['requests', 'upcoming', 'ongoing', 'completed', 'past', 'cancelled', 'all'];
@@ -29,7 +30,7 @@ class BookingController extends Controller
      *   ongoing    confirmadas com o hóspede na pousada agora
      *   completed  confirmadas que já terminaram
      *   past       tudo que já terminou, inclusive pedidos que venceram sem resposta
-     *   cancelled  recusadas e canceladas
+     *   cancelled  recusadas, canceladas e as que não foram pagas no prazo
      * A resposta traz em meta.counts quantas há em cada filtro.
      */
     public function index(Request $request): AnonymousResourceCollection
@@ -43,6 +44,7 @@ class BookingController extends Controller
         $property = $request->user()->property;
         $today = $property->today()->toDateString();
         $scope = $request->query('scope');
+        $this->payments->expireStale($property);
 
         $bookings = $this->scoped($property->bookings(), $scope, $today)
             ->with('accommodations')
@@ -75,7 +77,7 @@ class BookingController extends Controller
             'completed' => $query->where('status', $confirmed)->where($ended),
             'past' => $query->where(fn ($q) => $q->where($ended)
                 ->orWhere(fn ($q) => $q->where('status', BookingStatus::Pending)->whereDate('check_in', '<', $today))),
-            'cancelled' => $query->whereIn('status', [BookingStatus::Declined, BookingStatus::Cancelled]),
+            'cancelled' => $query->whereIn('status', [BookingStatus::Declined, BookingStatus::Cancelled, BookingStatus::Expired]),
             default => $query,
         };
     }

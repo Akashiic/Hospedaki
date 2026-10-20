@@ -38,6 +38,11 @@ class BookingResource extends JsonResource
                 'name' => $accommodation->name,
                 'subtotal' => $accommodation->pivot->subtotal,
             ])),
+            // Pagamento online: prazo para pagar, quando e como foi pago e o desconto do Pix.
+            'payment_due_at' => $this->when($isOwner, $this->payment_due_at),
+            'paid_at' => $this->when($isOwner, $this->paid_at),
+            'payment_method' => $this->when($isOwner, $this->payment_method),
+            'pix_discount' => $this->when($isOwner, $this->pix_discount),
             'confirmed_at' => $this->confirmed_at,
             'created_at' => $this->created_at,
         ];

@@ -38,7 +38,21 @@ export interface Accommodation {
   min_hours?: number
   opens_at?: string
   closes_at?: string
+  /** Pagamento online (vazio = pedido que o dono confirma) e a promoção do Pix valendo agora. */
+  payment?: AccommodationPayment
   photos: Photo[]
+}
+
+export type PaymentMethod = 'pix' | 'card'
+
+export interface AccommodationPayment {
+  methods: PaymentMethod[]
+  /** Desconto no Pix (%); 0 = sem desconto agora. */
+  pix_discount: number
+  /** Fim do ciclo atual da promoção (ISO); null = sem prazo. */
+  promo_ends_at: string | null
+  /** Em loop: a promoção recomeça a cada tantas horas. */
+  promo_loop_hours: number | null
 }
 
 export interface PropertyPhoto extends Photo {
@@ -127,6 +141,64 @@ export interface Quote {
   start_time?: string
   end_time?: string
   hours?: number
+  /** Como vai ser pago: formas online (vazio = o dono confirma) e o total no Pix. */
+  payment?: { methods: PaymentMethod[], pix_discount: number, pix_total: number, pix_percent: number }
+}
+
+/** Uma tentativa de pagamento, como o checkout mostra. */
+export interface CheckoutPayment {
+  method: PaymentMethod
+  provider: 'mercadopago' | 'stripe' | 'simulated'
+  status: 'pending' | 'paid' | 'failed' | 'expired' | 'refunded'
+  amount: number
+  discount: number
+  expires_at: string | null
+  /** Pix: copia e cola (vira o QR Code) e a página do gateway com as instruções. */
+  qr_code: string | null
+  ticket_url: string | null
+  /** Cartão na Stripe: o navegador confirma com isto. */
+  client_secret: string | null
+  brand: string | null
+  last4: string | null
+  installments: number | null
+  message: string | null
+  simulated: boolean
+}
+
+/** Situação do checkout de uma reserva (GET /checkout/{token}). */
+export interface Checkout {
+  code: string
+  status: 'awaiting_payment' | 'confirmed' | 'expired' | 'cancelled' | 'declined' | 'pending'
+  due_at: string | null
+  paid_at: string | null
+  payment_method: PaymentMethod | null
+  property: { name: string, slug: string, whatsapp: string | null }
+  booking: {
+    check_in: string
+    check_out: string
+    nights: number
+    arrival_time: string | null
+    start_time: string | null
+    end_time: string | null
+    hours: number
+    guests: number
+    guest_name: string
+    guest_email: string | null
+    total: number
+    pix_discount: number
+    accommodations: { name: string, subtotal: number, photo: string | null }[]
+  }
+  methods: {
+    pix: { provider: CheckoutPayment['provider'], discount: number, total: number, percent: number, promo_ends_at: string | null } | null
+    card: { provider: CheckoutPayment['provider'], total: number, installments: number, public_key: string | null } | null
+  }
+  payment: CheckoutPayment | null
+}
+
+/** Cliente do checkout (/checkout/{token}): fora da pousada, o link já diz qual é a reserva. */
+export function useCheckoutApi(token: string) {
+  const config = useRuntimeConfig().public
+  return $fetch.create({ baseURL: `${config.apiBase}/checkout/${token}`, headers: { Accept: 'application/json' } })
 }
 
 /** Cliente da API já apontado para a pousada configurada neste site. */

@@ -48,6 +48,14 @@ if (property.value.seo?.structured_data !== false) {
       </div>
 
       <aside v-reveal class="facts" style="--i: 2">
+        <SitePromoPixOffer
+          v-if="acc.payment?.pix_discount"
+          :percent="acc.payment.pix_discount"
+          :ends-at="acc.payment.promo_ends_at"
+          :loop-hours="acc.payment.promo_loop_hours"
+          :price="isHourly(acc) ? acc.hourly_price : acc.base_price"
+          :unit="isHourly(acc) ? 'a hora no Pix' : 'a diária no Pix'"
+        />
         <template v-if="isHourly(acc)">
           <div><span>Por hora</span><strong>{{ formatMoney(acc.hourly_price ?? 0) }}</strong><small class="extra">para eventos e day use</small></div>
           <div><span>Funcionamento</span><strong>{{ formatHour(acc.opens_at) }} às {{ formatHour(acc.closes_at) }}</strong></div>

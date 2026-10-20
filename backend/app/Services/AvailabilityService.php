@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Enums\BookingStatus;
 use App\Models\Accommodation;
 use App\Models\BlockedDate;
 use App\Models\Booking;
@@ -42,7 +41,7 @@ class AvailabilityService
 
         $bookings = Booking::query()
             ->whereHas('accommodations', fn ($query) => $query->whereKey($unit))
-            ->whereIn('status', BookingStatus::holdingDates())
+            ->holdingDates()
             ->whereNull('start_time')
             ->whereDate('check_in', '<', $to)
             ->whereDate('check_out', '>', $from)
@@ -159,7 +158,7 @@ class AvailabilityService
     {
         return Booking::query()
             ->whereHas('accommodations', fn ($query) => $query->whereKey($unit))
-            ->whereIn('status', BookingStatus::holdingDates())
+            ->holdingDates()
             ->whereNotNull('start_time')
             ->whereDate('check_in', '>=', $from)
             ->whereDate('check_in', '<', $to)

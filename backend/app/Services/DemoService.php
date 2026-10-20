@@ -94,6 +94,20 @@ class DemoService
     }
 
     /**
+     * Desconto no Pix de exemplo, para o visitante ver o selo e o timer: no Chalé, 10% até a
+     * meia-noite, recomeçando todo dia; no Espaço, 5% sem prazo. Os pagamentos são simulados.
+     */
+    private function promotions(Property $property): void
+    {
+        $midnight = $property->today()->addDay()->utc();
+
+        $property->accommodations()->where('slug', 'chale-master')
+            ->update(['pix_discount' => 10, 'promo_ends_at' => $midnight, 'promo_loop' => true, 'promo_loop_hours' => 24]);
+        $property->accommodations()->where('slug', 'espaco-bela-vista')
+            ->update(['pix_discount' => 5, 'promo_ends_at' => null, 'promo_loop' => false]);
+    }
+
+    /**
      * Apaga pedidos, bloqueios e sessões da pousada e cria os exemplos de novo, com datas a partir de hoje.
      */
     public function reset(Property $property): void
@@ -107,7 +121,7 @@ class DemoService
             // Layout da home, textos das páginas e SEO voltam ao padrão: um visitante pode ter
             // escondido tudo ou trocado o nome da pousada.
             $settings = $property->settings ?? [];
-            unset($settings['home_sections'], $settings['pages'], $settings['seo']);
+            unset($settings['home_sections'], $settings['pages'], $settings['seo'], $settings['payments']);
             $property->update(['settings' => $settings ?: null]);
 
             // Visitantes podem editar, ocultar ou excluir acomodações pelo painel: voltam as originais.
@@ -115,6 +129,8 @@ class DemoService
                 app(DatabaseSeeder::class)->restoreIdentity($property);
                 app(DatabaseSeeder::class)->restoreAccommodations($property);
             }
+
+            $this->promotions($property);
 
             $accommodations = $property->accommodations()->where('active', true)->where('booking_mode', Accommodation::NIGHTLY)->get();
 

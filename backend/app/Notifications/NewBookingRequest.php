@@ -9,7 +9,8 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\HtmlString;
 
 /**
- * Avisa o dono da pousada que chegou um pedido de reserva novo.
+ * Avisa o dono da pousada que chegou um pedido de reserva novo, ou, com pagamento online,
+ * que uma reserva foi paga e já está confirmada.
  */
 class NewBookingRequest extends Notification
 {
@@ -32,18 +33,23 @@ class NewBookingRequest extends Notification
         $nights = $booking->nights();
         $unpriced = (int) $booking->extra_guests_unpriced;
         $guests = $unpriced > 0 ? "{$booking->guests} ({$unpriced} a mais; acréscimo a combinar)" : (string) $booking->guests;
+        $paid = $booking->paid_at !== null;
 
         return (new MailMessage)
-            ->subject("Novo pedido de reserva: {$booking->guest_name}")
-            ->greeting('Chegou um pedido de reserva!')
+            ->subject($paid ? "Reserva paga: {$booking->guest_name}" : "Novo pedido de reserva: {$booking->guest_name}")
+            ->greeting($paid ? 'Reserva paga e confirmada!' : 'Chegou um pedido de reserva!')
             ->line(new HtmlString('**'.$this->plain($booking->guest_name).'** quer reservar **'.$this->plain($accommodations).'**.'))
             ->line($this->when($booking, $nights))
             ->line("Hóspedes: {$guests} · Total: R$ ".number_format($booking->total / 100, 2, ',', '.'))
+            ->when($paid, fn (MailMessage $mail) => $mail->line('Pago '.($booking->payment_method === 'pix' ? 'no Pix' : 'no cartão')
+                .($booking->pix_discount ? ' (com desconto de R$ '.number_format($booking->pix_discount / 100, 2, ',', '.').')' : '').'.'))
             ->when($unpriced > 0, fn (MailMessage $mail) => $mail->line('O total não inclui o acréscimo das pessoas a mais: combine o valor com o hóspede.'))
             ->line(new HtmlString('WhatsApp do hóspede: '.$this->plain($booking->guest_phone)))
             ->when($booking->notes, fn (MailMessage $mail) => $mail->line(new HtmlString('Observações: '.$this->plain($booking->notes))))
             ->action('Abrir o painel', rtrim((string) config('app.frontend_url'), '/').'/painel')
-            ->line('As datas ficam seguras até você confirmar ou recusar o pedido.');
+            ->line($paid
+                ? 'O pagamento foi aprovado e a reserva já está confirmada: não precisa fazer nada.'
+                : 'As datas ficam seguras até você confirmar ou recusar o pedido.');
     }
 
     /**

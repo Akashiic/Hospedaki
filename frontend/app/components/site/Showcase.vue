@@ -35,6 +35,7 @@ const photoIndex = reactive<Record<number, number>>({})
       </div>
 
       <div class="text">
+        <SitePromoPixOffer v-if="acc.payment?.pix_discount" v-reveal variant="badge" :percent="acc.payment.pix_discount" class="pix" />
         <h2 v-reveal>{{ acc.name }}</h2>
         <p v-reveal class="desc" style="--i: 2">{{ acc.description }}</p>
         <ul v-if="isHourly(acc)" v-reveal class="tags" style="--i: 3">
@@ -80,6 +81,7 @@ const photoIndex = reactive<Record<number, number>>({})
 .thumbs button::before { content: ""; position: absolute; left: 8px; right: 8px; top: 21px; height: 2px; background: var(--on-photo); opacity: .45; transition: opacity $dur-md $ease-move; }
 .thumbs button.on::before { opacity: 1; }
 .cap { position: absolute; left: 1rem; bottom: .85rem; margin: 0; z-index: 2; color: #fff; font-size: .85rem; text-shadow: 0 1px 8px rgb(0 0 0 / .5); }
+.pix { margin-bottom: .9rem; }
 h2 { font-size: clamp(2.6rem, 5vw, 4rem); margin: 0 0 1rem; }
 .desc { color: var(--muted); font-size: 1.05rem; margin: 0 0 1.3rem; max-width: 34rem; }
 .tags { list-style: none; padding: 0; margin: 0 0 1.8rem; display: flex; flex-wrap: wrap; gap: .5rem; }
