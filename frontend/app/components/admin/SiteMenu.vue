@@ -59,9 +59,9 @@ const id = useId()
 </template>
 
 <style scoped lang="scss">
-.tree { display: grid; gap: .2rem; }
+.tree { display: grid; grid-template-columns: minmax(0, 1fr); gap: .2rem; min-width: 0; }
 // Ramos com uma linha-guia à esquerda, como uma árvore de pastas.
-.branch { position: relative; display: grid; gap: .2rem; padding-left: 1rem; margin-left: 1.15rem; }
+.branch { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: .2rem; padding-left: .55rem; margin-left: .95rem; }
 .branch::before { content: ""; position: absolute; left: 0; top: .3rem; bottom: .3rem; width: 1px; background: var(--line); }
 
 .item {
@@ -75,7 +75,11 @@ const id = useId()
   &[aria-current="page"]::before, &.here::before { opacity: 1; }
   &[aria-current="page"] svg, &.here svg { color: var(--brand-text); }
 }
+.branch .item { gap: .6rem; padding: 0 .6rem; }
 .branch .branch .item { min-height: 40px; font-size: .92rem; }
+// Rótulo comprido corta com reticências em vez de empurrar a barra para o lado.
+.item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item svg { flex: none; }
 .chev { margin-left: auto; transition: transform $dur-md $ease-enter; }
 .toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
 

@@ -35,6 +35,26 @@ function go(tab: AdminTab) {
   emit('go', tab)
 }
 const initials = computed(() => initialsOf(props.userName ?? 'P'))
+
+// Esmaecido nas bordas da lista quando há itens fora da vista (a barra de rolagem é escondida).
+const navEl = ref<HTMLElement>()
+const edges = reactive({ above: false, below: false })
+function updateEdges() {
+  const el = navEl.value
+  if (!el) return
+  edges.above = el.scrollTop > 2
+  edges.below = el.scrollTop + el.clientHeight < el.scrollHeight - 2
+}
+let edgeObserver: ResizeObserver | undefined
+onMounted(() => {
+  if (!navEl.value) return
+  // Muda quando a janela muda de altura e quando os menus de "Seu site" abrem ou fecham.
+  edgeObserver = new ResizeObserver(updateEdges)
+  edgeObserver.observe(navEl.value)
+  for (const child of navEl.value.children) edgeObserver.observe(child)
+  updateEdges()
+})
+onBeforeUnmount(() => edgeObserver?.disconnect())
 </script>
 
 <template>
@@ -50,7 +70,7 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
           <strong>{{ propertyName ?? 'Sua pousada' }}</strong>
         </div>
       </div>
-      <nav class="nav">
+      <nav ref="navEl" class="nav" :class="{ 'more-above': edges.above, 'more-below': edges.below }" @scroll.passive="updateEdges">
         <button v-for="item in items" :key="item.tab" type="button" :aria-current="tab === item.tab ? 'page' : undefined" @click="go(item.tab)">
           <component :is="item.icon" :size="20" aria-hidden="true" />
           <span>{{ item.label }}</span>
@@ -131,12 +151,27 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
 .side {
   position: fixed; inset: 0 auto 0 0; z-index: 20; width: var(--side);
   display: flex; flex-direction: column; gap: 1.6rem; padding: 1.4rem 1rem 1rem;
+  // Só a lista do meio rola; marca e perfil ficam parados e nada vaza para os lados.
+  overflow: hidden;
   background: var(--a-card); box-shadow: 1px 0 0 rgb(20 32 26 / .06);
   @include below(lg) { display: none; }
 }
-.brand { display: flex; align-items: center; gap: .75rem; padding: 0 .4rem; }
+.brand { flex: none; display: flex; align-items: center; gap: .75rem; padding: 0 .4rem; }
 .brand strong { display: block; font-family: var(--font-display); font-weight: 400; font-size: 1.25rem; line-height: 1.1; }
-.nav { display: grid; gap: .2rem; }
+// A lista rola por dentro, sem barra visível (roda do mouse, toque e teclado continuam).
+// As bordas esmaecem quando há itens escondidos acima ou abaixo.
+.nav {
+  flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: .2rem;
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  // Folga para o contorno de foco do teclado não ser cortado nas bordas.
+  padding: 4px; margin: -4px;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+  --fade-top: 0px; --fade-bottom: 0px;
+  mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent);
+  &.more-above { --fade-top: 28px; }
+  &.more-below { --fade-bottom: 28px; }
+}
 .nav button {
   position: relative; display: flex; align-items: center; gap: .75rem; min-height: 44px; padding: 0 .8rem;
   border: 0; border-radius: 12px; background: none; font: inherit; font-weight: 600; color: var(--muted); cursor: pointer; text-align: left;
@@ -150,16 +185,16 @@ const initials = computed(() => initialsOf(props.userName ?? 'P'))
   .badge { margin-left: auto; }
 }
 .site-menu { margin-top: .2rem; }
-// A barra lateral rola quando o menu aberto não cabe na altura da tela.
-.side { overflow-y: auto; }
 .mark.img { background: var(--a-card); box-shadow: inset 0 0 0 1px var(--line); overflow: hidden; }
 .mark img { width: 100%; height: 100%; object-fit: cover; }
 .row[aria-current="page"] { background: var(--a-sunk); }
-.foot { margin-top: auto; display: grid; gap: .6rem; }
+// Perfil e "Ver o site": sempre no pé da tela. A coluna mínima zero impede o nome comprido
+// de esticar o bloco para fora da barra (o nome corta com reticências).
+.foot { flex: none; display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; }
 .ghost { display: flex; align-items: center; gap: .6rem; min-height: 40px; padding: 0 .8rem; border-radius: 10px; color: var(--muted); font-weight: 600; text-decoration: none; font-size: .9rem; }
 .me { display: flex; align-items: center; gap: .6rem; padding: .6rem .5rem .2rem; border-top: 1px solid var(--line); }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--a-sunk); color: var(--brand-text); font-size: .8rem; font-weight: 800; flex: none; }
-.who { flex: 1; min-width: 0; font-size: .86rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { flex: 1; min-width: 0; font-size: .86rem; font-weight: 600; line-height: 1.25; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
 .main {
   padding: clamp(1.2rem, 3vw, 2.4rem) clamp(1rem, 3vw, 2.6rem) 3rem calc(var(--side) + clamp(1rem, 3vw, 2.6rem));
