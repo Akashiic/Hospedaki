@@ -90,6 +90,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
           <section class="a-section a-rise" style="--i: 3">
             <h2>No Google</h2>
             <p class="a-hint">O título azul e o resumo que aparecem na busca. Bons textos dizem o que a página tem e onde fica a pousada.</p>
+            <AdminOption
+              v-if="info.searchOptional"
+              id="page-index"
+              v-model="draft.index"
+              label="Mostrar esta página no Google"
+              :hint="pageKey === 'acomodacoes' ? 'Desligado, esta página e as de cada acomodação recebem noindex e saem do mapa do site.' : 'Desligado, a página recebe noindex e sai do mapa do site. Continua aberta para quem tiver o link.'"
+            />
             <AdminTextField id="page-seo-title" v-model="draft.seo_title" label="Título na busca" :max="PAGE_LIMITS.seo_title" :placeholder="defaults.seoTitle" hint="Até uns 60 caracteres aparecem inteiros." :error="errors.seo_title?.[0]" />
             <AdminTextField id="page-seo-desc" v-model="draft.seo_description" label="Descrição na busca" :max="PAGE_LIMITS.seo_description" :rows="3" :placeholder="defaults.seoDescription ?? 'Ex.: Pousada com piscina e vista para as montanhas. Reserve direto, sem taxa.'" hint="Até uns 160 caracteres aparecem inteiros." :error="errors.seo_description?.[0]" />
           </section>

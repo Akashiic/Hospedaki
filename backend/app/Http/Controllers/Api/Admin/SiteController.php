@@ -10,6 +10,7 @@ use App\Services\ImageService;
 use App\Support\SiteSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -54,7 +55,7 @@ class SiteController extends Controller
     {
         abort_unless(in_array($page, SiteSettings::PAGES, true), 404);
 
-        $rules = ['menu' => ['sometimes', 'boolean']];
+        $rules = ['menu' => ['sometimes', 'boolean'], 'index' => ['sometimes', 'boolean']];
         foreach (SiteSettings::LIMITS as $field => $max) {
             $rules[$field] = ['nullable', 'string', "max:{$max}"];
         }
@@ -74,6 +75,11 @@ class SiteController extends Controller
         $data = $request->validate([
             'description' => ['nullable', 'string', 'max:'.SiteSettings::LIMITS['seo_description']],
             'indexable' => ['required', 'boolean'],
+            'separator' => ['sometimes', Rule::in(SiteSettings::SEPARATORS)],
+            'ai_bots' => ['sometimes', Rule::in(SiteSettings::AI_BOTS)],
+            'structured_data' => ['sometimes', 'boolean'],
+            'schema_type' => ['sometimes', Rule::in(SiteSettings::SCHEMA_TYPES)],
+            'sitemap_images' => ['sometimes', 'boolean'],
             // Só o código: o painel aceita a tag inteira e extrai o content antes de enviar.
             'google_verification' => ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9_\-]+$/'],
             'ga_id' => ['nullable', 'string', 'regex:/^G-[A-Z0-9]{4,20}$/'],
@@ -86,7 +92,9 @@ class SiteController extends Controller
 
         $property = $request->user()->property;
         $settings = $property->settings ?? [];
-        $property->update(['settings' => ['seo' => SiteSettings::seo($data)] + $settings]);
+        // Campos que não vieram ficam como estavam.
+        $seo = SiteSettings::seo([...SiteSettings::seo($settings['seo'] ?? null), ...$data]);
+        $property->update(['settings' => ['seo' => $seo] + $settings]);
 
         return $this->respond($property);
     }

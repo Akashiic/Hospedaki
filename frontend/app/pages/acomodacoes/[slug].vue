@@ -15,10 +15,20 @@ const others = computed(() => property.value.accommodations.filter(a => a.id !==
 
 useSeoMeta({
   // Acomodação com o mesmo nome da pousada não repete o nome no título.
-  title: acc.value.name === property.value.name ? acc.value.name : `${acc.value.name} · ${property.value.name}`,
+  title: acc.value.name === property.value.name ? acc.value.name : `${acc.value.name} ${property.value.seo?.separator ?? '·'} ${property.value.name}`,
   description: acc.value.description ?? undefined,
   ogImage: acc.value.photos[0]?.url,
 })
+// Acomodações seguem a página "Acomodações": fora do Google lá, fora aqui também.
+if (property.value.pages?.acomodacoes?.index === false) useRobotsRule('noindex, follow')
+// Trilha "Início › Acomodações › Chalé" nos resultados do Google.
+if (property.value.seo?.structured_data !== false) {
+  useSchemaOrg([defineBreadcrumb({ itemListElement: [
+    { name: 'Início', item: '/' },
+    { name: 'Acomodações', item: '/acomodacoes' },
+    { name: acc.value.name },
+  ] })])
+}
 </script>
 
 <template>

@@ -13,6 +13,8 @@ class AccommodationResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            // Data da última mudança: o mapa do site avisa o Google do que mudou.
+            'updated_at' => $this->updated_at?->toAtomString(),
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
