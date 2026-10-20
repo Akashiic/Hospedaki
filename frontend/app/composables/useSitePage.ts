@@ -18,6 +18,10 @@ export async function useSitePage(key: PageKey, options: { image?: () => string 
     ogDescription: () => content.value.seoDescription ?? undefined,
     ogImage: () => property.value.share_image_url ?? options.image?.() ?? undefined,
   }))
+  // Palavras-chave da página ou, sem elas, as do site (pageContent já faz a troca).
+  nuxtApp.runWithContext(() => useHead({
+    meta: () => content.value.keywords ? [{ name: 'keywords', content: content.value.keywords }] : [],
+  }))
   if (property.value.pages?.[key]?.index === false || options.noindex?.()) {
     nuxtApp.runWithContext(() => useRobotsRule('noindex, follow'))
   }

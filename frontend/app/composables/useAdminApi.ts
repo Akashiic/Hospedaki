@@ -1,4 +1,5 @@
 import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
+import type { SocialNetwork } from '~/utils/social'
 
 export type BookingStatus = 'pending' | 'awaiting_payment' | 'confirmed' | 'declined' | 'cancelled' | 'expired'
 
@@ -35,7 +36,7 @@ export interface AdminBooking {
  * Abas do painel (o nome vai na URL: /painel?aba=reservas). "Seu site" reúne Páginas e
  * Configurações (identidade, contato, SEO e integrações).
  */
-export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'estatisticas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes' | 'pagamentos'
+export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'estatisticas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes' | 'pagamentos' | 'redes' | 'dominio' | 'temas'
 
 export interface AdminBlock {
   id: number
@@ -134,6 +135,23 @@ export interface AdminSite {
   identity: AdminSiteIdentity
   pages: Record<PageKey, PageSettings>
   seo: SiteSeo
+  /** Perfis nas redes sociais (rede → endereço), na ordem do rodapé. */
+  social: Partial<Record<SocialNetwork, string>>
+  /** O dono pediu para ser avisado quando os temas chegarem. */
+  themes_waitlist: boolean
+}
+
+/** Domínio próprio do site ("Seu site → Domínio"). */
+export interface AdminDomain {
+  domain: string | null
+  status: 'pending' | 'active' | 'misconfigured' | null
+  checked_at: string | null
+  records: { type: string, name: string, value: string }[]
+  /** Registros extras que a Vercel pede quando o domínio já foi usado em outra conta. */
+  verification: { type: string, domain: string, value: string }[]
+  /** Ligação automática na Vercel (com as chaves no servidor). */
+  automatic: boolean
+  default_url: string
 }
 
 export type PaymentProvider = 'mercadopago' | 'stripe' | 'simulated'

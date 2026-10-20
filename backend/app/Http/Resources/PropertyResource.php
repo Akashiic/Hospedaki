@@ -41,6 +41,10 @@ class PropertyResource extends JsonResource
             // Textos, SEO e presença no menu de cada página, escolhidos em "Seu site" no painel.
             'pages' => SiteSettings::pages($this->settings['pages'] ?? null),
             'seo' => SiteSettings::seo($this->settings['seo'] ?? null),
+            // Perfis da pousada nas redes (rodapé e sameAs dos dados estruturados).
+            'social' => SiteSettings::social($this->settings['social'] ?? null),
+            // Domínio próprio já no ar (o site usa no endereço canônico e no mapa do site).
+            'domain' => ($this->settings['domain']['status'] ?? null) === 'active' ? $this->domain : null,
             'primary_color' => $this->primary_color,
             'check_in_time' => substr((string) $this->check_in_time, 0, 5),
             'check_out_time' => substr((string) $this->check_out_time, 0, 5),

@@ -17,6 +17,10 @@ export interface LodgingSource {
   check_out_time: string
   photos: { url: string }[]
   accommodations: { base_price: number, photos: { url: string }[] }[]
+  /** Perfis nas redes (Instagram, Tripadvisor...): viram o sameAs. */
+  social?: Partial<Record<string, string>> | null
+  /** Posição no mapa, escolhida em "Seu site → SEO". */
+  seo?: { latitude?: number | null, longitude?: number | null } | null
 }
 
 const money = (cents: number) => `R$ ${Math.round(cents / 100).toLocaleString('pt-BR')}`
@@ -29,7 +33,8 @@ export function e164(value: string | null) {
 
 /**
  * A pousada como o Google entende (Schema.org): tipo de hospedagem, endereço, telefone, faixa de
- * preço das diárias, horários de check-in e check-out e fotos. Só entra o que está cadastrado.
+ * preço das diárias, horários de check-in e check-out, fotos, posição no mapa e perfis nas redes.
+ * Só entra o que está cadastrado.
  */
 export function lodgingSchema(p: LodgingSource, type: SchemaType, origin = '') {
   // O Google pede endereços completos; as fotos do próprio site vêm como "/fotos/x.jpg".
@@ -42,6 +47,9 @@ export function lodgingSchema(p: LodgingSource, type: SchemaType, origin = '') {
     .slice(0, 10)
     .map(absolute)
   const hasAddress = p.address || p.city
+  const sameAs = Object.values(p.social ?? {}).filter((url): url is string => !!url)
+  const lat = p.seo?.latitude
+  const lng = p.seo?.longitude
 
   return {
     '@type': type === 'LodgingBusiness' ? 'LodgingBusiness' : ['LodgingBusiness', type],
@@ -65,5 +73,7 @@ export function lodgingSchema(p: LodgingSource, type: SchemaType, origin = '') {
           'addressCountry': 'BR',
         }
       : undefined,
+    'geo': typeof lat === 'number' && typeof lng === 'number' ? { '@type': 'GeoCoordinates', 'latitude': lat, 'longitude': lng } : undefined,
+    'sameAs': sameAs.length ? sameAs : undefined,
   }
 }

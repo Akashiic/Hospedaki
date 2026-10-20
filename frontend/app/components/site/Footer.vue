@@ -11,6 +11,8 @@ const whatsappLink = computed(() => props.property.whatsapp
   ? `https://wa.me/${props.property.whatsapp}?text=${encodeURIComponent('Olá! Gostaria de informações sobre hospedagem.')}`
   : null)
 const phoneLabel = computed(() => formatPhone(props.property.whatsapp))
+// Perfis definidos em "Seu site → Redes sociais", na ordem de lá.
+const social = computed(() => socialLinks(props.property.social))
 </script>
 
 <template>
@@ -28,6 +30,13 @@ const phoneLabel = computed(() => formatPhone(props.property.whatsapp))
       <div>
         <p class="name">{{ property.name }}</p>
         <p v-if="property.tagline" class="muted">{{ property.tagline }}</p>
+        <ul v-if="social.length" class="social" aria-label="Redes sociais">
+          <li v-for="item in social" :key="item.key">
+            <a :href="item.url" target="_blank" rel="noopener me" :aria-label="`${item.name} de ${property.name} (abre em nova aba)`" :title="item.name">
+              <SocialIcon :network="item.key" :size="20" />
+            </a>
+          </li>
+        </ul>
       </div>
       <div>
         <p class="label">Contato</p>
@@ -69,6 +78,14 @@ h2 { @include display(clamp(3rem, 8.5vw, 7rem)); margin: .5rem 0 2.2rem; max-wid
   @include below(lg) { grid-template-columns: 1fr 1fr; > :first-child { grid-column: 1 / -1; } }
 }
 .name { @include display(2rem); }
+// Ícones em botões redondos de 44px (alvo do dedo); o círculo acende no hover, só por opacidade.
+.social { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem; margin: 1.2rem 0 0; padding: 0; }
+.cols .social a {
+  position: relative; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .22); opacity: .85;
+  &::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: rgb(255 255 255 / .1); opacity: 0; transition: opacity $dur-sm $ease-move; }
+  &:hover { opacity: 1; &::before { opacity: 1; } }
+}
 .muted { color: var(--on-night-muted); }
 .label { @include eyebrow(var(--on-night-muted), sm); }
 .nowrap { white-space: nowrap; }

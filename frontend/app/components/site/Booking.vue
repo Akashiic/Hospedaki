@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import type { Property, Quote } from '~/composables/useApi'
+import type { Accommodation, Property, Quote } from '~/composables/useApi'
 import { accommodationFor } from '~/composables/usePersona'
 
-const props = defineProps<{ property: Property }>()
+// `accommodation`: formulário embutido na página da acomodação (#reservar), já com ela escolhida.
+// Assim o caminho fica acomodação (com as datas) → pagamento, sem passar pela página Reservar.
+const props = defineProps<{ property: Property, accommodation?: Accommodation | null }>()
 
-// Começa com a acomodação vinda do link (?acomodacao=chale-master), depois a da escolha
-// "a dois / com a família" feita na capa, e por fim a primeira.
+// Começa com a acomodação da página ou a vinda do link (?acomodacao=chale-master), depois a da
+// escolha "a dois / com a família" feita na capa, e por fim a primeira.
 const route = useRoute()
 // Sem nenhuma acomodação ativa (reforma, por exemplo), a página mostra um aviso em vez do formulário.
-const first = props.property.accommodations.find(a => a.slug === route.query.acomodacao)
+const first = props.accommodation
+  ?? props.property.accommodations.find(a => a.slug === route.query.acomodacao)
   ?? accommodationFor(props.property, usePersona().value)
   ?? props.property.accommodations[0]
 const selected = ref<number[]>(first ? [first.id] : [])
@@ -163,6 +166,14 @@ const payWith = computed(() => {
   return m.length === 2 ? 'no Pix ou no cartão' : m[0] === 'pix' ? 'no Pix' : 'no cartão'
 })
 
+// Subtítulo do formulário embutido: o que acontece depois (pagar aqui ou esperar a pousada).
+const embedNote = computed(() => {
+  const methods = props.accommodation?.payment?.methods ?? []
+  if (!methods.length) return 'você envia o pedido e a pousada confirma pelo WhatsApp'
+  const how = methods.length === 2 ? 'no Pix ou no cartão' : methods[0] === 'pix' ? 'no Pix' : 'no cartão'
+  return `você paga ${how} no próximo passo`
+})
+
 // Pessoas cobertas pelo total quando parte do acréscimo ainda não tem valor.
 const coveredGuests = computed(() => quote.value ? quote.value.guests - quote.value.extra_guests_unpriced : 0)
 
@@ -176,8 +187,13 @@ const whatsappLink = computed(() => {
 </script>
 
 <template>
-  <section class="booking-section">
+  <section :id="accommodation ? 'reservar' : undefined" class="booking-section" :class="{ embedded: accommodation }" :aria-labelledby="accommodation ? 'reservar-title' : undefined">
     <div class="container">
+      <header v-if="accommodation && !done" class="embed-head">
+        <p class="eyebrow">Reservar</p>
+        <h2 id="reservar-title">{{ hourlyAcc ? 'Escolha o dia e o horário' : 'Escolha as datas' }}</h2>
+        <p class="hint">{{ accommodation.name }} · {{ embedNote }}</p>
+      </header>
 
       <Transition name="swap" mode="out-in">
         <div v-if="done" key="done" class="panel success">
@@ -199,7 +215,7 @@ const whatsappLink = computed(() => {
 
         <div v-else key="form" v-reveal class="grid" style="--i: 3">
           <div class="panel dates">
-            <div class="choose" role="group" aria-label="Acomodações">
+            <div v-if="!accommodation" class="choose" role="group" aria-label="Acomodações">
               <button
                 v-for="acc in property.accommodations"
                 :key="acc.id"
@@ -301,6 +317,11 @@ const whatsappLink = computed(() => {
 
 <style scoped lang="scss">
 .booking-section { background: var(--soft); @include section-pad(clamp(2.5rem, 6vw, 4rem), clamp(5rem, 10vw, 8rem)); }
+// Embutido na página da acomodação: os links "Ver datas" rolam até aqui (abaixo do menu fixo).
+.embedded { scroll-margin-top: var(--nav-h); @include section-pad(clamp(3.5rem, 8vw, 5.5rem), clamp(4rem, 9vw, 6.5rem)); }
+.embed-head { margin-bottom: 1.6rem; }
+.embed-head .eyebrow { @include eyebrow(var(--brand-text)); }
+.embed-head h2 { @include display(clamp(2.2rem, 5vw, 3.4rem)); margin: .3rem 0 .4rem; }
 .hint { color: var(--muted); font-size: .95rem; margin: 0; }
 .grid { display: grid; gap: 1.2rem; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
 @include below(lg) { .grid { grid-template-columns: minmax(0, 1fr); } }

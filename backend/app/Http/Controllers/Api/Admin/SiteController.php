@@ -59,7 +59,13 @@ class SiteController extends Controller
         foreach (SiteSettings::LIMITS as $field => $max) {
             $rules[$field] = ['nullable', 'string', "max:{$max}"];
         }
+        if ($page === 'acomodacoes') {
+            $rules['photos'] = ['sometimes', Rule::in(SiteSettings::PHOTO_LAYOUTS)];
+        }
         $data = $request->validate($rules);
+        if (isset($data['keywords'])) {
+            $data['keywords'] = self::keywords($data['keywords']);
+        }
 
         $property = $request->user()->property;
         $settings = $property->settings ?? [];
@@ -74,6 +80,10 @@ class SiteController extends Controller
     {
         $data = $request->validate([
             'description' => ['nullable', 'string', 'max:'.SiteSettings::LIMITS['seo_description']],
+            'keywords' => ['nullable', 'string', 'max:'.SiteSettings::LIMITS['keywords']],
+            'author' => ['nullable', 'string', 'max:80'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'indexable' => ['required', 'boolean'],
             'separator' => ['sometimes', Rule::in(SiteSettings::SEPARATORS)],
             'ai_bots' => ['sometimes', Rule::in(SiteSettings::AI_BOTS)],
@@ -88,7 +98,12 @@ class SiteController extends Controller
             'google_verification.regex' => 'Cole só o código de verificação do Google (letras, números, - e _).',
             'ga_id.regex' => 'O ID do Google Analytics começa com G-, como G-ABC123XYZ.',
             'meta_pixel_id.regex' => 'O ID do Pixel do Meta tem só números.',
+            'latitude.required_with' => 'Informe a latitude e a longitude juntas.',
+            'longitude.required_with' => 'Informe a latitude e a longitude juntas.',
         ]);
+        if (isset($data['keywords'])) {
+            $data['keywords'] = self::keywords($data['keywords']);
+        }
 
         $property = $request->user()->property;
         $settings = $property->settings ?? [];
@@ -97,6 +112,76 @@ class SiteController extends Controller
         $property->update(['settings' => ['seo' => $seo] + $settings]);
 
         return $this->respond($property);
+    }
+
+    /**
+     * Redes sociais do rodapé. Cada campo aceita o link do perfil ou o @usuário; vazio tira a rede.
+     */
+    public function updateSocial(Request $request): JsonResponse
+    {
+        $rules = [];
+        foreach (array_keys(SiteSettings::SOCIAL) as $network) {
+            $rules[$network] = ['nullable', 'string', 'max:300'];
+        }
+        $data = $request->validate($rules);
+
+        $social = [];
+        $errors = [];
+        foreach ($data as $network => $value) {
+            if (blank($value)) {
+                continue;
+            }
+            $url = SiteSettings::socialUrl($network, $value);
+            if ($url === null) {
+                $errors[$network] = self::SOCIAL_HINTS[$network];
+            } else {
+                $social[$network] = $url;
+            }
+        }
+        if ($errors) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        $property = $request->user()->property;
+        $settings = $property->settings ?? [];
+        unset($settings['social']);
+        $property->update(['settings' => ($social ? ['social' => $social] : []) + $settings ?: null]);
+
+        return $this->respond($property);
+    }
+
+    /**
+     * Temas e layouts próprios ainda vão chegar: o dono pede para ser avisado (e diz o que quer).
+     */
+    public function notifyThemes(Request $request): JsonResponse
+    {
+        $data = $request->validate(['note' => ['nullable', 'string', 'max:500']]);
+        $property = $request->user()->property;
+        $property->update(['settings' => ['themes_waitlist' => ['at' => now()->toAtomString(), 'note' => $data['note'] ?? null]] + ($property->settings ?? [])]);
+
+        return $this->respond($property);
+    }
+
+    /** Mensagem quando o link não é da rede. */
+    private const SOCIAL_HINTS = [
+        'instagram' => 'Cole o link do perfil (instagram.com/...) ou o @ da pousada.',
+        'facebook' => 'Cole o link da página (facebook.com/...).',
+        'tiktok' => 'Cole o link do perfil (tiktok.com/@...) ou o @.',
+        'youtube' => 'Cole o link do canal (youtube.com/@...) ou o @.',
+        'x' => 'Cole o link do perfil (x.com/...) ou o @.',
+        'tripadvisor' => 'Cole o link da página da pousada no Tripadvisor.',
+        'google' => 'Cole o link da pousada no Google Maps (o de "Compartilhar").',
+        'airbnb' => 'Cole o link do anúncio ou do perfil no Airbnb.',
+        'booking' => 'Cole o link da página da pousada no Booking.com.',
+    ];
+
+    /** "pousada, Mairiporã ,  chalé,pousada" → "pousada, Mairiporã, chalé": sem vazios nem repetidas. */
+    private static function keywords(?string $value): ?string
+    {
+        $words = collect(explode(',', (string) $value))->map(fn ($w) => trim(preg_replace('/\s+/', ' ', $w)))->filter()
+            ->unique(fn ($w) => mb_strtolower($w))->values();
+
+        return $words->isEmpty() ? null : $words->join(', ');
     }
 
     public function storeImage(Request $request, string $kind, ImageService $images, DemoService $demo): JsonResponse
@@ -155,6 +240,8 @@ class SiteController extends Controller
             ],
             'pages' => SiteSettings::pages($settings['pages'] ?? null),
             'seo' => SiteSettings::seo($settings['seo'] ?? null),
+            'social' => SiteSettings::social($settings['social'] ?? null),
+            'themes_waitlist' => isset($settings['themes_waitlist']),
             'limits' => SiteSettings::LIMITS,
         ]);
     }

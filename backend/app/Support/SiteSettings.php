@@ -39,7 +39,26 @@ final class SiteSettings
     public const WITH_HEADER = ['lugar', 'acomodacoes', 'reservar', 'contato'];
 
     /** Limites dos textos, os mesmos que o painel mostra. */
-    public const LIMITS = ['eyebrow' => 40, 'title' => 80, 'lead' => 240, 'seo_title' => 70, 'seo_description' => 170];
+    public const LIMITS = ['eyebrow' => 40, 'title' => 80, 'lead' => 240, 'seo_title' => 70, 'seo_description' => 170, 'keywords' => 255];
+
+    /** Fotos na página de cada acomodação: em grade ou em carrossel. */
+    public const PHOTO_LAYOUTS = ['grid', 'carousel'];
+
+    /**
+     * Redes sociais do rodapé, na ordem em que aparecem, com o endereço de cada perfil.
+     * O dono pode colar o link inteiro ou só o @usuário (nas redes que usam @).
+     */
+    public const SOCIAL = [
+        'instagram' => ['host' => 'instagram.com', 'handle' => 'https://www.instagram.com/%s/'],
+        'facebook' => ['host' => 'facebook.com', 'handle' => 'https://www.facebook.com/%s'],
+        'tiktok' => ['host' => 'tiktok.com', 'handle' => 'https://www.tiktok.com/@%s'],
+        'youtube' => ['host' => 'youtube.com', 'handle' => 'https://www.youtube.com/@%s'],
+        'x' => ['host' => 'x.com', 'handle' => 'https://x.com/%s'],
+        'tripadvisor' => ['host' => 'tripadvisor.com', 'handle' => null],
+        'google' => ['host' => 'google.com', 'handle' => null],
+        'airbnb' => ['host' => 'airbnb.com', 'handle' => null],
+        'booking' => ['host' => 'booking.com', 'handle' => null],
+    ];
 
     /** Campos da pousada que o dono muda em "Configurações". */
     public const IDENTITY = ['name', 'tagline', 'description', 'primary_color', 'email', 'phone', 'whatsapp', 'address', 'city', 'state'];
@@ -65,6 +84,10 @@ final class SiteSettings
             foreach (array_keys(self::LIMITS) as $field) {
                 $page[$field] = self::text($item[$field] ?? null);
             }
+            // Só a página de acomodações escolhe como as fotos de cada uma aparecem.
+            if ($key === 'acomodacoes') {
+                $page['photos'] = self::oneOf($item['photos'] ?? null, self::PHOTO_LAYOUTS);
+            }
             $pages[$key] = $page;
         }
 
@@ -74,12 +97,19 @@ final class SiteSettings
     /**
      * SEO avançado da pousada, com os padrões.
      *
-     * @return array{description: ?string, indexable: bool, separator: string, ai_bots: string, structured_data: bool, schema_type: string, sitemap_images: bool, google_verification: ?string, ga_id: ?string, meta_pixel_id: ?string}
+     * Além do básico, as metas "clássicas": palavras-chave, autor e a posição da pousada no mapa
+     * (geo.position/ICBM, também usada nos dados estruturados).
+     *
+     * @return array{description: ?string, keywords: ?string, author: ?string, latitude: ?float, longitude: ?float, indexable: bool, separator: string, ai_bots: string, structured_data: bool, schema_type: string, sitemap_images: bool, google_verification: ?string, ga_id: ?string, meta_pixel_id: ?string}
      */
     public static function seo(?array $saved): array
     {
         return [
             'description' => self::text($saved['description'] ?? null),
+            'keywords' => self::text($saved['keywords'] ?? null),
+            'author' => self::text($saved['author'] ?? null),
+            'latitude' => is_numeric($saved['latitude'] ?? null) ? (float) $saved['latitude'] : null,
+            'longitude' => is_numeric($saved['longitude'] ?? null) ? (float) $saved['longitude'] : null,
             'indexable' => (bool) ($saved['indexable'] ?? true),
             'separator' => self::oneOf($saved['separator'] ?? null, self::SEPARATORS),
             'ai_bots' => self::oneOf($saved['ai_bots'] ?? null, self::AI_BOTS),
@@ -90,6 +120,51 @@ final class SiteSettings
             'ga_id' => self::text($saved['ga_id'] ?? null),
             'meta_pixel_id' => self::text($saved['meta_pixel_id'] ?? null),
         ];
+    }
+
+    /**
+     * Redes sociais preenchidas, na ordem do rodapé: [rede => endereço do perfil].
+     *
+     * @return array<string, string>
+     */
+    public static function social(?array $saved): array
+    {
+        $links = [];
+        foreach (array_keys(self::SOCIAL) as $network) {
+            if ($url = self::text($saved[$network] ?? null)) {
+                $links[$network] = $url;
+            }
+        }
+
+        return $links;
+    }
+
+    /**
+     * Endereço do perfil a partir do que o dono colou: o link (com ou sem https://) ou o @usuário.
+     * Devolve null quando não é um endereço daquela rede.
+     */
+    public static function socialUrl(string $network, string $value): ?string
+    {
+        $value = trim($value);
+        $info = self::SOCIAL[$network];
+
+        // Só o usuário (com ou sem @): monta o endereço da rede.
+        if ($info['handle'] && preg_match('/^@?([A-Za-z0-9_.\-]{1,60})$/', $value, $m)) {
+            return sprintf($info['handle'], $m[1]);
+        }
+
+        $url = preg_match('#^https?://#i', $value) ? $value : 'https://'.$value;
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        // O domínio da rede, inclusive os de país (tripadvisor.com.br, google.com.br, airbnb.com.br),
+        // e os atalhos de compartilhamento do Google Maps e o antigo twitter.com.
+        $names = [explode('.', $info['host'])[0], ...($network === 'x' ? ['twitter'] : [])];
+        $official = collect($names)->contains(fn ($name) => preg_match('/^(?:[a-z0-9-]+\.)*'.preg_quote($name, '/').'\.(?:com|com\.[a-z]{2}|co\.[a-z]{2}|[a-z]{2})$/', $host));
+        $shortcut = $network === 'google' && in_array($host, ['g.page', 'goo.gl', 'maps.app.goo.gl', 'share.google'], true);
+        if (! ($official || $shortcut) || ! filter_var($url, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        return preg_replace('#^http://#i', 'https://', $url);
     }
 
     /** Caminho salvo de cada imagem do site ("media:12", "/fotos/x.jpg" ou null). */

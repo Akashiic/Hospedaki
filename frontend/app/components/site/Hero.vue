@@ -1,125 +1,140 @@
 <script setup lang="ts">
+import type { Swiper as SwiperInstance } from 'swiper'
 import type { Photo } from '~/composables/useApi'
+import { A11y, Autoplay, EffectFade, Keyboard } from 'swiper/modules'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import 'swiper/css'
+import 'swiper/css/effect-fade'
+import 'swiper/css/a11y'
 
-// Capa em tela cheia: fotos em fusão lenta com leve zoom (efeito Ken Burns) e título que sobe palavra por palavra.
+// Capa em tela cheia (Swiper com fusão): fotos em fusão lenta com leve zoom (efeito Ken Burns)
+// e título que sobe palavra por palavra. Desliza com o dedo, muda pelas setas do teclado e pelas barras.
 const props = defineProps<{ slides: Photo[], title: string, subtitle: string | null, place: string | null }>()
 const emit = defineEmits<{ book: [], explore: [] }>()
 
 // Cada foto fica t(8) = 5635ms sozinha + t(5) = 1330ms de fusão ≈ 7s por foto (escala em assets/scss/_motion.scss).
-const DURATION = 5635 + 1330
+const HOLD = 5635
+const FADE = 1330
+const DURATION = HOLD + FADE
+
 const current = ref(0)
 const previous = ref(-1)
-// Passa sozinho só com a aba visível, sem movimento reduzido e sem o visitante ter pausado.
-// O botão de pausa liga e desliga `autoplay`; o movimento reduzido só muda o valor inicial.
+// O botão de pausa liga e desliga a passagem; o movimento reduzido só muda o valor inicial.
+// Com a aba escondida, o próprio Swiper segura a passagem.
 const autoplay = ref(true)
-const visible = ref(true)
-const playing = computed(() => autoplay.value && visible.value)
-let timer: ReturnType<typeof setTimeout> | undefined
+let swiper: SwiperInstance | null = null
+const bars = ref<HTMLElement | null>(null)
 
 const words = computed(() => props.title.split(' '))
 const pad = (n: number) => String(n).padStart(2, '0')
+const a11y = { ...carouselA11y('Fotos da pousada'), containerMessage: null, containerRoleDescriptionMessage: null }
 
-// Troca feita pelo visitante (toque nas barras ou deslizar) é anunciada; a automática, não.
-const byUser = ref(false)
-function go(index: number, user = false) {
-  byUser.value = user
-  if (index === current.value) return schedule()
-  previous.value = current.value
-  current.value = (index + props.slides.length) % props.slides.length
-  schedule()
+function onSwiper(instance: SwiperInstance) {
+  swiper = instance
+  if (prefersReducedMotion()) {
+    autoplay.value = false
+    instance.params.speed = 0
+    instance.autoplay?.stop()
+  }
 }
 
-function schedule() {
-  clearTimeout(timer)
-  if (playing.value && props.slides.length > 1) timer = setTimeout(() => go(current.value + 1), DURATION)
+function onChange(instance: SwiperInstance) {
+  previous.value = instance.previousIndex ?? -1
+  current.value = instance.activeIndex
 }
 
-function onVisibility() {
-  visible.value = document.visibilityState === 'visible'
-  schedule()
+// Progresso da foto atual direto no estilo (a cada quadro, sem passar pela reatividade do Vue).
+function onTimeLeft(_: SwiperInstance, __: number, left: number) {
+  bars.value?.style.setProperty('--progress', String(Math.min(1, Math.max(0, 1 - left))))
+}
+
+function go(index: number) {
+  swiper?.slideTo(index)
 }
 
 function toggleAutoplay() {
   autoplay.value = !autoplay.value
-  schedule()
-}
-
-onMounted(() => {
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) autoplay.value = false
-  schedule()
-  document.addEventListener('visibilitychange', onVisibility)
-})
-onBeforeUnmount(() => {
-  clearTimeout(timer)
-  document.removeEventListener('visibilitychange', onVisibility)
-})
-
-// Deslizar com o dedo no celular.
-let startX = 0
-const onTouchStart = (e: TouchEvent) => { startX = e.touches[0]!.clientX }
-function onTouchEnd(e: TouchEvent) {
-  const dx = e.changedTouches[0]!.clientX - startX
-  if (Math.abs(dx) > 50) go(current.value + (dx < 0 ? 1 : -1), true)
+  if (autoplay.value) swiper?.autoplay?.start()
+  else swiper?.autoplay?.stop()
 }
 </script>
 
 <template>
-  <section id="topo" class="hero" :style="{ '--duration': `${DURATION}ms`, '--words': words.length }" @touchstart.passive="onTouchStart" @touchend.passive="onTouchEnd">
-    <!-- Só anuncia a troca de foto quando foi o visitante que trocou (com a passagem automática, calado). -->
-    <div class="slides" :aria-live="playing && !byUser ? 'off' : 'polite'">
-      <figure v-for="(slide, i) in slides" :key="slide.url" class="slide" :class="{ active: i === current, prev: i === previous }" :aria-hidden="i !== current">
-        <img
-          :src="slide.url"
-          :alt="slide.caption ?? ''"
-          :loading="i === 0 ? 'eager' : 'lazy'"
-          :fetchpriority="i === 0 ? 'high' : 'auto'"
-          decoding="async"
-        >
-      </figure>
-    </div>
-    <div class="veil" />
-    <div class="grain" />
+  <Swiper
+    id="topo"
+    tag="section"
+    class="hero"
+    :style="{ '--duration': `${DURATION}ms`, '--words': words.length }"
+    :modules="[A11y, Autoplay, EffectFade, Keyboard]"
+    effect="fade"
+    :fade-effect="{ crossFade: true }"
+    :speed="FADE"
+    :rewind="true"
+    :simulate-touch="false"
+    touch-events-target="container"
+    :allow-touch-move="slides.length > 1"
+    :autoplay="slides.length > 1 ? { delay: HOLD, disableOnInteraction: false } : false"
+    :keyboard="{ enabled: true, onlyInViewport: true }"
+    :a11y="a11y"
+    @swiper="onSwiper"
+    @slide-change="onChange"
+    @autoplay-time-left="onTimeLeft"
+  >
+    <SwiperSlide v-for="(slide, i) in slides" :key="slide.url" class="slide" :class="{ on: i === current, was: i === previous }">
+      <img
+        :src="slide.url"
+        :alt="slide.caption ?? ''"
+        :loading="i === 0 ? 'eager' : 'lazy'"
+        :fetchpriority="i === 0 ? 'high' : 'auto'"
+        decoding="async"
+      >
+    </SwiperSlide>
 
-    <div class="content">
-      <p v-if="place" class="place">{{ place }}</p>
-      <h1>
-        <template v-for="(word, i) in words" :key="i"><span class="word"><span :style="{ '--i': i }">{{ word }}</span></span>{{ i < words.length - 1 ? ' ' : '' }}</template>
-      </h1>
-      <p v-if="subtitle" class="sub">{{ subtitle }}</p>
-      <div class="actions">
-        <slot name="actions">
-          <button type="button" class="btn btn-light" @click="emit('book')">Ver datas e reservar <span class="arrow">→</span></button>
-          <button type="button" class="btn btn-outline-light" @click="emit('explore')">Conhecer o lugar</button>
-        </slot>
-      </div>
-    </div>
+    <template #container-end>
+      <div class="veil" />
+      <div class="grain" />
 
-    <div v-if="slides.length > 1" class="controls">
-      <p class="caption">
-        <span class="num">{{ pad(current + 1) }} / {{ pad(slides.length) }}</span>
-        <Transition name="cap" mode="out-in"><span :key="current">{{ slides[current]?.caption }}</span></Transition>
-      </p>
-      <div class="track">
-        <button type="button" class="pause" :aria-label="autoplay ? 'Pausar fotos' : 'Passar fotos sozinho'" @click="toggleAutoplay">
-          <svg v-if="autoplay" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M2 1h3v10H2zM7 1h3v10H7z" /></svg>
-          <svg v-else viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M2.5 1 11 6l-8.5 5z" /></svg>
-        </button>
-        <div class="bars">
-          <button
-            v-for="(slide, i) in slides"
-            :key="i"
-            type="button"
-            :class="{ on: i === current, done: i < current, paused: !playing }"
-            :aria-label="`Foto ${i + 1}: ${slide.caption ?? ''}`"
-            :aria-current="i === current ? 'true' : undefined"
-            @click="go(i, true)"
-          ><span :key="`${current}-${i}`" /></button>
+      <div class="content">
+        <p v-if="place" class="place">{{ place }}</p>
+        <h1>
+          <template v-for="(word, i) in words" :key="i"><span class="word"><span :style="{ '--i': i }">{{ word }}</span></span>{{ i < words.length - 1 ? ' ' : '' }}</template>
+        </h1>
+        <p v-if="subtitle" class="sub">{{ subtitle }}</p>
+        <div class="actions">
+          <slot name="actions">
+            <button type="button" class="btn btn-light" @click="emit('book')">Ver datas e reservar <span class="arrow">→</span></button>
+            <button type="button" class="btn btn-outline-light" @click="emit('explore')">Conhecer o lugar</button>
+          </slot>
         </div>
       </div>
-    </div>
 
-    <button type="button" class="scroll" aria-label="Rolar para conhecer" @click="emit('explore')"><span /></button>
-  </section>
+      <div v-if="slides.length > 1" class="controls">
+        <p class="caption">
+          <span class="num">{{ pad(current + 1) }} / {{ pad(slides.length) }}</span>
+          <Transition name="cap" mode="out-in"><span :key="current">{{ slides[current]?.caption }}</span></Transition>
+        </p>
+        <div class="track">
+          <button type="button" class="pause" :aria-label="autoplay ? 'Pausar fotos' : 'Passar fotos sozinho'" @click="toggleAutoplay">
+            <svg v-if="autoplay" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M2 1h3v10H2zM7 1h3v10H7z" /></svg>
+            <svg v-else viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M2.5 1 11 6l-8.5 5z" /></svg>
+          </button>
+          <div ref="bars" class="bars">
+            <button
+              v-for="(slide, i) in slides"
+              :key="i"
+              type="button"
+              :class="{ on: i === current, done: i < current, paused: !autoplay }"
+              :aria-label="`Foto ${i + 1}: ${slide.caption ?? ''}`"
+              :aria-current="i === current ? 'true' : undefined"
+              @click="go(i)"
+            ><span /></button>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" class="scroll" aria-label="Rolar para conhecer" @click="emit('explore')"><span /></button>
+    </template>
+  </Swiper>
 </template>
 
 <style scoped lang="scss">
@@ -128,12 +143,13 @@ function onTouchEnd(e: TouchEvent) {
 //   n é limitado a 4 para a entrada caber em ~1s. As fotos fundem em t(5) com a curva
 //   simétrica e derivam em zoom linear (Ken Burns) durante todo o tempo em que estão à vista.
 .hero { --focus: var(--focus-dark); position: relative; height: 100svh; min-height: 620px; max-height: 1100px; overflow: hidden; background: var(--night); color: #fff; display: flex; align-items: flex-end; isolation: isolate; --n: min(var(--words, 3), 4); }
-.slides, .slide, .veil, .grain { position: absolute; inset: 0; margin: 0; }
-.slide { opacity: 0; transition: opacity $dur-2xl $ease-move; }
-.slide.active { opacity: 1; z-index: 1; }
+// As fotos ficam por trás de tudo; o texto e os controles vêm por cima (slot container-end).
+.hero > :deep(.swiper-wrapper) { position: absolute; inset: 0; z-index: 0; }
+.veil, .grain { position: absolute; inset: 0; margin: 0; }
+.slide { overflow: hidden; transition-timing-function: $ease-move; }
 .slide img { width: 100%; height: 100%; object-fit: cover; object-position: 62% 50%; transform: scale($zoom-lg); }
-// A foto que sai continua o mesmo zoom enquanto some (mesma animação em .prev, então não reinicia nem salta).
-.slide.active img, .slide.prev img { animation: kenburns calc(var(--duration) + #{$dur-2xl}) $ease-drift forwards; }
+// A foto que sai continua o mesmo zoom enquanto some (mesma animação em .was, então não reinicia nem salta).
+.slide.on img, .slide.was img { animation: kenburns calc(var(--duration) + #{$dur-2xl}) $ease-drift forwards; }
 .slide:nth-child(2n) img { --kx: -1%; }
 @keyframes kenburns { from { transform: scale($zoom-lg) translate3d(var(--kx, 1%), 1%, 0); } to { transform: scale(1) translate3d(0, 0, 0); } }
 // Véu: claro no alto (a foto respira) e escuro onde o texto fica. No celular o texto ocupa
@@ -174,9 +190,9 @@ h1 { margin: 0; font-size: clamp(2.8rem, min(9vw, 10.5vh), 7.2rem); line-height:
 .bars button span { display: block; height: 2px; background: rgb(255 255 255 / .28); position: relative; overflow: hidden; }
 .bars button span::after { content: ""; position: absolute; inset: 0; background: #fff; transform: scaleX(0); transform-origin: left; }
 .bars .done span::after { transform: scaleX(1); }
-.bars .on span::after { animation: fill var(--duration) $ease-drift forwards; }
-.bars .on.paused span::after { animation: none; transform: scaleX(1); }
-@keyframes fill { to { transform: scaleX(1); } }
+// O Swiper informa quanto da foto atual já passou (--progress, de 0 a 1); só transform.
+.bars .on span::after { transform: scaleX(var(--progress, 0)); }
+.bars .on.paused span::after { transform: scaleX(1); }
 // Legenda: entra em t(3) subindo d(-1); sai um degrau abaixo, t(2), acelerando.
 .cap-enter-active { transition: opacity $dur-lg $ease-enter, transform $dur-lg $ease-enter; }
 .cap-leave-active { transition: opacity $dur-md $ease-exit, transform $dur-md $ease-exit; }
@@ -197,7 +213,7 @@ h1 { margin: 0; font-size: clamp(2.8rem, min(9vw, 10.5vh), 7.2rem); line-height:
 
 // Movimento reduzido: fotos paradas e sem zoom, trocas instantâneas, texto já no lugar.
 @include reduced-motion {
-  .slide.active img, .slide.prev img { animation: none; }
+  .slide.on img, .slide.was img { animation: none; }
   .slide img { transform: none; }
   .place, .word > span, .sub, .actions > .btn, .controls { animation: none; }
   .scroll span { animation: none; opacity: 1; }

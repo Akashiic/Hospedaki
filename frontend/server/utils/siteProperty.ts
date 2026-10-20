@@ -4,6 +4,8 @@ export interface SiteProperty {
   description: string | null
   tagline: string | null
   demo?: boolean
+  /** Domínio próprio no ar (só vem quando o DNS já aponta para o site). */
+  domain?: string | null
   pages?: Record<string, { index?: boolean }>
   seo?: { indexable?: boolean, ai_bots?: 'allow' | 'training' | 'all', sitemap_images?: boolean, description?: string | null }
   photos?: { url: string, caption: string | null }[]

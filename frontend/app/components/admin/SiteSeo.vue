@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Property } from '~/composables/useApi'
 import type { SiteSeo } from '~/utils/sitePages'
-import { Bot, FileCode2, LockKeyhole, Map as MapIcon, RefreshCw, Sparkles } from 'lucide-vue-next'
+import { Bot, FileCode2, LockKeyhole, Map as MapIcon, MapPin, RefreshCw, Sparkles } from 'lucide-vue-next'
 
 // "Seu site → Configurações → SEO": como o site aparece no Google e o que os robôs podem ler.
 // Controla o Nuxt SEO do site público: robots.txt (robôs de busca e de IA), sitemap.xml, dados
@@ -52,6 +52,7 @@ async function save() {
   form.value.google_verification = cleanVerification(form.value.google_verification)
   form.value.ga_id = form.value.ga_id?.trim().toUpperCase() || null
   form.value.meta_pixel_id = form.value.meta_pixel_id?.trim() || null
+  form.value.author = form.value.author?.trim() || null
   try {
     await send('/site/seo', { method: 'PUT', body: { ...form.value } })
     form.value = copy()
@@ -75,6 +76,19 @@ function undo() {
   error.value = ''
 }
 const err = (f: string) => errors.value[f]?.[0]
+
+// Coordenadas: aceita "-23,318" (vírgula) e colar "lat, long" de uma vez (o que o Google Maps copia).
+function setCoord(field: 'latitude' | 'longitude', raw: string) {
+  if (!form.value) return
+  const both = raw.match(/^\s*(-?\d+(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d+(?:[.,]\d+)?)\s*$/)
+  if (field === 'latitude' && both && raw.includes(' ')) {
+    form.value.latitude = Number(both[1]!.replace(',', '.'))
+    form.value.longitude = Number(both[2]!.replace(',', '.'))
+    return
+  }
+  const n = Number(raw.trim().replace(',', '.'))
+  form.value[field] = raw.trim() === '' || Number.isNaN(n) ? null : n
+}
 const origin = import.meta.client ? window.location.origin : ''
 
 // ── Ao vivo: o robots.txt e o sitemap.xml que o site está servindo agora ──
@@ -157,6 +171,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
             <AdminOption id="seo-index" v-model="form.indexable" label="Aparecer no Google" hint="Desligue só enquanto o site estiver em montagem. Desligado, o robots.txt fecha o site e toda página recebe noindex." />
             <p v-if="!form.indexable" class="warn" role="status">O site vai sumir da busca do Google. Quem tem o link continua entrando normalmente.</p>
             <AdminTextField id="seo-desc" v-model="form.description" label="Descrição padrão" :max="PAGE_LIMITS.seo_description" :rows="3" placeholder="Ex.: Pousada em Mairiporã com piscina, fogueira e chalé com hidromassagem. Reserve direto, sem taxa." hint="Resumo da pousada para as páginas que não têm descrição própria." :error="err('description')" />
+            <AdminTextField id="seo-keywords" v-model="form.keywords" label="Palavras-chave" :max="PAGE_LIMITS.keywords" :rows="2" placeholder="Ex.: pousada em Mairiporã, chalé com hidromassagem, pousada com piscina, day use" hint="Separadas por vírgula. O Google dá pouco peso a elas hoje, mas outros buscadores e diretórios ainda leem. Cada página pode ter as suas em Páginas." :error="err('keywords')" />
             <div class="a-field">
               <span id="sep-label" class="a-label">Separador dos títulos</span>
               <div class="chips" role="radiogroup" aria-labelledby="sep-label">
@@ -164,6 +179,25 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
               </div>
               <small class="a-hint">Na aba do navegador e no Google: <strong>{{ exampleTitle }}</strong></small>
             </div>
+          </section>
+
+          <section v-if="section === 'seo'" class="a-section a-rise" style="--i: 2">
+            <h2><MapPin :size="20" aria-hidden="true" /> Autor e localização</h2>
+            <p class="a-hint">Metas clássicas que buscadores locais, mapas e diretórios ainda usam. A região e a cidade vêm de <NuxtLink :to="{ query: { aba: 'contato' } }">Contato</NuxtLink>.</p>
+            <AdminTextField id="seo-author" v-model="form.author" label="Autor do site" :max="80" :placeholder="site.identity.name" hint="Vazio, usa o nome da pousada." :error="err('author')" />
+            <div class="a-row">
+              <div class="a-field">
+                <div class="a-field-head"><label for="seo-lat">Latitude</label></div>
+                <input id="seo-lat" :value="form.latitude ?? ''" inputmode="decimal" placeholder="-23.3184" :aria-invalid="!!err('latitude') || undefined" @input="setCoord('latitude', ($event.target as HTMLInputElement).value)">
+                <small v-if="err('latitude')" class="a-err">{{ err('latitude') }}</small>
+              </div>
+              <div class="a-field">
+                <div class="a-field-head"><label for="seo-lng">Longitude</label></div>
+                <input id="seo-lng" :value="form.longitude ?? ''" inputmode="decimal" placeholder="-46.5871" :aria-invalid="!!err('longitude') || undefined" @input="setCoord('longitude', ($event.target as HTMLInputElement).value)">
+                <small v-if="err('longitude')" class="a-err">{{ err('longitude') }}</small>
+              </div>
+            </div>
+            <p class="a-hint">No Google Maps, clique com o botão direito na pousada e copie os números do topo do menu. Pode colar os dois juntos no campo da latitude.</p>
           </section>
 
           <section v-if="section === 'seo'" class="a-section a-rise" style="--i: 2">

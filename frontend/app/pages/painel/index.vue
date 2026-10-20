@@ -12,7 +12,7 @@ const route = useRoute()
 const router = useRouter()
 
 // A aba fica no endereço (/painel?aba=reservas): recarregar a página ou voltar não perde o lugar.
-const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'estatisticas', 'bloqueios', 'acomodacoes', 'paginas', 'identidade', 'contato', 'seo', 'integracoes', 'pagamentos']
+const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'estatisticas', 'bloqueios', 'acomodacoes', 'paginas', 'identidade', 'contato', 'seo', 'integracoes', 'pagamentos', 'redes', 'dominio', 'temas']
 // Links antigos: ?aba=pagina (antes do "Seu site") abre o Início em Páginas, e
 // ?aba=configuracoes (antes de virar submenu) abre Identidade.
 const LEGACY: Record<string, Record<string, string>> = { pagina: { aba: 'paginas', pagina: 'inicio' }, configuracoes: { aba: 'identidade' } }
@@ -146,6 +146,9 @@ const notify = (text: string) => toast.show(text, /não|erro|falh/i.test(text) ?
         <AdminSitePages v-else-if="tab === 'paginas'" :me="me" :demo="me?.property.demo" @message="notify" />
         <AdminSiteSettings v-else-if="tab === 'identidade' || tab === 'contato'" :section="tab" :demo="me?.property.demo" @message="notify" @changed="load" />
         <AdminSitePayments v-else-if="tab === 'pagamentos'" @message="notify" />
+        <AdminSiteSocial v-else-if="tab === 'redes'" @message="notify" />
+        <AdminSiteDomain v-else-if="tab === 'dominio'" :demo="me?.property.demo" @message="notify" />
+        <AdminSiteThemes v-else-if="tab === 'temas'" @message="notify" />
         <AdminSiteSeo v-else-if="tab === 'seo' || tab === 'integracoes'" :section="tab" :accommodations="me?.property.accommodations ?? []" @message="notify" />
       </div>
     </Transition>

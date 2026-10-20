@@ -1,6 +1,11 @@
 <script setup lang="ts">
+import type { Swiper as SwiperInstance } from 'swiper'
 import type { Accommodation } from '~/composables/useApi'
 import { ChevronLeft, ChevronRight, Clock, Moon, Users } from 'lucide-vue-next'
+import { A11y, Keyboard } from 'swiper/modules'
+import { Swiper, SwiperSlide } from 'swiper/vue'
+import 'swiper/css'
+import 'swiper/css/a11y'
 
 // Cartão do catálogo: fotos para passar (arrastando no celular, setas no computador), selos,
 // disponibilidade e o preço que importa agora: sem datas, o "a partir de"; com datas, o total
@@ -21,8 +26,9 @@ const props = defineProps<{ acc: Accommodation, state: CatalogState, search: { c
 const hourly = computed(() => isHourly(props.acc))
 const detail = computed(() => `/acomodacoes/${props.acc.slug}`)
 const ok = computed(() => props.state.fits && props.state.free !== false)
+// "Reservar" abre a página da acomodação já no formulário (#reservar), com as datas da busca.
 const reserve = computed(() => {
-  const q = new URLSearchParams({ acomodacao: props.acc.slug })
+  const q = new URLSearchParams()
   const s = props.search
   if (s && ok.value) {
     q.set('entrada', s.checkIn)
@@ -33,7 +39,8 @@ const reserve = computed(() => {
     q.set('entrada', props.state.weekend.checkIn)
     q.set('saida', props.state.weekend.checkOut)
   }
-  return `/reservar?${q}`
+  const query = q.toString()
+  return `${detail.value}${query ? `?${query}` : ''}#reservar`
 })
 const pix = computed(() => props.acc.payment?.pix_discount ?? 0)
 const tag = computed(() => hourly.value ? 'Eventos e day use' : props.acc.best_for === 'casal' ? 'Ideal para casais' : props.acc.best_for === 'familia' ? 'Ideal para famílias' : null)
@@ -50,36 +57,46 @@ const availability = computed(() => {
   return s.weekend && !hourly.value ? { tone: 'ok', text: `Fim de semana livre: ${formatRange(s.weekend.checkIn, s.weekend.checkOut)}` } : null
 })
 
-// ── Fotos ──
-const track = ref<HTMLElement | null>(null)
+// ── Fotos (Swiper): arrastar no celular ou com o mouse, setas no computador; da última volta à primeira. ──
+let swiper: SwiperInstance | null = null
 const index = ref(0)
-function onScroll() {
-  const el = track.value
-  if (el) index.value = Math.round(el.scrollLeft / el.clientWidth)
+function onSwiper(instance: SwiperInstance) {
+  swiper = instance
+  if (prefersReducedMotion()) instance.params.speed = 0
 }
-function go(step: number) {
-  const el = track.value
-  if (!el) return
-  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const next = (index.value + step + props.acc.photos.length) % props.acc.photos.length
-  el.scrollTo({ left: next * el.clientWidth, behavior: reduce ? 'auto' : 'smooth' })
-}
+// Até 8 pontinhos: com mais fotos, o último fica aceso dali em diante.
+const dot = computed(() => Math.min(index.value, 7))
 </script>
 
 <template>
   <article class="card" :class="{ dim: search && !ok }">
     <div class="media">
-      <div ref="track" class="track" @scroll.passive="onScroll">
-        <NuxtLink v-for="(photo, i) in acc.photos" :key="photo.url" :to="detail" class="slide" tabindex="-1" aria-hidden="true">
-          <img :src="photo.url" :alt="photo.caption ?? acc.name" :loading="eager && i === 0 ? 'eager' : 'lazy'" decoding="async">
-        </NuxtLink>
-        <NuxtLink v-if="!acc.photos.length" :to="detail" class="slide empty" tabindex="-1" aria-hidden="true" />
-      </div>
+      <Swiper
+        class="track"
+        :modules="[A11y, Keyboard]"
+        :rewind="true"
+        :speed="420"
+        :grab-cursor="acc.photos.length > 1"
+        :allow-touch-move="acc.photos.length > 1"
+        :keyboard="{ enabled: true, onlyInViewport: true }"
+        :a11y="carouselA11y(`Fotos de ${acc.name}`)"
+        @swiper="onSwiper"
+        @slide-change="(s: SwiperInstance) => index = s.realIndex"
+      >
+        <SwiperSlide v-for="(photo, i) in acc.photos" :key="photo.url">
+          <NuxtLink :to="detail" class="slide" tabindex="-1" draggable="false">
+            <img :src="photo.url" :alt="photo.caption ?? acc.name" :loading="eager && i === 0 ? 'eager' : 'lazy'" decoding="async" draggable="false">
+          </NuxtLink>
+        </SwiperSlide>
+        <SwiperSlide v-if="!acc.photos.length">
+          <NuxtLink :to="detail" class="slide empty" tabindex="-1" :aria-label="acc.name" />
+        </SwiperSlide>
+      </Swiper>
       <template v-if="acc.photos.length > 1">
-        <button type="button" class="nav prev" :aria-label="`Foto anterior de ${acc.name}`" @click="go(-1)"><ChevronLeft :size="20" /></button>
-        <button type="button" class="nav next" :aria-label="`Próxima foto de ${acc.name}`" @click="go(1)"><ChevronRight :size="20" /></button>
+        <button type="button" class="nav prev" :aria-label="`Foto anterior de ${acc.name}`" @click="swiper?.slidePrev()"><ChevronLeft :size="20" /></button>
+        <button type="button" class="nav next" :aria-label="`Próxima foto de ${acc.name}`" @click="swiper?.slideNext()"><ChevronRight :size="20" /></button>
         <div class="dots" aria-hidden="true">
-          <span v-for="(_, i) in acc.photos.slice(0, 8)" :key="i" :class="{ on: i === Math.min(index, 7) }" />
+          <span v-for="(_, i) in acc.photos.slice(0, 8)" :key="i" :class="{ on: i === dot }" />
         </div>
       </template>
       <div class="corner">
@@ -135,21 +152,21 @@ function go(step: number) {
 
 <style scoped lang="scss">
 .card {
-  display: grid; grid-template-rows: auto 1fr; min-width: 0; border-radius: 18px; overflow: hidden; background: var(--card);
+  // Coluna com mínimo 0: sem ela, o carrossel de fotos empurra a largura do cartão (o Swiper mede o pai).
+  display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; min-width: 0; border-radius: 18px; overflow: hidden; background: var(--card);
   box-shadow: 0 1px 2px rgb(0 0 0 / .05), 0 22px 44px -32px rgb(20 40 30 / .45);
 }
 // Fora das datas ou sem lugar: fica, mas apagado (troca na hora, sem animar cor).
 .card.dim .media { opacity: .55; }
 .card.dim .value { color: var(--muted); }
 
-.media { position: relative; aspect-ratio: 4 / 3; background: var(--night); }
-.track { display: flex; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
-.track::-webkit-scrollbar { display: none; }
-.slide { flex: 0 0 100%; height: 100%; scroll-snap-align: start; scroll-snap-stop: always; }
-.slide img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.media { position: relative; min-width: 0; aspect-ratio: 4 / 3; background: var(--night); }
+.track { height: 100%; }
+.slide { display: block; height: 100%; }
+.slide img { display: block; width: 100%; height: 100%; object-fit: cover; user-select: none; }
 .nav {
   --focus: var(--focus-dark);
-  position: absolute; top: 50%; display: grid; place-items: center; width: 40px; height: 40px; margin-top: -20px; border: 0; border-radius: 50%;
+  position: absolute; z-index: 2; top: 50%; display: grid; place-items: center; width: 40px; height: 40px; margin-top: -20px; border: 0; border-radius: 50%;
   background: rgb(255 255 255 / .92); color: var(--text); cursor: pointer; box-shadow: 0 2px 10px rgb(0 0 0 / .2);
   opacity: 0; transition: opacity $dur-sm $ease-move;
 }
@@ -158,13 +175,13 @@ function go(step: number) {
 .media:hover .nav, .nav:focus-visible { opacity: 1; }
 // Toque: as setas ficam escondidas e o dedo arrasta as fotos.
 @media (hover: none) { .nav { display: none; } }
-.dots { position: absolute; left: 50%; bottom: .7rem; transform: translateX(-50%); display: flex; gap: 5px; }
+.dots { position: absolute; z-index: 2; left: 50%; bottom: .7rem; transform: translateX(-50%); display: flex; gap: 5px; }
 .dots span { width: 6px; height: 6px; border-radius: 50%; background: #fff; opacity: .5; transition: opacity $dur-sm $ease-move, transform $dur-sm $ease-move; }
 .dots span.on { opacity: 1; transform: scale(1.25); }
-.corner { position: absolute; top: .7rem; left: .7rem; right: .7rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: .4rem; pointer-events: none; }
+.corner { position: absolute; z-index: 2; top: .7rem; left: .7rem; right: .7rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: .4rem; pointer-events: none; }
 .tag { margin-left: auto; padding: .3rem .6rem; border-radius: 999px; background: rgb(255 255 255 / .94); color: var(--text); font-size: .76rem; font-weight: 800; box-shadow: 0 2px 8px rgb(0 0 0 / .15); }
 .avail {
-  position: absolute; left: .7rem; bottom: 2rem; display: inline-flex; align-items: center; gap: .4rem; max-width: calc(100% - 1.4rem);
+  position: absolute; z-index: 2; left: .7rem; bottom: 2rem; display: inline-flex; align-items: center; gap: .4rem; max-width: calc(100% - 1.4rem);
   padding: .3rem .6rem; border-radius: 999px; background: rgb(255 255 255 / .95); font-size: .78rem; font-weight: 800; box-shadow: 0 2px 8px rgb(0 0 0 / .15);
 }
 .avail .dot { width: 8px; height: 8px; flex: none; border-radius: 50%; }

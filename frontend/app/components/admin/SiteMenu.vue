@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { AdminTab } from '~/composables/useAdminApi'
-import { ChevronDown, CreditCard, Globe, Palette, PanelsTopLeft, Phone, Plug, Search, SlidersHorizontal } from 'lucide-vue-next'
+import { AtSign, ChevronDown, CreditCard, Globe, Link2, Palette, PanelsTopLeft, Phone, Plug, Search, Shapes, SlidersHorizontal } from 'lucide-vue-next'
 
 // "Seu site" no menu do painel: um dropdown com Páginas e Configurações, que é outro dropdown
-// (Identidade, Contato, SEO, Integrações e Pagamentos, a parte avançada). Abre sozinho quando a aba atual está dentro dele.
+// (Identidade, Contato, Redes sociais, Domínio, SEO, Integrações e Pagamentos, a parte avançada),
+// além de Temas (em breve). Abre sozinho quando a aba atual está dentro dele.
 // O mesmo menu serve a barra lateral (computador) e a folha "Mais" (celular).
 const props = defineProps<{ tab: AdminTab, variant: 'side' | 'sheet' }>()
 const emit = defineEmits<{ go: [tab: AdminTab] }>()
@@ -12,13 +13,15 @@ const emit = defineEmits<{ go: [tab: AdminTab] }>()
 const settings: { tab: AdminTab, label: string, icon: Component }[] = [
   { tab: 'identidade', label: 'Identidade', icon: Palette },
   { tab: 'contato', label: 'Contato', icon: Phone },
+  { tab: 'redes', label: 'Redes sociais', icon: AtSign },
+  { tab: 'dominio', label: 'Domínio', icon: Link2 },
   { tab: 'seo', label: 'SEO', icon: Search },
   { tab: 'integracoes', label: 'Integrações', icon: Plug },
   { tab: 'pagamentos', label: 'Pagamentos', icon: CreditCard },
 ]
 
 const inSettings = computed(() => settings.some(i => i.tab === props.tab))
-const inSite = computed(() => props.tab === 'paginas' || inSettings.value)
+const inSite = computed(() => props.tab === 'paginas' || props.tab === 'temas' || inSettings.value)
 const siteOpen = ref(inSite.value)
 const settingsOpen = ref(inSettings.value)
 watch(inSite, (v) => { if (v) siteOpen.value = true })
@@ -40,6 +43,11 @@ const id = useId()
         <button type="button" class="item" :aria-current="tab === 'paginas' ? 'page' : undefined" @click="emit('go', 'paginas')">
           <PanelsTopLeft :size="20" aria-hidden="true" />
           <span>Páginas</span>
+        </button>
+        <button type="button" class="item" :aria-current="tab === 'temas' ? 'page' : undefined" @click="emit('go', 'temas')">
+          <Shapes :size="20" aria-hidden="true" />
+          <span>Temas</span>
+          <span class="soon">em breve</span>
         </button>
         <button type="button" class="item toggle" :class="{ here: inSettings && !settingsOpen }" :aria-expanded="settingsOpen" :aria-controls="`${id}-settings`" @click="settingsOpen = !settingsOpen">
           <SlidersHorizontal :size="20" aria-hidden="true" />
@@ -77,6 +85,7 @@ const id = useId()
   &[aria-current="page"] svg, &.here svg { color: var(--brand-text); }
 }
 .branch .item { gap: .6rem; padding: 0 .6rem; }
+.soon { margin-left: auto; flex: none; padding: .1rem .45rem; border-radius: 999px; background: var(--warn-soft); color: var(--warn-ink); font-size: .68rem; font-weight: 800; }
 .branch .branch .item { min-height: 40px; font-size: .92rem; }
 // Rótulo comprido corta com reticências em vez de empurrar a barra para o lado.
 .item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

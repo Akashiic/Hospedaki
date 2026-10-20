@@ -28,6 +28,14 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Domínio próprio de cada pousada: com estas chaves o painel liga o domínio no projeto do
+    // site na Vercel sozinho; sem elas, mostra os registros de DNS e a equipe liga à mão.
+    'vercel' => [
+        'token' => env('VERCEL_TOKEN'),
+        'project_id' => env('VERCEL_PROJECT_ID'),
+        'team_id' => env('VERCEL_TEAM_ID'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

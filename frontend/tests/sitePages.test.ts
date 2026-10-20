@@ -23,6 +23,13 @@ describe('pageDefaults', () => {
     assert.equal(pageDefaults('contato', pousada).seoDescription, 'Pousada Sol: WhatsApp, e-mail e endereço. Fale com a gente e reserve direto.')
   })
 
+  it('tells the guest they pay on the site only when a gateway is on', () => {
+    assert.match(pageDefaults('reservar', pousada).lead!, /^Nada é cobrado agora/)
+    const paid = { ...pousada, accommodations: [{ name: 'Chalé', payment: { methods: ['pix'] } }, { name: 'Casa', payment: null }] }
+    assert.match(pageDefaults('reservar', paid).lead!, /pague aqui mesmo/)
+    assert.doesNotMatch(pageDefaults('reservar', paid).seoDescription!, /Nada é cobrado/)
+  })
+
   it('prefers the SEO description over the long presentation', () => {
     assert.equal(pageDefaults('inicio', { ...pousada, seo: { description: 'Curta.' } }).seoDescription, 'Curta.')
   })
