@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\Property;
 use App\Models\User;
 use App\Notifications\NewBookingRequest;
+use App\Services\PaymentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -317,28 +318,92 @@ class PaymentTest extends TestCase
     {
         Sanctum::actingAs($this->owner);
         Http::fake(['api.mercadopago.com/users/me' => Http::sequence()->push(['message' => 'unauthorized'], 401)->whenEmpty(Http::response(['id' => 1]))]);
-        $keys = ['public_key' => 'APP_USR-abc-123', 'access_token' => 'APP_USR-9999-secret-7777'];
+        $live = ['mode' => 'live', 'public_key' => 'APP_USR-abc-123', 'secret_key' => 'APP_USR-9999-secret-7777'];
 
-        $this->putJson('/api/admin/payments/gateways/mercadopago', ['public_key' => 'APP_USR-x', 'access_token' => 'TEST-1'])
-            ->assertJsonValidationErrors('access_token');
-        $this->putJson('/api/admin/payments/gateways/mercadopago', $keys)->assertJsonValidationErrors('access_token');
+        // Chave de teste no modo produção não passa.
+        $this->putJson('/api/admin/payments/gateways/mercadopago', ['secret_key' => 'TEST-1'] + $live)->assertJsonValidationErrors('secret_key');
+        $this->putJson('/api/admin/payments/gateways/mercadopago', $live)->assertJsonValidationErrors('secret_key'); // 401 do Mercado Pago
 
-        $response = $this->putJson('/api/admin/payments/gateways/mercadopago', $keys)->assertOk()
-            ->assertJsonPath('gateways.mercadopago.configured', true)
-            ->assertJsonPath('gateways.mercadopago.access_token_hint', '•••• 7777')
+        $response = $this->putJson('/api/admin/payments/gateways/mercadopago', $live)->assertOk()
+            ->assertJsonPath('gateways.mercadopago.enabled', true)
+            ->assertJsonPath('gateways.mercadopago.mode', 'live')
+            ->assertJsonPath('gateways.mercadopago.active', true)
+            ->assertJsonPath('gateways.mercadopago.live.secret_hint', '•••• 7777')
+            ->assertJsonPath('gateways.mercadopago.test.configured', false)
             ->assertJsonPath('pix', 'mercadopago')
             ->assertJsonPath('card', 'mercadopago');
         $this->assertStringNotContainsString('9999', $response->getContent());
         $this->assertStringNotContainsString('9999', (string) DB::table('properties')->value('payment_credentials'));
 
         // Trocar só a chave pública mantém o token salvo.
-        $this->putJson('/api/admin/payments/gateways/mercadopago', ['public_key' => 'APP_USR-new'])->assertOk();
-        $this->assertSame('APP_USR-9999-secret-7777', $this->property->fresh()->payment_credentials['mercadopago']['access_token']);
+        $this->putJson('/api/admin/payments/gateways/mercadopago', ['mode' => 'live', 'public_key' => 'APP_USR-new'])->assertOk();
+        $this->assertSame('APP_USR-9999-secret-7777', $this->property->fresh()->payment_credentials['mercadopago']['live']['access_token']);
 
         $this->putJson('/api/admin/payments/settings', ['pix' => 'stripe', 'card' => null, 'installments' => 6])->assertJsonValidationErrors('pix');
         $this->putJson('/api/admin/payments/settings', ['pix' => 'mercadopago', 'card' => null, 'installments' => 6])->assertOk()->assertJsonPath('card', null);
 
-        $this->deleteJson('/api/admin/payments/gateways/mercadopago')->assertOk()->assertJsonPath('pix', null)->assertJsonPath('configured', []);
+        $this->deleteJson('/api/admin/payments/gateways/mercadopago', ['mode' => 'live'])->assertOk()
+            ->assertJsonPath('pix', null)->assertJsonPath('configured', [])->assertJsonPath('gateways.mercadopago.enabled', false);
+    }
+
+    public function test_test_and_live_keys_are_kept_apart_and_the_gateway_can_be_turned_off(): void
+    {
+        Sanctum::actingAs($this->owner);
+        Http::fake(['api.stripe.com/v1/balance' => Http::response(['object' => 'balance'])]);
+
+        // Primeiro as de teste: o gateway liga no modo de testes.
+        $this->putJson('/api/admin/payments/gateways/stripe', ['mode' => 'test', 'public_key' => 'pk_live_1', 'secret_key' => 'sk_test_1'])->assertJsonValidationErrors('public_key');
+        $this->putJson('/api/admin/payments/gateways/stripe', ['mode' => 'test', 'public_key' => 'pk_test_1', 'secret_key' => 'sk_test_1'])->assertOk()
+            ->assertJsonPath('gateways.stripe.mode', 'test')->assertJsonPath('gateways.stripe.active', true)->assertJsonPath('card', 'stripe');
+
+        // Produção sem chaves: não dá para trocar o modo.
+        $this->putJson('/api/admin/payments/gateways/stripe/state', ['enabled' => true, 'mode' => 'live'])->assertJsonValidationErrors('mode');
+
+        // Salvar as de produção não tira o gateway do modo de testes; a troca é pelo botão.
+        $this->putJson('/api/admin/payments/gateways/stripe', ['mode' => 'live', 'public_key' => 'pk_live_1', 'secret_key' => 'sk_live_2'])->assertOk()
+            ->assertJsonPath('gateways.stripe.mode', 'test')->assertJsonPath('gateways.stripe.live.configured', true);
+        $this->putJson('/api/admin/payments/gateways/stripe/state', ['enabled' => true, 'mode' => 'live'])->assertOk()->assertJsonPath('gateways.stripe.mode', 'live');
+        $this->assertSame('sk_live_2', app(PaymentService::class)->active($this->property->fresh(), 'stripe')['secret_key']);
+
+        // O site cobra com o modo em uso e avisa quando é teste.
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/checkout/'.$this->checkout())->assertJsonPath('test_mode', false)->assertJsonPath('methods.card.public_key', 'pk_live_1');
+
+        Sanctum::actingAs($this->owner);
+        $this->putJson('/api/admin/payments/gateways/stripe/state', ['enabled' => true, 'mode' => 'test'])->assertOk();
+        $this->app['auth']->forgetGuards();
+        $this->getJson('/api/checkout/'.$this->request(['check_in' => $this->property->today()->addDays(20)->toDateString(), 'check_out' => $this->property->today()->addDays(21)->toDateString()])->json('checkout.token'))
+            ->assertJsonPath('test_mode', true)->assertJsonPath('methods.card.public_key', 'pk_test_1');
+
+        // Desligado, o site volta a só receber pedidos; religado, volta a cobrar o que cobrava.
+        Sanctum::actingAs($this->owner);
+        $this->putJson('/api/admin/payments/gateways/stripe/state', ['enabled' => false, 'mode' => 'test'])->assertOk()
+            ->assertJsonPath('gateways.stripe.active', false)->assertJsonPath('card', null);
+        $this->app['auth']->forgetGuards();
+        $this->request(['check_in' => $this->property->today()->addDays(30)->toDateString(), 'check_out' => $this->property->today()->addDays(31)->toDateString()])
+            ->assertJsonPath('data.status', 'pending');
+        Sanctum::actingAs($this->owner);
+        $this->putJson('/api/admin/payments/gateways/stripe/state', ['enabled' => true, 'mode' => 'test'])->assertOk()->assertJsonPath('card', 'stripe');
+    }
+
+    public function test_a_payment_made_in_test_mode_is_still_checked_with_the_test_keys(): void
+    {
+        $this->property->update(['payment_credentials' => ['mercadopago' => [
+            'enabled' => true, 'mode' => 'test',
+            'test' => ['public_key' => 'TEST-pub', 'access_token' => 'TEST-token'],
+            'live' => ['public_key' => 'APP_USR-pub', 'access_token' => 'APP_USR-live'],
+        ]], 'settings' => ['payments' => ['pix' => 'mercadopago', 'card' => 'mercadopago', 'installments' => 1]]]);
+        $this->fakeMercadoPago();
+        $token = $this->checkout();
+        $this->postJson("/api/checkout/{$token}/pix")->assertOk();
+
+        // O dono passa para produção com o Pix de teste em aberto.
+        $credentials = $this->property->fresh()->payment_credentials;
+        $credentials['mercadopago']['mode'] = 'live';
+        $this->property->update(['payment_credentials' => $credentials]);
+
+        $this->getJson("/api/checkout/{$token}?refresh=1")->assertJsonPath('status', 'confirmed');
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/v1/payments/777') && $request->hasHeader('Authorization', 'Bearer TEST-token'));
     }
 
     public function test_demo_simulates_payments_and_blocks_real_keys(): void

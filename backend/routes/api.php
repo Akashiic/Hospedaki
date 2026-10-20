@@ -76,6 +76,7 @@ Route::prefix('admin')->group(function () {
         Route::get('payments', [Admin\PaymentController::class, 'show']);
         Route::put('payments/settings', [Admin\PaymentController::class, 'updateSettings']);
         Route::put('payments/gateways/{provider}', [Admin\PaymentController::class, 'updateGateway'])->middleware('throttle:20,1,gateway');
+        Route::put('payments/gateways/{provider}/state', [Admin\PaymentController::class, 'updateState']);
         Route::delete('payments/gateways/{provider}', [Admin\PaymentController::class, 'destroyGateway']);
         Route::post('site/images/{kind}', [Admin\SiteController::class, 'storeImage'])->middleware('throttle:30,1,site-image');
         Route::delete('site/images/{kind}', [Admin\SiteController::class, 'destroyImage']);

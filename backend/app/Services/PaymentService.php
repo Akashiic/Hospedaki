@@ -42,6 +42,13 @@ class PaymentService
 
     public const METHODS = [Payment::PIX, Payment::CARD];
 
+    /** Cada gateway guarda as chaves de teste e as de produção; um dos dois modos fica em uso. */
+    public const TEST = 'test';
+
+    public const LIVE = 'live';
+
+    public const MODES = [self::TEST, self::LIVE];
+
     /** Prazo para pagar depois de fazer o pedido. */
     public const HOLD_MINUTES = 30;
 
@@ -56,7 +63,7 @@ class PaymentService
     // ── Configuração ──
 
     /**
-     * Gateways com as chaves completas (na demonstração, só o simulado).
+     * Gateways ligados e com as chaves do modo em uso completas (na demonstração, só o simulado).
      *
      * @return list<string>
      */
@@ -66,9 +73,71 @@ class PaymentService
             return [self::SIMULATED];
         }
 
-        $credentials = $this->credentials($property);
+        return array_values(array_filter(self::PROVIDERS, fn (string $provider) => $this->active($property, $provider) !== []));
+    }
 
-        return array_values(array_filter(self::PROVIDERS, fn (string $provider) => self::complete($provider, $credentials[$provider] ?? [])));
+    /**
+     * Estado de cada gateway: ligado ou não, o modo em uso e as chaves de cada modo.
+     *
+     * @return array<string, array{enabled: bool, mode: string, test: array<string, ?string>, live: array<string, ?string>}>
+     */
+    public function gateways(Property $property): array
+    {
+        $saved = $this->credentials($property);
+
+        return collect(self::PROVIDERS)->mapWithKeys(fn (string $provider) => [$provider => self::normalize($provider, $saved[$provider] ?? [])])->all();
+    }
+
+    /**
+     * Chaves do modo em uso, ou vazio quando o gateway está desligado ou sem as chaves desse modo.
+     *
+     * @return array<string, ?string>
+     */
+    public function active(Property $property, string $provider, ?string $mode = null): array
+    {
+        $gateway = $this->gateways($property)[$provider] ?? null;
+        $keys = $gateway[$mode ?? $gateway['mode'] ?? self::TEST] ?? [];
+
+        // Um modo pedido de propósito (o de um pagamento já criado) vale mesmo com o gateway desligado.
+        return $gateway && ($mode || $gateway['enabled']) && self::complete($provider, $keys) ? $keys : [];
+    }
+
+    /** Modo em uso do gateway ("test" ou "live"). */
+    public function mode(Property $property, string $provider): string
+    {
+        return $this->gateways($property)[$provider]['mode'] ?? self::TEST;
+    }
+
+    /**
+     * Chaves salvas antes de existirem os dois modos (um conjunto só) viram o modo da própria chave, ligado.
+     *
+     * @param  array<string, mixed>  $saved
+     * @return array{enabled: bool, mode: string, test: array<string, ?string>, live: array<string, ?string>}
+     */
+    private static function normalize(string $provider, array $saved): array
+    {
+        if (array_key_exists('mode', $saved) || array_key_exists('test', $saved) || array_key_exists('live', $saved)) {
+            return [
+                'enabled' => (bool) ($saved['enabled'] ?? false),
+                'mode' => in_array($saved['mode'] ?? null, self::MODES, true) ? $saved['mode'] : self::TEST,
+                'test' => $saved['test'] ?? [],
+                'live' => $saved['live'] ?? [],
+            ];
+        }
+
+        if (! self::complete($provider, $saved)) {
+            return ['enabled' => false, 'mode' => self::TEST, 'test' => [], 'live' => []];
+        }
+
+        $mode = self::keyMode($provider, (string) ($saved['access_token'] ?? $saved['secret_key'] ?? ''));
+
+        return ['enabled' => true, 'mode' => $mode, self::TEST => [], self::LIVE => [], $mode => $saved];
+    }
+
+    /** De que modo é uma chave secreta, pelo começo dela. */
+    public static function keyMode(string $provider, string $key): string
+    {
+        return ($provider === 'mercadopago' ? str_starts_with($key, 'TEST-') : str_contains($key, '_test_')) ? self::TEST : self::LIVE;
     }
 
     /**
@@ -155,9 +224,13 @@ class PaymentService
         ];
     }
 
-    public function gateway(Property $property, string $provider): Gateway
+    /**
+     * Gateway com as chaves do modo em uso, ou de um modo escolhido (o de um pagamento já criado:
+     * um Pix gerado em teste continua sendo consultado com as chaves de teste).
+     */
+    public function gateway(Property $property, string $provider, ?string $mode = null): Gateway
     {
-        return $this->make($property, $provider, $this->credentials($property)[$provider] ?? []);
+        return $this->make($property, $provider, $this->active($property, $provider, $mode));
     }
 
     /**
@@ -238,7 +311,6 @@ class PaymentService
 
         $settings = $this->settings($property);
         $methods = $booking->status === BookingStatus::AwaitingPayment ? $this->methodsFor($property, $booking->accommodations) : [];
-        $credentials = $this->credentials($property);
         $subtotals = $booking->accommodations->mapWithKeys(fn ($a) => [$a->id => $a->pivot->subtotal])->all();
         $pixDiscount = array_sum($this->pixDiscounts($booking->accommodations, $subtotals));
         $promo = $booking->accommodations->map(fn (Accommodation $a) => $a->pixPromo())->filter()->sortBy(fn ($p) => $p['ends_at']?->getTimestamp() ?? PHP_INT_MAX)->first();
@@ -288,13 +360,16 @@ class PaymentService
                     // Parcelas só no Mercado Pago (na Stripe o parcelamento brasileiro é outro produto).
                     'installments' => $settings['card'] === 'stripe' ? 1 : $settings['installments'],
                     'public_key' => match ($settings['card']) {
-                        'mercadopago' => $credentials['mercadopago']['public_key'] ?? null,
-                        'stripe' => $credentials['stripe']['publishable_key'] ?? null,
+                        'mercadopago' => $this->active($property, 'mercadopago')['public_key'] ?? null,
+                        'stripe' => $this->active($property, 'stripe')['publishable_key'] ?? null,
                         default => null,
                     },
                 ] : null,
             ],
             'payment' => $last ? $this->present($last) : null,
+            // Algum gateway em uso está no modo de teste: o checkout avisa que nada é cobrado de verdade.
+            'test_mode' => collect($methods)->contains(fn (string $method) => in_array($settings[$method], self::PROVIDERS, true)
+                && $this->mode($property, $settings[$method]) === self::TEST),
         ];
     }
 
@@ -359,11 +434,16 @@ class PaymentService
      */
     public function webhook(Property $property, string $provider, Request $request): bool
     {
-        if (! in_array($provider, $this->configured($property), true)) {
-            return true; // gateway desligado: nada a fazer, e o gateway para de insistir
+        // Os avisos de teste e os de produção vêm assinados com segredos diferentes: vale o modo que conferir.
+        $modes = array_filter(self::MODES, fn (string $mode) => $this->active($property, $provider, $mode) !== []);
+        if ($modes === []) {
+            return true; // sem chaves: nada a fazer, e o gateway para de insistir
         }
 
-        $id = $this->gateway($property, $provider)->webhookPaymentId($request);
+        $id = null;
+        foreach ($modes as $mode) {
+            $id ??= $this->gateway($property, $provider, $mode)->webhookPaymentId($request);
+        }
         if ($id === null) {
             return false;
         }
@@ -393,7 +473,7 @@ class PaymentService
         }
 
         try {
-            $result = $this->gateway($payment->booking->property, $payment->provider)->fetch($payment);
+            $result = $this->gateway($payment->booking->property, $payment->provider, $payment->data['mode'] ?? null)->fetch($payment);
         } catch (GatewayException $e) {
             report($e);
 
@@ -549,15 +629,18 @@ class PaymentService
     private function charge(Booking $booking, string $method, array $attributes, callable $call): Payment
     {
         $provider = $this->settings($booking->property)[$method];
+        // O modo (teste ou produção) fica no pagamento: trocar de modo depois não perde quem já está pagando.
+        $mode = $provider === self::SIMULATED ? null : $this->mode($booking->property, $provider);
         $payment = $booking->payments()->create([
             'provider' => $provider,
             'method' => $method,
             'expires_at' => $booking->payment_due_at,
             ...$attributes,
+            'data' => array_filter([...($attributes['data'] ?? []), 'mode' => $mode], fn ($value) => $value !== null),
         ]);
 
         try {
-            $result = $call($this->gateway($booking->property, $provider), $payment);
+            $result = $call($this->gateway($booking->property, $provider, $mode), $payment);
         } catch (GatewayException $e) {
             $payment->update(['status' => Payment::FAILED, 'data' => [...($payment->data ?? []), 'message' => $e->getMessage()]]);
 

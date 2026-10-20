@@ -193,6 +193,8 @@ export interface Checkout {
     card: { provider: CheckoutPayment['provider'], total: number, installments: number, public_key: string | null } | null
   }
   payment: CheckoutPayment | null
+  /** Algum gateway em uso está no modo de testes: nada é cobrado de verdade. */
+  test_mode?: boolean
 }
 
 /** Cliente do checkout (/checkout/{token}): fora da pousada, o link já diz qual é a reserva. */

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Checkout, PaymentMethod } from '~/composables/useApi'
-import { CalendarCheck, CircleAlert, CreditCard, PartyPopper, QrCode } from 'lucide-vue-next'
+import { CalendarCheck, CircleAlert, CreditCard, FlaskConical, PartyPopper, QrCode } from 'lucide-vue-next'
 
 // Checkout da reserva: o hóspede chega aqui depois de pedir a reserva (o link leva o token
 // secreto dela) e paga no Pix ou no cartão, sem sair do site. A página pergunta a situação ao
@@ -136,6 +136,7 @@ const whatsapp = computed(() => {
           <div class="panel pay">
             <p class="eyebrow">Pagamento</p>
             <h1>Falta só pagar, {{ firstName }}</h1>
+            <p v-if="checkout.test_mode" class="test-note" role="note"><FlaskConical :size="16" aria-hidden="true" /> Pagamento em <strong>modo de testes</strong>: use os cartões e o Pix de teste do gateway. Nenhum valor é cobrado.</p>
             <div v-if="checkout.due_at" class="hold">
               <p>Suas datas ficam guardadas por mais</p>
               <SitePromoFlipTimer :ends-at="checkout.due_at" size="sm" @ended="load(true)" />
@@ -199,6 +200,7 @@ h1 { margin: 0; font-size: clamp(2rem, 4.5vw, 2.8rem); line-height: 1.05; }
 }
 .off { padding: .1rem .45rem; border-radius: 999px; background: var(--pix); color: var(--pix-ink); font-size: .75rem; }
 .error { margin: 0; color: var(--danger); font-weight: 700; }
+.test-note { margin: 0; display: flex; align-items: center; gap: .45rem; padding: .55rem .75rem; border-radius: 10px; background: var(--warn-soft); color: var(--warn-ink); font-size: .88rem; }
 .summary { display: grid; gap: .5rem; position: sticky; top: calc(var(--nav-h) + 1rem); }
 .photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; margin-bottom: .4rem; }
 .summary h2 { margin: 0; font-size: 1.6rem; }

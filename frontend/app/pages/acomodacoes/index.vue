@@ -8,11 +8,12 @@ const page = await useSitePage('acomodacoes', { image: () => image.value })
 <template>
   <div>
     <SitePageHeader
+      compact
       :eyebrow="page.eyebrow"
       :title="page.title"
       :lead="page.lead"
       :image="image"
     />
-    <SiteShowcase :accommodations="property.accommodations" />
+    <SiteCatalog :property="property" />
   </div>
 </template>

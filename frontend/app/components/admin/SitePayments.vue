@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminPayments, PaymentProvider } from '~/composables/useAdminApi'
-import { CheckCircle2, Copy, CreditCard, KeyRound, QrCode, ShieldCheck, Unplug } from 'lucide-vue-next'
+import { CreditCard, QrCode, ShieldCheck } from 'lucide-vue-next'
 
 // "Seu site → Configurações → Pagamentos" (avançado): conecta o Mercado Pago e a Stripe e escolhe
 // quem cobra o Pix e quem cobra o cartão. Com um deles ligado, o pedido do site vira pagamento:
@@ -56,63 +56,6 @@ async function saveChoice() {
   }
 }
 
-// ── Chaves de cada gateway ──
-const keys = reactive({
-  mercadopago: { public_key: '', access_token: '', webhook_secret: '' },
-  stripe: { publishable_key: '', secret_key: '', webhook_secret: '' },
-})
-watch(data, (d) => {
-  if (!d) return
-  keys.mercadopago.public_key = d.gateways.mercadopago.public_key ?? ''
-  keys.stripe.publishable_key = d.gateways.stripe.publishable_key ?? ''
-}, { immediate: true })
-const keyErrors = ref<Record<string, Record<string, string[]>>>({})
-const keyBusy = ref<string | null>(null)
-
-async function saveKeys(provider: 'mercadopago' | 'stripe') {
-  keyBusy.value = provider
-  keyErrors.value = { ...keyErrors.value, [provider]: {} }
-  try {
-    data.value = await api<AdminPayments>(`/payments/gateways/${provider}`, { method: 'PUT', body: { ...keys[provider] } })
-    keys[provider].webhook_secret = ''
-    if (provider === 'mercadopago') keys.mercadopago.access_token = ''
-    else keys.stripe.secret_key = ''
-    emit('message', `${providerName(provider)} conectado. As chaves foram testadas e estão funcionando.`)
-  }
-  catch (e) {
-    keyErrors.value = { ...keyErrors.value, [provider]: apiFieldErrors(e) }
-    if (!Object.keys(apiFieldErrors(e)).length) emit('message', apiError(e))
-  }
-  finally {
-    keyBusy.value = null
-  }
-}
-
-async function disconnect(provider: 'mercadopago' | 'stripe') {
-  if (!confirm(`Desconectar o ${providerName(provider)}? As chaves salvas são apagadas e ele deixa de cobrar no site.`)) return
-  keyBusy.value = provider
-  try {
-    data.value = await api<AdminPayments>(`/payments/gateways/${provider}`, { method: 'DELETE' })
-    emit('message', `${providerName(provider)} desconectado.`)
-  }
-  catch (e) {
-    emit('message', apiError(e))
-  }
-  finally {
-    keyBusy.value = null
-  }
-}
-const keyErr = (provider: string, field: string) => keyErrors.value[provider]?.[field]?.[0]
-
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    emit('message', 'Endereço copiado.')
-  }
-  catch {
-    emit('message', 'Não foi possível copiar. Selecione o texto e copie.')
-  }
-}
 </script>
 
 <template>
@@ -165,56 +108,23 @@ async function copy(text: string) {
           <AdminSaveBar :dirty="dirty" :saving="saving" :error="saveError" label="Salvar" @undo="choice = fromData()" />
         </form>
 
-        <!-- Na demonstração as chaves aparecem, mas travadas: o painel é público. -->
-          <section v-for="(p, i) in PROVIDERS" :key="p.key" class="a-section gateway a-rise" :style="{ '--i': i + 2 }">
-            <div class="gw-head">
-              <h2><KeyRound :size="20" aria-hidden="true" /> {{ p.name }}</h2>
-              <span v-if="data.gateways[p.key].configured" class="pill ok"><CheckCircle2 :size="14" aria-hidden="true" /> Conectado{{ data.gateways[p.key].test ? ' · teste' : '' }}</span>
-              <span v-else class="pill">Não conectado</span>
-            </div>
-
-            <form class="keys" @submit.prevent="saveKeys(p.key)">
-              <fieldset :disabled="data.demo" class="lock">
-              <template v-if="p.key === 'mercadopago'">
-                <p class="a-hint">No <a href="https://www.mercadopago.com.br/developers/panel/app" target="_blank" rel="noopener">painel de desenvolvedor ↗</a>, abra a sua aplicação e vá em <strong>Credenciais de produção</strong>. Use as de teste para experimentar sem cobrar.</p>
-                <AdminTextField id="mp-public" v-model="keys.mercadopago.public_key" label="Public Key" placeholder="APP_USR-..." :error="keyErr('mercadopago', 'public_key')" />
-                <div class="a-field">
-                  <label for="mp-token">Access Token</label>
-                  <input id="mp-token" v-model="keys.mercadopago.access_token" type="password" autocomplete="off" :placeholder="data.gateways.mercadopago.access_token_hint ? `Salvo (${data.gateways.mercadopago.access_token_hint}). Em branco, continua o mesmo.` : 'APP_USR-...'" :aria-invalid="!!keyErr('mercadopago', 'access_token') || undefined">
-                  <small v-if="keyErr('mercadopago', 'access_token')" class="a-err">{{ keyErr('mercadopago', 'access_token') }}</small>
-                </div>
-              </template>
-              <template v-else>
-                <p class="a-hint">No <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noopener">painel da Stripe ↗</a>, em <strong>Desenvolvedores → Chaves de API</strong>. O Pix precisa estar ativo em Configurações → Formas de pagamento.</p>
-                <AdminTextField id="st-public" v-model="keys.stripe.publishable_key" label="Chave publicável" placeholder="pk_live_..." :error="keyErr('stripe', 'publishable_key')" />
-                <div class="a-field">
-                  <label for="st-secret">Chave secreta</label>
-                  <input id="st-secret" v-model="keys.stripe.secret_key" type="password" autocomplete="off" :placeholder="data.gateways.stripe.secret_key_hint ? `Salva (${data.gateways.stripe.secret_key_hint}). Em branco, continua a mesma.` : 'sk_live_...'" :aria-invalid="!!keyErr('stripe', 'secret_key') || undefined">
-                  <small v-if="keyErr('stripe', 'secret_key')" class="a-err">{{ keyErr('stripe', 'secret_key') }}</small>
-                </div>
-              </template>
-
-              <div class="webhook">
-                <p class="a-label">Notificações (webhook)</p>
-                <p class="a-hint">{{ p.key === 'mercadopago' ? 'Em Webhooks, cadastre este endereço com o evento "Pagamentos"' : 'Em Desenvolvedores → Webhooks, adicione este endereço com os eventos payment_intent.succeeded e payment_intent.payment_failed' }} e cole a assinatura secreta abaixo. Assim a reserva se confirma no instante do pagamento.</p>
-                <div class="url">
-                  <code>{{ data.gateways[p.key].webhook_url }}</code>
-                  <button type="button" class="icon-btn" aria-label="Copiar endereço" title="Copiar" @click="copy(data.gateways[p.key].webhook_url)"><Copy :size="16" /></button>
-                </div>
-                <div class="a-field">
-                  <label :for="`${p.key}-whsec`">Assinatura secreta</label>
-                  <input :id="`${p.key}-whsec`" v-model="keys[p.key].webhook_secret" type="password" autocomplete="off" :placeholder="data.gateways[p.key].webhook_secret ? 'Salva. Em branco, continua a mesma.' : (p.key === 'stripe' ? 'whsec_...' : 'Opcional, mas recomendada')">
-                </div>
-              </div>
-
-              <p v-if="data.demo" class="a-hint">Na demonstração as chaves ficam travadas: o dinheiro de um visitante iria para a conta de outro.</p>
-              <div class="gw-actions">
-                <button type="submit" class="btn btn-sm" :disabled="keyBusy === p.key">{{ keyBusy === p.key ? 'Testando as chaves...' : (data.gateways[p.key].configured ? 'Salvar e testar' : 'Conectar') }}</button>
-                <button v-if="data.gateways[p.key].configured" type="button" class="btn btn-ghost btn-sm" :disabled="keyBusy === p.key" @click="disconnect(p.key)"><Unplug :size="16" aria-hidden="true" /> Desconectar</button>
-              </div>
-              </fieldset>
-            </form>
-          </section>
+        <section class="gateways a-rise" style="--i: 2" aria-labelledby="gw-title">
+          <div class="gw-intro">
+            <h2 id="gw-title">Gateways</h2>
+            <p class="a-hint">Abra para colar as chaves, ligar ou desligar e escolher entre testes e produção. Cada modo guarda as suas chaves.</p>
+          </div>
+          <div class="gw-grid">
+            <AdminPaymentGateway
+              v-for="p in PROVIDERS"
+              :key="p.key"
+              :provider="p.key"
+              :gateway="data.gateways[p.key]"
+              :demo="data.demo"
+              @updated="data = $event"
+              @message="emit('message', $event)"
+            />
+          </div>
+        </section>
       </div>
 
       <aside class="side a-rise" style="--i: 2">
@@ -244,7 +154,7 @@ async function copy(text: string) {
 <style scoped lang="scss">
 .payments { display: grid; gap: 1.2rem; max-width: 1240px; }
 .tag { @include eyebrow(var(--brand-text), sm); margin: 0 0 .2rem; }
-.layout { display: grid; gap: 1rem; align-items: start; grid-template-columns: minmax(0, 1fr); @include above(lg) { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); } }
+.layout { display: grid; gap: 1rem; align-items: start; grid-template-columns: minmax(0, 1fr); @include above(lg) { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); } }
 .col, .side { display: grid; gap: 1rem; min-width: 0; }
 h2 { display: flex; align-items: center; gap: .5rem; }
 h2 svg { color: var(--brand-text); }
@@ -263,21 +173,14 @@ h2 svg { color: var(--brand-text); }
   &[aria-checked="true"] { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
 }
 .narrow { max-width: 300px; }
-.gw-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; }
-.gw-head h2 { margin: 0; }
-.pill { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .6rem; border-radius: 999px; background: var(--a-sunk); color: var(--muted); font-size: .8rem; font-weight: 700; }
-.pill.ok { background: var(--ok-soft); color: var(--ok-ink); }
-.keys, .lock { display: grid; gap: .9rem; }
-.lock { margin: 0; padding: 0; border: 0; min-width: 0; }
-.lock:disabled { opacity: .7; }
-.keys input { width: 100%; }
-.webhook { display: grid; gap: .5rem; padding: .9rem; border-radius: 14px; background: var(--a-sunk); }
-.webhook .a-label, .webhook .a-hint { margin: 0; }
-.url { display: flex; align-items: center; gap: .4rem; min-width: 0; }
-.url code { flex: 1; min-width: 0; padding: .5rem .6rem; border-radius: 10px; background: var(--a-card); font-size: .8rem; overflow-wrap: anywhere; }
-.icon-btn { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border: 0; border-radius: 10px; background: var(--a-card); color: var(--muted); cursor: pointer; }
-.gw-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
-.gw-actions .btn { display: inline-flex; align-items: center; gap: .35rem; }
+// Gateways em acordeão: lado a lado quando a coluna tem espaço para os dois.
+.gateways { display: grid; gap: .7rem; container-type: inline-size; }
+.gw-intro h2 { margin: 0 0 .2rem; font-family: var(--font-body); font-size: 1.15rem; font-weight: 700; }
+.gw-intro .a-hint { margin: 0; }
+.gw-grid { display: grid; gap: 1rem; align-items: start; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 620px) { .gw-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+// No computador, "Como funciona" e "Segurança" acompanham a rolagem.
+.side { @include above(lg) { position: sticky; top: 1.5rem; } }
 .steps { margin: 0; padding-left: 1.2rem; display: grid; gap: .55rem; font-size: .9rem; }
 .steps strong { font-weight: 700; }
 .list { margin: 0; padding-left: 1.1rem; display: grid; gap: .35rem; font-size: .88rem; }

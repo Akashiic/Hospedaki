@@ -9,7 +9,7 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - Site da pousada em várias páginas, com transição suave entre elas e menu e rodapé fixos:
   - **Início** (`/`): capa em carrossel com a pergunta "Com quem você vem?" (a dois ou com a família) e o próximo fim de semana livre; depois "Um dia aqui", em que rolar a página passa da manhã à noite na pousada (o céu muda de cor e um sol vira lua). A escolha da capa muda os textos, a ordem das acomodações e a acomodação já marcada em Reservar.
   - **O lugar** (`/o-lugar`): apresentação, diferenciais e galeria de fotos.
-  - **Acomodações** (`/acomodacoes` e `/acomodacoes/{slug}`): lista e página de cada uma, com comodidades, fotos e preços.
+  - **Acomodações** (`/acomodacoes` e `/acomodacoes/{slug}`): catálogo com busca por datas e pessoas (fica no endereço), filtro por tipo, ordenação, cartões com fotos para passar, disponibilidade, próximo fim de semana livre, total exato e preço no Pix; e a página de cada uma, com comodidades, fotos e preços.
   - **Reservar** (`/reservar`): calendário e pedido de reserva.
   - **Contato** (`/contato`): WhatsApp, telefone, e-mail e como funciona a reserva.
 - Animações leves (só opacidade e movimento), que respeitam quem pede menos movimento no celular. Fontes servidas pelo próprio site e partes abaixo da capa carregadas sob demanda, para continuar rápida no celular.
@@ -26,7 +26,7 @@ Feito para atender várias pousadas com a mesma base: cada pousada tem nome, cor
 - **Seu site** no painel, um menu que abre com **Páginas** e **Configurações** (outro menu: Identidade, Contato, SEO, Integrações e Pagamentos):
   - **Páginas**: cada página do site (Início, O lugar, Acomodações, Reservar, Contato) com os textos da abertura, o título e a descrição no Google e a opção de sair do menu, com prévia do Google e do WhatsApp. Na página inicial, as seções podem ser ligadas, desligadas e reordenadas, com prévia ao vivo no celular e no computador, layouts sugeridos e avisos quando uma escolha costuma custar reservas (a capa fica sempre no topo e seções sem conteúdo ficam fora do site).
   - **Identidade**: logo, ícone da aba do navegador, imagem de compartilhamento, nome, frase de destaque, cor principal e apresentação. **Contato**: WhatsApp, telefone, e-mail e endereço. **Integrações**: Search Console, Google Analytics e Pixel do Meta.
-  - **Pagamentos** (avançado): conectar o Mercado Pago e a Stripe (as chaves são testadas ao salvar, ficam criptografadas e nunca voltam inteiras), escolher quem cobra o Pix e quem cobra o cartão, parcelamento e o endereço de webhook de cada um.
+  - **Pagamentos** (avançado): o Mercado Pago e a Stripe em acordeões, cada um com botão de ativar e de modo produção (desligado = testes) e chaves separadas para teste e produção (testadas ao salvar, criptografadas e nunca devolvidas inteiras); quem cobra o Pix e quem cobra o cartão, parcelamento e o webhook de cada um. No modo de testes o checkout avisa que nada é cobrado.
   - **SEO**: descrição padrão, separador dos títulos, "Aparecer no Google", robôs de IA (liberar, bloquear o treino ou bloquear todos), dados estruturados (Schema.org, com o tipo de hospedagem) e fotos no mapa do site, com o `robots.txt` e o `sitemap.xml` que estão no ar. Cada página também pode sair do Google em **Páginas**.
 - SEO com [Nuxt SEO](https://nuxtseo.com) (`@nuxtjs/seo`: robots, sitemap, Schema.org e tags padrão). As escolhas do painel valem por requisição (`frontend/server/plugins`). Em produção, defina `NUXT_SITE_URL` com o endereço público do site. O painel e o login nunca são indexados: `X-Robots-Tag: noindex`, meta noindex, fora do mapa do site, sem iframe e sem cache; a API também responde com noindex.
 - Aviso por e-mail para o dono a cada pedido novo.
@@ -152,7 +152,8 @@ Painel do dono (token obtido no login, enviado como `Authorization: Bearer ...`)
 | POST | `/api/admin/demo-login` | Entrar na pousada de demonstração, sem senha (só com `DEMO_MODE`) |
 | GET | `/api/admin/me` | Usuário e pousada logados |
 | GET / PUT | `/api/admin/payments` · `/payments/settings` | Gateways e quem cobra o Pix e o cartão |
-| PUT / DELETE | `/api/admin/payments/gateways/{mercadopago\|stripe}` | Conectar (testa as chaves) ou desconectar |
+| PUT / DELETE | `/api/admin/payments/gateways/{mercadopago\|stripe}` | Salvar (testa) ou apagar as chaves de um modo (`mode`: `test` ou `live`) |
+| PUT | `/api/admin/payments/gateways/{mercadopago\|stripe}/state` | Ativar ou desativar e escolher o modo em uso |
 | POST | `/api/admin/logout` | Sair |
 | GET | `/api/admin/bookings?status=pending&upcoming=1` | Listar pedidos |
 | POST | `/api/admin/bookings/{id}/confirm` | Confirmar pedido |
