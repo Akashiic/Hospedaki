@@ -11,6 +11,8 @@ class StoreBookingRequest extends QuoteRequest
             'guest_email' => ['nullable', 'email', 'max:180'],
             'guest_phone' => ['required', 'string', 'max:30'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            // Horário previsto de chegada, numa estadia (opcional).
+            'arrival_time' => ['nullable', 'date_format:H:i'],
         ];
     }
 }

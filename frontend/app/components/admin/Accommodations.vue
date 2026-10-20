@@ -133,7 +133,8 @@ const fromPrice = (a: AdminAccommodation) => Math.min(a.base_price, a.weekend_pr
           </span>
           <span class="info">
             <strong>{{ a.name }}</strong>
-            <span>a partir de {{ formatMoney(fromPrice(a)) }}/diária · até {{ a.max_guests }} pessoas · {{ plural(a.photos.length, 'foto', 'fotos') }}</span>
+            <span v-if="a.booking_mode === 'hourly'">por hora · {{ formatMoney(a.hourly_price ?? 0) }}/hora · {{ formatHour(a.opens_at) }} às {{ formatHour(a.closes_at) }} · até {{ a.max_guests }} pessoas</span>
+            <span v-else>a partir de {{ formatMoney(fromPrice(a)) }}/diária · até {{ a.max_guests }} pessoas · {{ plural(a.photos.length, 'foto', 'fotos') }}</span>
             <span class="badges">
               <span class="badge" :class="a.active ? 'on' : 'off'"><span class="a-dot" />{{ a.active ? 'Publicada' : 'Oculta' }}</span>
               <span v-if="a.upcoming_bookings_count" class="badge">{{ plural(a.upcoming_bookings_count, 'reserva pela frente', 'reservas pela frente') }}</span>

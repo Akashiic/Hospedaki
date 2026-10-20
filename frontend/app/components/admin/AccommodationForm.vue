@@ -12,12 +12,15 @@ const blank = (): AccommodationInput => ({
   name: '', description: '', amenities: [], max_guests: 2, included_guests: null,
   base_price: 0, weekend_price: null, extra_guest_price: null, cleaning_fee: null,
   weekly_discount: null, monthly_discount: null, min_nights: 1, best_for: null, active: true,
+  booking_mode: 'nightly', check_in_time: null, check_out_time: null, hourly_price: null, min_hours: 1, opens_at: '08:00', closes_at: '22:00',
 })
 const fromAcc = (a: AdminAccommodation): AccommodationInput => ({
   name: a.name, description: a.description ?? '', amenities: [...a.amenities], max_guests: a.max_guests,
   included_guests: a.included_guests, base_price: a.base_price, weekend_price: a.weekend_price,
   extra_guest_price: a.extra_guest_price, cleaning_fee: a.cleaning_fee, weekly_discount: a.weekly_discount,
   monthly_discount: a.monthly_discount, min_nights: a.min_nights, best_for: a.best_for, active: a.active,
+  booking_mode: a.booking_mode, check_in_time: a.check_in_time, check_out_time: a.check_out_time, hourly_price: a.hourly_price,
+  min_hours: a.min_hours, opens_at: a.opens_at, closes_at: a.closes_at,
 })
 
 const current = ref<AdminAccommodation | null>(props.accommodation)
@@ -51,6 +54,32 @@ watch(() => ({ ...opts }), (now, before) => {
   // Sem pessoas incluídas, não existe "pessoa a mais".
   if (!now.included && opts.extra) opts.extra = false
 })
+// ── Horários ──
+const hourly = computed(() => form.booking_mode === 'hourly')
+// Check-in e check-out próprios desta acomodação; desligado, valem os da pousada.
+const propertyTimes = computed(() => ({
+  in: current.value?.property_check_in_time ?? '14:00',
+  out: current.value?.property_check_out_time ?? '12:00',
+}))
+const ownTimes = ref(form.check_in_time != null || form.check_out_time != null)
+watch(ownTimes, (on) => {
+  if (on) {
+    form.check_in_time ??= propertyTimes.value.in
+    form.check_out_time ??= propertyTimes.value.out
+  }
+  else {
+    form.check_in_time = null
+    form.check_out_time = null
+  }
+})
+// Por hora: começa com um preço de exemplo para a simulação fazer sentido.
+watch(() => form.booking_mode, (mode) => {
+  if (mode === 'hourly' && form.hourly_price == null) form.hourly_price = 10000
+})
+const hourSimulation = computed(() => [Math.max(form.min_hours, 4), Math.max(form.min_hours, 6), Math.max(form.min_hours, 8)]
+  .filter((h, i, all) => all.indexOf(h) === i)
+  .map(h => ({ hours: h, total: h * (form.hourly_price ?? 0) + (form.cleaning_fee ?? 0) })))
+
 const savedSnapshot = ref(JSON.stringify(form))
 const dirty = computed(() => JSON.stringify(form) !== savedSnapshot.value)
 const isNew = computed(() => !current.value)
@@ -73,6 +102,7 @@ async function save() {
     current.value = res.data
     Object.assign(form, fromAcc(res.data))
     syncOpts()
+    ownTimes.value = form.check_in_time != null || form.check_out_time != null
     savedSnapshot.value = JSON.stringify(form)
     message.value = created ? 'Acomodação criada. Agora adicione as fotos.' : 'Alterações salvas. Já estão no site.'
     emit('saved', res.data, created)
@@ -89,6 +119,7 @@ async function save() {
 
 function undo() {
   Object.assign(form, current.value ? fromAcc(current.value) : blank())
+  ownTimes.value = form.check_in_time != null || form.check_out_time != null
   nextTick(syncOpts)
   errors.value = {}
 }
@@ -211,6 +242,65 @@ function back() {
       </section>
 
       <section class="card">
+        <h3>Como é reservada</h3>
+        <div class="modes" role="radiogroup" aria-label="Como é reservada">
+          <label class="mode" :class="{ on: !hourly }">
+            <input v-model="form.booking_mode" type="radio" name="booking-mode" value="nightly" class="native">
+            <strong>Por diária</strong>
+            <small>Estadias, com entrada e saída em dias diferentes.</small>
+          </label>
+          <label class="mode" :class="{ on: hourly }">
+            <input v-model="form.booking_mode" type="radio" name="booking-mode" value="hourly" class="native">
+            <strong>Por hora</strong>
+            <small>Eventos e day use: o cliente escolhe o dia e o horário.</small>
+          </label>
+        </div>
+        <small v-if="fieldError('booking_mode')" class="err">{{ fieldError('booking_mode') }}</small>
+      </section>
+
+      <section v-if="hourly" class="card">
+        <h3>Preço e horários</h3>
+        <div class="row">
+          <label for="acc-hourly">Preço da hora
+            <AdminMoneyInput id="acc-hourly" v-model="form.hourly_price" required />
+            <small v-if="fieldError('hourly_price')" class="err">{{ fieldError('hourly_price') }}</small>
+          </label>
+          <label for="acc-min-hours">Mínimo de horas
+            <input id="acc-min-hours" v-model.number="form.min_hours" type="number" min="1" max="24" required>
+          </label>
+          <label for="acc-max-h">Capacidade (pessoas)
+            <input id="acc-max-h" v-model.number="form.max_guests" type="number" min="1" max="500" required>
+          </label>
+        </div>
+        <div class="row">
+          <label for="acc-opens">Abre às
+            <input id="acc-opens" v-model="form.opens_at" type="time" step="3600" required>
+          </label>
+          <label for="acc-closes">Fecha às
+            <input id="acc-closes" v-model="form.closes_at" type="time" step="3600" required>
+            <small v-if="fieldError('closes_at')" class="err">{{ fieldError('closes_at') }}</small>
+          </label>
+        </div>
+        <div class="options">
+          <AdminOption id="opt-clean-h" v-model="opts.cleaning" label="Taxa de limpeza" hint="Cobrada uma vez por reserva.">
+            <label for="acc-clean-h">Valor da taxa <AdminMoneyInput id="acc-clean-h" v-model="form.cleaning_fee" /></label>
+          </AdminOption>
+        </div>
+        <div class="sim" aria-live="polite">
+          <p class="sim-title">Quanto o cliente paga</p>
+          <div class="sim-grid">
+            <div v-for="s in hourSimulation" :key="s.hours">
+              <span class="sim-label">{{ s.hours }} horas</span>
+              <strong>{{ formatMoney(s.total) }}</strong>
+              <small>{{ s.hours }} × {{ formatMoney(form.hourly_price ?? 0) }}<template v-if="form.cleaning_fee"> · com limpeza</template></small>
+            </div>
+          </div>
+          <p class="hint">Um evento ocupa o dia inteiro das acomodações do mesmo imóvel, e uma estadia nelas fecha o espaço naquele dia.</p>
+        </div>
+      </section>
+
+      <template v-if="!hourly">
+      <section class="card">
         <h3>Hóspedes</h3>
         <label for="acc-max" class="narrow">Capacidade máxima
           <input id="acc-max" v-model.number="form.max_guests" type="number" min="1" max="50" required>
@@ -275,6 +365,22 @@ function back() {
         </div>
       </section>
 
+      <section class="card">
+        <h3>Horários</h3>
+        <AdminOption id="opt-times" v-model="ownTimes" label="Check-in e check-out próprios" :hint="`Desligado, valem os da pousada: entrada às ${formatHour(propertyTimes.in)} e saída até ${formatHour(propertyTimes.out)}.`">
+          <div class="row">
+            <label for="acc-in">Check-in a partir das
+              <input id="acc-in" v-model="form.check_in_time" type="time" step="1800">
+            </label>
+            <label for="acc-out">Check-out até as
+              <input id="acc-out" v-model="form.check_out_time" type="time" step="1800">
+            </label>
+          </div>
+        </AdminOption>
+        <p class="hint">O hóspede informa o horário previsto de chegada ao reservar, e ele aparece no pedido e na agenda do dia.</p>
+      </section>
+      </template>
+
       <div class="savebar">
         <p class="status" :class="{ dirty, error: Object.keys(errors).length }" role="status">
           {{ message || (dirty ? 'Alterações não salvas' : isNew ? 'Preencha e salve para criar' : 'Tudo salvo') }}
@@ -286,7 +392,7 @@ function back() {
 
     <template v-if="current">
       <AdminAccommodationPhotos :accommodation="current" :demo="demo" @updated="updated" />
-      <AdminAccommodationSeasons :accommodation="current" @updated="updated" />
+      <AdminAccommodationSeasons v-if="!hourly" :accommodation="current" @updated="updated" />
 
       <section class="card danger-zone">
         <h3>Excluir acomodação</h3>
@@ -362,4 +468,15 @@ label, .field { display: grid; gap: .3rem; font-weight: 700; font-size: .88rem; 
 .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; font-weight: 700; }
 .danger { background: var(--danger); color: var(--danger-ink); }
 .later { text-align: center; }
+// Por diária / por hora: dois cartões, o escolhido com fundo da marca (cor troca na hora).
+.modes { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.mode {
+  position: relative; display: grid; gap: .2rem; padding: .9rem 1rem; border-radius: 14px; cursor: pointer;
+  box-shadow: inset 0 0 0 1.5px var(--line); font-weight: 400;
+  strong { font-size: 1rem; }
+  small { color: var(--muted); font-size: .86rem; }
+  &.on { box-shadow: inset 0 0 0 2px var(--brand); background: color-mix(in srgb, var(--brand) 8%, white); }
+  &:has(.native:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+}
+.native { position: absolute; opacity: 0; width: 1px; height: 1px; }
 </style>

@@ -37,13 +37,29 @@ class NewBookingRequest extends Notification
             ->subject("Novo pedido de reserva: {$booking->guest_name}")
             ->greeting('Chegou um pedido de reserva!')
             ->line(new HtmlString('**'.$this->plain($booking->guest_name).'** quer reservar **'.$this->plain($accommodations).'**.'))
-            ->line('Entrada: '.$booking->check_in->format('d/m/Y').' · Saída: '.$booking->check_out->format('d/m/Y')." ({$nights} ".($nights === 1 ? 'diária' : 'diárias').')')
+            ->line($this->when($booking, $nights))
             ->line("Hóspedes: {$guests} · Total: R$ ".number_format($booking->total / 100, 2, ',', '.'))
             ->when($unpriced > 0, fn (MailMessage $mail) => $mail->line('O total não inclui o acréscimo das pessoas a mais: combine o valor com o hóspede.'))
             ->line(new HtmlString('WhatsApp do hóspede: '.$this->plain($booking->guest_phone)))
             ->when($booking->notes, fn (MailMessage $mail) => $mail->line(new HtmlString('Observações: '.$this->plain($booking->notes))))
             ->action('Abrir o painel', rtrim((string) config('app.frontend_url'), '/').'/painel')
             ->line('As datas ficam seguras até você confirmar ou recusar o pedido.');
+    }
+
+    /**
+     * Quando: o dia e as horas (reserva por hora) ou entrada, saída e diárias, com a chegada prevista.
+     */
+    private function when(Booking $booking, int $nights): string
+    {
+        if ($booking->isHourly()) {
+            $hours = $booking->hours();
+
+            return 'Dia '.$booking->check_in->format('d/m/Y').', das '.Booking::hm($booking->start_time).' às '.Booking::hm($booking->end_time)." ({$hours} ".($hours === 1 ? 'hora' : 'horas').')';
+        }
+
+        return 'Entrada: '.$booking->check_in->format('d/m/Y')
+            .($booking->arrival_time ? ' (chega por volta das '.Booking::hm($booking->arrival_time).')' : '')
+            .' · Saída: '.$booking->check_out->format('d/m/Y')." ({$nights} ".($nights === 1 ? 'diária' : 'diárias').')';
     }
 
     /**

@@ -12,6 +12,8 @@ export interface CalendarState {
   checkOut: string
   blocked: ReadonlySet<string>
   maxDate?: string
+  /** Um dia só (reserva por hora): tocar num dia escolhe ele, sem saída. */
+  single?: boolean
 }
 
 export type DayState = 'past' | 'closed' | 'selected' | 'range' | 'blocked' | 'free'
@@ -34,7 +36,8 @@ export function choosingCheckOut(s: CalendarState): boolean {
  * O próprio dia da saída pode estar ocupado (é a noite seguinte, que não entra na estadia).
  */
 export function canCheckOut(day: string, s: CalendarState): boolean {
-  return choosingCheckOut(s)
+  return !s.single
+    && choosingCheckOut(s)
     && day > s.checkIn
     && (!s.maxDate || day <= s.maxDate)
     && rangeIsFree(s.checkIn, day, s.blocked)
@@ -71,7 +74,7 @@ export function dayState(day: string, s: CalendarState): DayState {
 /** Complementos do nome do dia para leitores de tela ("entrada", "indisponível"…). */
 export function dayNotes(day: string, s: CalendarState): string[] {
   const notes: string[] = []
-  if (day === s.checkIn) notes.push('entrada')
+  if (day === s.checkIn) notes.push(s.single ? 'dia escolhido' : 'entrada')
   else if (day === s.checkOut) notes.push('saída')
   else if (dayState(day, s) === 'range') notes.push('dentro da estadia')
 

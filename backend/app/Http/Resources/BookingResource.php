@@ -20,6 +20,11 @@ class BookingResource extends JsonResource
             'check_in' => $this->check_in->toDateString(),
             'check_out' => $this->check_out->toDateString(),
             'nights' => $this->nights(),
+            // Estadia: horário previsto de chegada. Por hora: início, fim e horas.
+            'arrival_time' => Booking::hm($this->arrival_time),
+            'start_time' => Booking::hm($this->start_time),
+            'end_time' => Booking::hm($this->end_time),
+            'hours' => $this->hours(),
             'guests' => $this->guests,
             'guest_name' => $this->guest_name,
             'guest_email' => $this->when($isOwner, $this->guest_email),

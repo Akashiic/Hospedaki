@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminBooking, AdminMe, AdminTab } from '~/composables/useAdminApi'
-import { ArrowRight, BedDouble, CalendarX2, Inbox, LayoutTemplate, LogIn, LogOut, Moon, Sun, Sunrise, Users, Wallet } from 'lucide-vue-next'
+import { ArrowRight, BedDouble, CalendarX2, Inbox, LayoutTemplate, LogIn, LogOut, Moon, PartyPopper, Sun, Sunrise, Users, Wallet } from 'lucide-vue-next'
 
 // Tela Início: saudação, os números que importam hoje (contando até o valor), a agenda do dia
 // e atalhos. Tudo sai de uma lista só (/bookings?scope=all), filtrada aqui com o "hoje" da pousada.
@@ -42,7 +42,8 @@ const longDate = computed(() => {
 
 const phaseOf = (b: AdminBooking) => bookingPhase(b, props.today)
 const requests = computed(() => bookings.value.filter(b => phaseOf(b) === 'request'))
-const ongoing = computed(() => bookings.value.filter(b => phaseOf(b) === 'ongoing'))
+// Hospedados agora: só estadias (uma festa no salão não é hóspede dormindo na pousada).
+const ongoing = computed(() => bookings.value.filter(b => phaseOf(b) === 'ongoing' && !b.start_time))
 const weekEnd = computed(() => addDaysIso(props.today, 7))
 const arriving = computed(() => bookings.value
   .filter(b => b.status === 'confirmed' && b.check_in >= props.today && b.check_in <= weekEnd.value)
@@ -53,8 +54,16 @@ const monthRevenue = computed(() => bookings.value
   .reduce((n, b) => n + b.total, 0))
 const monthName = computed(() => formatIso(`${month.value}-01`, { month: 'long' }))
 
-const checkIns = computed(() => bookings.value.filter(b => b.status === 'confirmed' && b.check_in === props.today))
-const checkOuts = computed(() => bookings.value.filter(b => b.status === 'confirmed' && b.check_out === props.today))
+// Agenda de hoje: quem chega (na ordem do horário previsto, sem horário por último), quem sai e
+// os eventos por hora, cada um uma vez só.
+const byTime = (a?: string | null, b?: string | null) => (a ?? '99').localeCompare(b ?? '99')
+const checkIns = computed(() => bookings.value
+  .filter(b => b.status === 'confirmed' && !b.start_time && b.check_in === props.today)
+  .sort((a, b) => byTime(a.arrival_time, b.arrival_time)))
+const checkOuts = computed(() => bookings.value.filter(b => b.status === 'confirmed' && !b.start_time && b.check_out === props.today))
+const events = computed(() => bookings.value
+  .filter(b => b.status === 'confirmed' && b.start_time && b.check_in === props.today)
+  .sort((a, b) => byTime(a.start_time, b.start_time)))
 const nextArrivals = computed(() => bookings.value
   .filter(b => phaseOf(b) === 'upcoming')
   .sort((a, b) => a.check_in.localeCompare(b.check_in))
@@ -120,10 +129,14 @@ const accNames = (b: AdminBooking) => b.accommodations.map(a => a.name).join(' +
       <section class="a-card block a-rise" style="--i: 5" aria-labelledby="today-title">
         <h2 id="today-title">Hoje na pousada</h2>
         <div v-if="loading" class="skel-list"><span v-for="n in 2" :key="n" class="a-skeleton row" /></div>
-        <ul v-else-if="checkIns.length || checkOuts.length || ongoing.length" class="agenda">
+        <ul v-else-if="checkIns.length || checkOuts.length || ongoing.length || events.length" class="agenda">
           <li v-for="b in checkIns" :key="`in-${b.id}`">
-            <span class="pill in"><LogIn :size="14" /> Chega</span>
-            <span class="who"><strong>{{ b.guest_name }}</strong><small>{{ accNames(b) }} · {{ plural(b.guests, 'pessoa', 'pessoas') }}</small></span>
+            <span class="pill in"><LogIn :size="14" /> {{ b.arrival_time ? formatHour(b.arrival_time) : 'Chega' }}</span>
+            <span class="who"><strong>{{ b.guest_name }}</strong><small>{{ accNames(b) }} · {{ plural(b.guests, 'pessoa', 'pessoas') }}<template v-if="b.arrival_time"> · chega por volta das {{ formatHour(b.arrival_time) }}</template></small></span>
+          </li>
+          <li v-for="b in events" :key="`ev-${b.id}`">
+            <span class="pill event"><PartyPopper :size="14" /> {{ formatHour(b.start_time) }}</span>
+            <span class="who"><strong>{{ b.guest_name }}</strong><small>{{ accNames(b) }} · {{ formatHour(b.start_time) }} às {{ formatHour(b.end_time) }} · {{ plural(b.guests, 'pessoa', 'pessoas') }}</small></span>
           </li>
           <li v-for="b in checkOuts" :key="`out-${b.id}`">
             <span class="pill out"><LogOut :size="14" /> Sai</span>
@@ -147,7 +160,7 @@ const accNames = (b: AdminBooking) => b.accommodations.map(a => a.name).join(' +
           <li v-for="b in nextArrivals" :key="b.id">
             <span class="cal"><small>{{ weekday(b.check_in) }}</small><strong>{{ b.check_in.slice(8) }}</strong></span>
             <span class="avatar" aria-hidden="true">{{ initials(b.guest_name) }}</span>
-            <span class="who"><strong>{{ b.guest_name }}</strong><small>{{ accNames(b) }} · {{ plural(b.nights, 'diária', 'diárias') }}</small></span>
+            <span class="who"><strong>{{ b.guest_name }}</strong><small>{{ accNames(b) }} · <template v-if="b.start_time">{{ formatHour(b.start_time) }} às {{ formatHour(b.end_time) }}</template><template v-else>{{ plural(b.nights, 'diária', 'diárias') }}<template v-if="b.arrival_time">, chega {{ formatHour(b.arrival_time) }}</template></template></small></span>
             <span class="total">{{ formatMoney(b.total) }}</span>
           </li>
         </ul>
@@ -201,6 +214,7 @@ ul { list-style: none; margin: 0; padding: 0; display: grid; }
 .pill.in { background: color-mix(in srgb, var(--brand) 14%, white); color: var(--brand-text); }
 .pill.out { background: var(--warn-soft); color: var(--warn-ink); }
 .pill.stay { background: var(--a-sunk); color: var(--muted); }
+.pill.event { background: color-mix(in srgb, #a855f7 14%, white); color: #6b21a8; }
 .cal { display: grid; justify-items: center; width: 44px; flex: none; padding: .25rem 0; border-radius: 10px; background: var(--a-sunk); line-height: 1.1; }
 .cal small { font-size: .66rem; text-transform: uppercase; font-weight: 800; color: var(--muted); letter-spacing: .06em; }
 .cal strong { font-family: var(--font-display); font-weight: 400; font-size: 1.35rem; }

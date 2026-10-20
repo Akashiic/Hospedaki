@@ -128,10 +128,12 @@ class DemoModeTest extends TestCase
         $demo->reset($property);
 
         $accommodations = $property->accommodations()->get();
-        $this->assertSame(['Chalé Master', 'Espaço Bela Vista', 'Apto Bela Piscina', 'Suíte Vista do Vale'], $accommodations->pluck('name')->all());
+        $this->assertSame(['Chalé Master', 'Espaço Bela Vista', 'Apto Bela Piscina', 'Suíte Vista do Vale', 'Salão de Festas'], $accommodations->pluck('name')->all());
         $this->assertTrue($accommodations->every->active);
         $this->assertSame(49700, $accommodations->first()->base_price);
-        $this->assertSame(7, $property->bookings()->count());
+        // Sete estadias de exemplo e uma festa no salão, reservado por hora.
+        $this->assertSame(8, $property->bookings()->count());
+        $this->assertSame(1, $property->bookings()->whereNotNull('start_time')->count());
     }
 
     public function test_reset_restores_the_site_identity_pages_and_seo(): void

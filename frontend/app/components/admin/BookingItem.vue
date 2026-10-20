@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminBooking } from '~/composables/useAdminApi'
-import { ArrowRight, Check, MessageCircle, Moon, Users, X } from 'lucide-vue-next'
+import { ArrowRight, Check, Clock, MessageCircle, Moon, PartyPopper, Users, X } from 'lucide-vue-next'
 
 // today: "hoje" no fuso da pousada, para saber se a estadia já começou ou terminou.
 const props = defineProps<{ booking: AdminBooking, today: string, busy?: boolean }>()
@@ -42,14 +42,21 @@ const whatsapp = computed(() => {
     </header>
 
     <div class="stay">
-      <div class="dates">
+      <!-- Reserva por hora: o dia e a faixa de horário. Estadia: entrada e saída. -->
+      <div v-if="booking.start_time" class="dates">
+        <span class="d"><small>{{ weekday(booking.check_in) }}</small><strong>{{ day(booking.check_in) }}</strong></span>
+        <span class="d time"><small>horário</small><strong>{{ formatHour(booking.start_time) }}–{{ formatHour(booking.end_time) }}</strong></span>
+      </div>
+      <div v-else class="dates">
         <span class="d"><small>{{ weekday(booking.check_in) }}</small><strong>{{ day(booking.check_in) }}</strong></span>
         <ArrowRight :size="18" class="arrow" aria-hidden="true" />
         <span class="d"><small>{{ weekday(booking.check_out) }}</small><strong>{{ day(booking.check_out) }}</strong></span>
       </div>
       <div class="facts">
-        <span><Moon :size="15" aria-hidden="true" /> {{ plural(booking.nights, 'diária', 'diárias') }}</span>
-        <span><Users :size="15" aria-hidden="true" /> {{ plural(booking.guests, 'hóspede', 'hóspedes') }}</span>
+        <span v-if="booking.start_time"><PartyPopper :size="15" aria-hidden="true" /> {{ plural(booking.hours ?? 0, 'hora', 'horas') }}</span>
+        <span v-else><Moon :size="15" aria-hidden="true" /> {{ plural(booking.nights, 'diária', 'diárias') }}</span>
+        <span v-if="booking.arrival_time" class="arrival"><Clock :size="15" aria-hidden="true" /> chega às {{ formatHour(booking.arrival_time) }}</span>
+        <span><Users :size="15" aria-hidden="true" /> {{ plural(booking.guests, booking.start_time ? 'pessoa' : 'hóspede', booking.start_time ? 'pessoas' : 'hóspedes') }}</span>
         <span v-for="acc in booking.accommodations" :key="acc.id" class="chip">{{ acc.name }}</span>
       </div>
       <div class="total">
@@ -122,6 +129,8 @@ h3 { margin: 0; font-size: 1.3rem; line-height: 1.15; overflow: hidden; text-ove
 .arrow { color: var(--muted); }
 .facts { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .9rem; color: var(--muted); font-size: .86rem; font-weight: 600; }
 .facts span { display: inline-flex; align-items: center; gap: .3rem; }
+.facts .arrival { color: var(--brand-text); }
+.d.time { padding-left: .9rem; border-left: 1px solid var(--line); }
 .chip { background: var(--a-card); color: var(--text); border-radius: 999px; padding: .15rem .6rem; font-weight: 600; }
 .total { display: grid; justify-items: end; text-align: right; }
 .total strong { font-family: var(--font-display); font-weight: 400; font-size: 1.45rem; font-variant-numeric: tabular-nums; white-space: nowrap; }

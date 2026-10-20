@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('properties/{property:slug}')->group(function () {
     Route::get('/', [PropertyController::class, 'show']);
     Route::get('availability', [PropertyController::class, 'availability'])->middleware('throttle:120,1');
+    Route::get('hours', [PropertyController::class, 'hours'])->middleware('throttle:120,1');
     Route::post('quote', [BookingRequestController::class, 'quote'])->middleware('throttle:60,1');
     Route::post('booking-requests', [BookingRequestController::class, 'store'])->middleware('throttle:10,1');
 });

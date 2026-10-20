@@ -28,6 +28,16 @@ export interface Accommodation {
   best_for?: 'casal' | 'familia' | null
   /** Acomodações com o mesmo valor dividem o imóvel (o Espaço inclui o apartamento) e não são reservadas juntas. */
   shared_unit?: string | null
+  /** Por diária (estadia) ou por hora (day use, eventos). */
+  booking_mode?: 'nightly' | 'hourly'
+  /** Check-in e check-out desta acomodação ("15:00"); já vêm com os da pousada quando não tem próprios. */
+  check_in_time?: string
+  check_out_time?: string
+  /** Por hora: preço da hora (centavos), mínimo de horas e horário de funcionamento. */
+  hourly_price?: number | null
+  min_hours?: number
+  opens_at?: string
+  closes_at?: string
   photos: Photo[]
 }
 
@@ -100,6 +110,9 @@ export interface QuoteItem {
   extra_guests: number
   /** Valor delas na estadia (0 quando o acréscimo ainda não foi informado). */
   extra_guests_subtotal: number
+  /** Reserva por hora: horas e preço da hora. */
+  hours?: number
+  hourly_price?: number
 }
 
 export interface Quote {
@@ -110,6 +123,10 @@ export interface Quote {
   items: QuoteItem[]
   /** Pessoas a mais cujo acréscimo não está no total (combinado com a pousada). */
   extra_guests_unpriced: number
+  /** Reserva por hora: início, fim e horas. */
+  start_time?: string
+  end_time?: string
+  hours?: number
 }
 
 /** Cliente da API já apontado para a pousada configurada neste site. */

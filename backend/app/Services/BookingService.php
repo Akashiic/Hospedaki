@@ -31,11 +31,20 @@ class BookingService
      * @param  list<int>  $accommodationIds
      * @return array{check_in: string, check_out: string, nights: int, total: int, extra_guests_unpriced: int, items: list<array{accommodation_id: int, name: string, subtotal: int, nights_total: int, discount: int, discount_percent: int, cleaning_fee: int, extra_guests: int, extra_guests_subtotal: int, nights: list<array{date: string, price: int}>}>}
      */
-    public function quote(Property $property, array $accommodationIds, string $checkIn, string $checkOut, int $guests): array
+    public function quote(Property $property, array $accommodationIds, string $checkIn, ?string $checkOut, int $guests, ?string $start = null, ?string $end = null): array
     {
+        $accommodations = $this->findAccommodations($property, $accommodationIds);
+
+        if ($accommodations->contains(fn (Accommodation $a) => $a->isHourly())) {
+            return $this->hourlyQuote($property, $accommodations, CarbonImmutable::parse($checkIn), $guests, $start, $end);
+        }
+
+        if (! $checkOut) {
+            throw ValidationException::withMessages(['check_out' => 'Escolha a data de saída.']);
+        }
+
         $checkIn = CarbonImmutable::parse($checkIn);
         $checkOut = CarbonImmutable::parse($checkOut);
-        $accommodations = $this->findAccommodations($property, $accommodationIds);
 
         $this->assertRules($accommodations, $checkIn, $checkOut, $guests);
 
@@ -72,9 +81,79 @@ class BookingService
     }
 
     /**
+     * Orçamento de uma reserva por hora (day use, evento): uma acomodação só, num dia, de um
+     * horário inteiro a outro, dentro do horário de funcionamento e com o mínimo de horas.
+     *
+     * @param  Collection<int, Accommodation>  $accommodations
+     */
+    private function hourlyQuote(Property $property, Collection $accommodations, CarbonImmutable $date, int $guests, ?string $start, ?string $end): array
+    {
+        $accommodation = $accommodations->first(fn (Accommodation $a) => $a->isHourly());
+
+        if ($accommodations->count() > 1) {
+            throw ValidationException::withMessages(['accommodation_ids' => "{$accommodation->name} é reservado por hora e precisa ser reservado sozinho."]);
+        }
+        if (! $start || ! $end) {
+            throw ValidationException::withMessages(['start_time' => 'Escolha o horário de início e de fim.']);
+        }
+
+        [$from, $to] = [Booking::minutes($start), Booking::minutes($end)];
+        $minutes = $to - $from;
+        $hours = intdiv($minutes, 60);
+
+        if ($minutes <= 0 || $minutes % 60 !== 0) {
+            throw ValidationException::withMessages(['end_time' => 'Escolha horas inteiras, como das 14h às 18h.']);
+        }
+        if ($from < Booking::minutes($accommodation->opensAt()) || $to > Booking::minutes($accommodation->closesAt())) {
+            throw ValidationException::withMessages(['start_time' => "{$accommodation->name} funciona das {$accommodation->opensAt()} às {$accommodation->closesAt()}."]);
+        }
+        if ($hours < $accommodation->min_hours) {
+            throw ValidationException::withMessages(['end_time' => "{$accommodation->name} é reservado por no mínimo {$accommodation->min_hours} ".($accommodation->min_hours === 1 ? 'hora.' : 'horas.')]);
+        }
+        if ($guests > $accommodation->max_guests) {
+            throw ValidationException::withMessages(['guests' => 'Número de pessoas acima da capacidade.']);
+        }
+        // Hoje (no fuso da pousada), só horários que ainda não começaram.
+        $now = CarbonImmutable::now($property->timezone ?: Property::DEFAULT_TIMEZONE);
+        if ($date->isSameDay($property->today()) && $from <= $now->hour * 60 + $now->minute) {
+            throw ValidationException::withMessages(['start_time' => 'Esse horário já passou. Escolha um mais tarde.']);
+        }
+        if (! $this->availability->isHourAvailable($accommodation, $date, $start, $end)) {
+            throw ValidationException::withMessages(['start_time' => "{$accommodation->name} não está livre nesse horário."]);
+        }
+
+        $quote = $this->pricing->hourlyQuote($accommodation, $hours);
+
+        return [
+            'check_in' => $date->toDateString(),
+            'check_out' => $date->toDateString(),
+            'nights' => 0,
+            'start_time' => $start,
+            'end_time' => $end,
+            'hours' => $hours,
+            'total' => $quote['total'],
+            'extra_guests_unpriced' => 0,
+            'items' => [[
+                'accommodation_id' => $accommodation->id,
+                'name' => $accommodation->name,
+                'subtotal' => $quote['total'],
+                'nights_total' => $quote['hours_total'],
+                'discount' => 0,
+                'discount_percent' => 0,
+                'cleaning_fee' => $quote['cleaning_fee'],
+                'extra_guests' => 0,
+                'extra_guests_subtotal' => 0,
+                'nights' => [],
+                'hours' => $hours,
+                'hourly_price' => $quote['hourly_price'],
+            ]],
+        ];
+    }
+
+    /**
      * Cria um pedido de reserva pendente. O dono confirma ou recusa depois.
      *
-     * @param  array{accommodation_ids: list<int>, check_in: string, check_out: string, guests: int, guest_name: string, guest_email?: ?string, guest_phone: string, notes?: ?string}  $data
+     * @param  array{accommodation_ids: list<int>, check_in: string, check_out?: ?string, start_time?: ?string, end_time?: ?string, arrival_time?: ?string, guests: int, guest_name: string, guest_email?: ?string, guest_phone: string, notes?: ?string}  $data
      */
     public function request(Property $property, array $data): Booking
     {
@@ -96,12 +175,17 @@ class BookingService
                     ->orderBy('id')->lockForUpdate()->get(); // sempre na mesma ordem, sem deadlock
             }
 
-            $quote = $this->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'], $data['guests']);
+            $quote = $this->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'] ?? null, $data['guests'], $data['start_time'] ?? null, $data['end_time'] ?? null);
+            $hourly = isset($quote['start_time']);
 
             $booking = $property->bookings()->create([
                 'status' => BookingStatus::Pending,
                 'check_in' => $quote['check_in'],
                 'check_out' => $quote['check_out'],
+                'start_time' => $quote['start_time'] ?? null,
+                'end_time' => $quote['end_time'] ?? null,
+                // Horário previsto de chegada: só faz sentido numa estadia.
+                'arrival_time' => $hourly ? null : ($data['arrival_time'] ?? null),
                 'guests' => $data['guests'],
                 'extra_guests_unpriced' => $quote['extra_guests_unpriced'],
                 'guest_name' => $data['guest_name'],

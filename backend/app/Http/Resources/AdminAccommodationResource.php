@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Accommodation;
+use App\Models\Booking;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,6 +20,11 @@ class AdminAccommodationResource extends JsonResource
         // array_merge: as fotos daqui (com id) substituem as do site.
         return array_merge((new AccommodationResource($this->resource))->toArray($request), [
             'active' => $this->active,
+            // Horários próprios (vazio = os da pousada, que vão de exemplo no formulário).
+            'check_in_time' => Booking::hm($this->check_in_time),
+            'check_out_time' => Booking::hm($this->check_out_time),
+            'property_check_in_time' => substr((string) $this->property->check_in_time, 0, 5),
+            'property_check_out_time' => substr((string) $this->property->check_out_time, 0, 5),
             'sort_order' => $this->sort_order,
             'photos' => $this->photos->map(fn ($photo) => [
                 'id' => $photo->id,

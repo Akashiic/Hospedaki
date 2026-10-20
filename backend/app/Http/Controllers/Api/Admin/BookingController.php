@@ -63,12 +63,17 @@ class BookingController extends Controller
     {
         $confirmed = BookingStatus::Confirmed;
 
+        // Terminou: a estadia na data de saída; a reserva por hora (que começa e termina no mesmo
+        // dia) só no dia seguinte, para aparecer "em andamento" no próprio dia.
+        $ended = fn ($q) => $q->where(fn ($q) => $q->whereNull('start_time')->whereDate('check_out', '<=', $today))
+            ->orWhere(fn ($q) => $q->whereNotNull('start_time')->whereDate('check_in', '<', $today));
+
         return match ($scope) {
             'requests' => $query->where('status', BookingStatus::Pending)->whereDate('check_in', '>=', $today),
             'upcoming' => $query->where('status', $confirmed)->whereDate('check_in', '>', $today),
-            'ongoing' => $query->where('status', $confirmed)->whereDate('check_in', '<=', $today)->whereDate('check_out', '>', $today),
-            'completed' => $query->where('status', $confirmed)->whereDate('check_out', '<=', $today),
-            'past' => $query->where(fn ($q) => $q->whereDate('check_out', '<=', $today)
+            'ongoing' => $query->where('status', $confirmed)->whereDate('check_in', '<=', $today)->whereNot($ended),
+            'completed' => $query->where('status', $confirmed)->where($ended),
+            'past' => $query->where(fn ($q) => $q->where($ended)
                 ->orWhere(fn ($q) => $q->where('status', BookingStatus::Pending)->whereDate('check_in', '<', $today))),
             'cancelled' => $query->whereIn('status', [BookingStatus::Declined, BookingStatus::Cancelled]),
             default => $query,
