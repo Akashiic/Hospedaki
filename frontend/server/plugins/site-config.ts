@@ -8,6 +8,8 @@ export default defineNitroPlugin((nitroApp) => {
     siteConfig.push({
       _context: 'hospedaki-property',
       name: property.name,
+      // Domínio próprio no ar (painel → Domínio): vira o endereço oficial (canonical, sitemap, og:url).
+      ...(property.domain ? { url: `https://${property.domain}` } : {}),
       description: property.seo?.description || property.tagline || property.description || undefined,
       // Desligado no painel: Disallow: / no robots.txt e noindex em tudo. Ligado, segue o
       // ambiente (produção indexa; prévias e desenvolvimento não).

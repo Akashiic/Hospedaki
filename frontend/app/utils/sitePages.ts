@@ -97,7 +97,8 @@ export interface PageSource {
   phone: string | null
   email: string | null
   address: string | null
-  accommodations: { name: string }[]
+  /** `payment.methods`: com gateway, a reserva é paga no site (muda o texto de Reservar). */
+  accommodations: { name: string, payment?: { methods: string[] } | null }[]
   seo?: Partial<Pick<SiteSeo, 'description' | 'separator' | 'keywords'>> | null
 }
 
@@ -138,14 +139,21 @@ export function pageDefaults(key: PageKey, p: PageSource): PageContent {
         seoDescription: list ? `${list}: fotos, comodidades e diárias de cada acomodação.` : description,
       }
     }
-    case 'reservar':
+    case 'reservar': {
+      // Com pagamento online, a reserva se confirma ao pagar; sem ele, é um pedido que a pousada confirma.
+      const pays = p.accommodations.some(a => a.payment?.methods.length)
       return {
         eyebrow: 'Reserva',
         title: 'Escolha suas datas',
-        lead: 'Nada é cobrado agora. Você envia o pedido, a pousada confirma e combina o pagamento com você.',
+        lead: pays
+          ? 'Veja o valor na hora e pague aqui mesmo, no Pix ou no cartão. A reserva se confirma assim que o pagamento é aprovado.'
+          : 'Nada é cobrado agora. Você envia o pedido, a pousada confirma e combina o pagamento com você.',
         seoTitle: `Reservar ${sep} ${p.name}`,
-        seoDescription: 'Escolha as datas no calendário, veja o valor na hora e envie o pedido. Nada é cobrado agora.',
+        seoDescription: pays
+          ? 'Escolha as datas no calendário, veja o valor na hora e reserve direto com a pousada, no Pix ou no cartão.'
+          : 'Escolha as datas no calendário, veja o valor na hora e envie o pedido. Nada é cobrado agora.',
       }
+    }
     case 'contato': {
       // Só os canais que a pousada cadastrou.
       const channels = [

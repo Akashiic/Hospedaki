@@ -25,6 +25,15 @@ const pousada = {
 }
 
 describe('lodgingSchema', () => {
+  it('links the social profiles and the map position', () => {
+    const s = lodgingSchema({ ...pousada, social: { instagram: 'https://instagram.com/sol', tripadvisor: 'https://tripadvisor.com.br/x' }, seo: { latitude: -23.5, longitude: -46.6 } }, 'Hotel')
+    assert.deepEqual(s.sameAs, ['https://instagram.com/sol', 'https://tripadvisor.com.br/x'])
+    assert.deepEqual(s.geo, { '@type': 'GeoCoordinates', 'latitude': -23.5, 'longitude': -46.6 })
+    const none = lodgingSchema({ ...pousada, social: {}, seo: { latitude: -23.5, longitude: null } }, 'Hotel')
+    assert.equal(none.sameAs, undefined)
+    assert.equal(none.geo, undefined)
+  })
+
   it('describes the property as a lodging business with absolute URLs', () => {
     const s = lodgingSchema(pousada, 'BedAndBreakfast', 'https://sol.com')
     assert.deepEqual(s['@type'], ['LodgingBusiness', 'BedAndBreakfast'])

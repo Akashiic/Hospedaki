@@ -118,6 +118,8 @@ main:focus { outline: none; }
   &:disabled { opacity: .45; cursor: default; transform: none; }
   .arrow { transition: transform $dur-md $ease-enter; }
   &:hover .arrow { transform: translateX(3px); }
+  // Seta para baixo (rola até uma seção da mesma página): desce em vez de ir para o lado.
+  &:hover .arrow-down { transform: translateY(3px); }
 
   &-ghost { background: transparent; color: var(--brand-text); box-shadow: inset 0 0 0 1.5px currentColor; }
   &-light { background: #fff; color: var(--night); }

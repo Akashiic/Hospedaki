@@ -18,6 +18,30 @@ useHead(() => ({
     ...(property.value.seo?.google_verification ? [{ name: 'google-site-verification', content: property.value.seo.google_verification }] : []),
   ],
 }))
+// Metas clássicas de SEO (painel → SEO): palavras-chave do site (cada página pode trocar pelas
+// suas), autor, localização para buscas locais e o perfil no X para os cartões de link.
+const seo = computed(() => property.value.seo)
+useSeoMeta({
+  author: () => seo.value?.author || property.value.name,
+  twitterCard: 'summary_large_image',
+  twitterSite: () => twitterHandle(property.value.social?.x) ?? undefined,
+})
+useHead(() => {
+  const { city, state } = property.value
+  const lat = seo.value?.latitude
+  const lng = seo.value?.longitude
+  const hasGeo = typeof lat === 'number' && typeof lng === 'number'
+  return {
+    meta: [
+      // Mesmo nome (keywords) da meta das páginas: a da página, registrada depois, substitui esta.
+      ...(seo.value?.keywords ? [{ name: 'keywords', content: seo.value.keywords }] : []),
+      ...(state && /^[A-Z]{2}$/.test(state) ? [{ name: 'geo.region', content: `BR-${state}` }] : []),
+      ...(city ? [{ name: 'geo.placename', content: [city, state].filter(Boolean).join(', ') }] : []),
+      ...(hasGeo ? [{ name: 'geo.position', content: `${lat};${lng}` }, { name: 'ICBM', content: `${lat}, ${lng}` }] : []),
+    ],
+  }
+})
+
 // Os títulos já chegam completos ("O lugar · Pousada"): sem o modelo "%s | Site" do Nuxt SEO.
 // Nome do site, og:site_name, canonical e "aparecer no Google" vêm do site config, que o
 // servidor monta com os dados da pousada (server/plugins/site-config.ts).

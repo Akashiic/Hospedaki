@@ -13,6 +13,10 @@ const priceFor = computed(() => guests.value ? ` ${guestCopy.forPeople(guests.va
 
 const others = computed(() => property.value.accommodations.filter(a => a.id !== acc.value!.id))
 
+// O formulário de reserva fica nesta mesma página (#reservar): os botões rolam até ele.
+const scrollTo = useScrollTo()
+const bookLabel = computed(() => isHourly(acc.value!) ? 'Ver horários e reservar' : 'Ver datas e reservar')
+
 useSeoMeta({
   // Acomodação com o mesmo nome da pousada não repete o nome no título.
   title: acc.value.name === property.value.name ? acc.value.name : `${acc.value.name} ${property.value.seo?.separator ?? '·'} ${property.value.name}`,
@@ -35,7 +39,7 @@ if (property.value.seo?.structured_data !== false) {
   <div v-if="acc">
     <SitePageHeader eyebrow="Acomodação" :title="acc.name" :image="acc.photos[0]?.url">
       <div class="header-actions">
-        <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn btn-amber">{{ isHourly(acc) ? 'Ver horários e reservar' : 'Ver datas e reservar' }} <span class="arrow">→</span></NuxtLink>
+        <a href="#reservar" class="btn btn-amber" @click.prevent="scrollTo('reservar')">{{ bookLabel }} <span class="arrow arrow-down">↓</span></a>
       </div>
     </SitePageHeader>
 
@@ -62,7 +66,7 @@ if (property.value.seo?.structured_data !== false) {
           <div v-if="(acc.min_hours ?? 1) > 1"><span>Mínimo</span><strong>{{ acc.min_hours }} horas</strong></div>
           <div><span>Pessoas</span><strong>até {{ acc.max_guests }}</strong></div>
           <div v-if="acc.cleaning_fee"><span>Taxa de limpeza</span><strong>{{ formatMoney(acc.cleaning_fee) }}</strong><small class="extra">uma vez por reserva</small></div>
-          <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver horários <span class="arrow">→</span></NuxtLink>
+          <a href="#reservar" class="btn" @click.prevent="scrollTo('reservar')">Ver horários <span class="arrow arrow-down">↓</span></a>
         </template>
         <template v-else>
         <!-- Mesma regra do PricingService: só as noites de sexta e sábado são de fim de semana. -->
@@ -80,17 +84,14 @@ if (property.value.seo?.structured_data !== false) {
           <strong v-if="acc.monthly_discount" class="small">{{ acc.monthly_discount }}% off a partir de 28 diárias</strong>
         </div>
         <div><span>Check-in e check-out</span><strong>{{ formatHour(acc.check_in_time ?? property.check_in_time) }} · {{ formatHour(acc.check_out_time ?? property.check_out_time) }}</strong></div>
-        <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver datas <span class="arrow">→</span></NuxtLink>
+        <a href="#reservar" class="btn" @click.prevent="scrollTo('reservar')">Ver datas <span class="arrow arrow-down">↓</span></a>
         </template>
       </aside>
     </section>
 
-    <section v-if="acc.photos.length > 1" class="container photos">
-      <figure v-for="(photo, i) in acc.photos" :key="photo.url" v-reveal="'wipe'" :class="{ wide: i === 0 }" :style="{ '--i': i % 3 }">
-        <img :src="photo.url" :alt="photo.caption ?? acc.name" loading="lazy" decoding="async">
-        <figcaption v-if="photo.caption">{{ photo.caption }}</figcaption>
-      </figure>
-    </section>
+    <SiteAccommodationPhotos :photos="acc.photos" :name="acc.name" :layout="property.pages?.acomodacoes?.photos" />
+
+    <SiteBooking :property="property" :accommodation="acc" />
 
     <section v-if="others.length" class="container others">
       <h2 v-reveal class="eyebrow">Também temos</h2>
@@ -121,13 +122,5 @@ if (property.value.seo?.structured_data !== false) {
   .extra { color: var(--muted); font-size: .88rem; line-height: 1.4; }
   strong.small { font-size: 1.2rem; line-height: 1.25; }
 }
-.photos {
-  display: grid; gap: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: clamp(4rem, 8vw, 6rem);
-  @include below(md) { grid-template-columns: minmax(0, 1fr); }
-  figure { margin: 0; border-radius: 6px; overflow: hidden; background: var(--night); position: relative; aspect-ratio: 4 / 3; }
-  .wide { grid-column: 1 / -1; aspect-ratio: 16 / 8; @include below(md) { aspect-ratio: 4 / 3; } }
-  img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  figcaption { position: absolute; left: 1rem; bottom: .8rem; color: #fff; font-size: .85rem; text-shadow: 0 1px 8px rgb(0 0 0 / .5); }
-}
-.others { padding-bottom: clamp(5rem, 10vw, 8rem); .eyebrow { margin-bottom: 1.5rem; } }
+.others { padding-block: clamp(4rem, 8vw, 6rem) clamp(5rem, 10vw, 8rem); .eyebrow { margin-bottom: 1.5rem; } }
 </style>
