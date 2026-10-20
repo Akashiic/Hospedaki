@@ -28,7 +28,7 @@ export interface AdminBooking {
  * Abas do painel (o nome vai na URL: /painel?aba=reservas). "Seu site" reúne Páginas e
  * Configurações (identidade, contato, SEO e integrações).
  */
-export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes'
+export type AdminTab = 'inicio' | 'pedidos' | 'reservas' | 'estatisticas' | 'bloqueios' | 'acomodacoes' | 'paginas' | 'identidade' | 'contato' | 'seo' | 'integracoes'
 
 export interface AdminBlock {
   id: number

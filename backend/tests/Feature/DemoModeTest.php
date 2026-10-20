@@ -13,6 +13,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -50,12 +51,15 @@ class DemoModeTest extends TestCase
 
         $this->withToken($token)->getJson('/api/admin/me')->assertOk()->assertJsonPath('property.demo', true);
 
-        $bookings = $this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->json('data');
+        // Os exemplos do dia a dia (o histórico de um ano fica antes deles).
+        $bookings = array_values(array_filter($this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->json('data'), fn ($b) => $b['guest_phone'] === '11999990000'));
         $this->assertCount(7, $bookings);
         $this->assertSame(['cancelled', 'confirmed', 'confirmed', 'declined', 'confirmed', 'pending', 'pending'], array_column($bookings, 'status'));
         // Um exemplo em cada filtro da aba Reservas.
         $counts = $this->withToken($token)->getJson('/api/admin/bookings?scope=all')->json('meta.counts');
-        $this->assertSame(['requests' => 2, 'upcoming' => 1, 'ongoing' => 1, 'completed' => 1, 'past' => 2, 'cancelled' => 2, 'all' => 7], $counts);
+        // (Concluídas, passadas e canceladas também somam o histórico de um ano.)
+        $this->assertSame(['requests' => 2, 'upcoming' => 1, 'ongoing' => 1], array_intersect_key($counts, array_flip(['requests', 'upcoming', 'ongoing'])));
+        $this->assertGreaterThan(7, $counts['all']);
         $this->assertTrue(collect($bookings)->every(fn ($booking) => $booking['total'] > 0));
         $this->assertCount(2, $this->withToken($token)->getJson('/api/admin/blocked-dates')->json('data'));
 
@@ -66,7 +70,7 @@ class DemoModeTest extends TestCase
     public function test_site_shows_the_demo_flag_and_resets_once_a_day(): void
     {
         $this->getJson('/api/properties/pousada-demo')->assertOk()->assertJsonPath('data.demo', true);
-        $this->assertSame(7, Booking::count());
+        $this->assertSame(7, $this->samples()->count());
 
         // Um visitante mexe na demo: recusa tudo e apaga os bloqueios.
         Booking::query()->update(['status' => BookingStatus::Declined]);
@@ -106,7 +110,7 @@ class DemoModeTest extends TestCase
     public function test_demo_reset_command(): void
     {
         $this->artisan('demo:reset')->assertSuccessful();
-        $this->assertSame(7, $this->property->bookings()->count());
+        $this->assertSame(7, $this->samples()->count());
 
         config(['demo.enabled' => false]);
         $this->artisan('demo:reset')->assertFailed();
@@ -123,7 +127,10 @@ class DemoModeTest extends TestCase
         // Um visitante renomeia o chalé, oculta a suíte e exclui o apartamento.
         $property->accommodations()->where('slug', 'chale-master')->update(['name' => 'Bagunça', 'base_price' => 1]);
         $property->accommodations()->where('slug', 'suite-vista-do-vale')->update(['active' => false]);
-        $property->accommodations()->where('slug', 'apto-bela-piscina')->delete();
+        // (Com reservas no histórico o painel não deixa excluir; aqui o teste solta as reservas antes.)
+        $apto = $property->accommodations()->where('slug', 'apto-bela-piscina')->first();
+        DB::table('booking_accommodation')->where('accommodation_id', $apto->id)->delete();
+        $apto->delete();
 
         $demo->reset($property);
 
@@ -132,8 +139,8 @@ class DemoModeTest extends TestCase
         $this->assertTrue($accommodations->every->active);
         $this->assertSame(49700, $accommodations->first()->base_price);
         // Sete estadias de exemplo e uma festa no salão, reservado por hora.
-        $this->assertSame(8, $property->bookings()->count());
-        $this->assertSame(1, $property->bookings()->whereNotNull('start_time')->count());
+        $this->assertSame(8, $property->bookings()->where('guest_phone', '11999990000')->count());
+        $this->assertSame(1, $property->bookings()->whereNotNull('start_time')->where('guest_phone', '11999990000')->count());
     }
 
     public function test_reset_restores_the_site_identity_pages_and_seo(): void
@@ -175,9 +182,42 @@ class DemoModeTest extends TestCase
         $token = $this->postJson('/api/admin/demo-login')->assertOk()->json('token');
         $this->app['auth']->forgetGuards();
 
-        $this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->assertJsonCount(7, 'data');
+        $this->assertCount(7, array_filter($this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->json('data'), fn ($b) => $b['guest_phone'] === '11999990000'));
         // A sessão de ontem foi encerrada pelo reset.
         $this->app['auth']->forgetGuards();
         $this->withToken($old)->getJson('/api/admin/me')->assertUnauthorized();
+    }
+
+    /** Os exemplos do dia a dia (o histórico de um ano usa outro telefone). */
+    private function samples()
+    {
+        return Booking::where('property_id', $this->property->id)->where('guest_phone', '11999990000');
+    }
+
+    public function test_reset_adds_a_year_of_history_without_overlaps(): void
+    {
+        app(DemoService::class)->reset($this->property);
+
+        $all = Booking::where('property_id', $this->property->id)->with('accommodations')->get();
+        $history = $all->where('guest_phone', '11999990001');
+        $this->assertGreaterThan(30, $history->count());
+        $this->assertTrue($history->every(fn ($b) => $b->total > 0 && $b->accommodations->count() === 1));
+        $this->assertGreaterThan(CarbonImmutable::now()->subMonths(13)->toDateString(), $history->min('check_in')->toDateString());
+
+        // Nenhuma noite vendida duas vezes na mesma acomodação, nem por cima dos exemplos do dia a dia.
+        $this->assertTrue($history->every(fn ($b) => $b->check_out->lte($this->property->today())));
+        $nights = [];
+        foreach ($all->whereIn('status', [BookingStatus::Confirmed, BookingStatus::Pending]) as $booking) {
+            for ($d = $booking->check_in; $d->lt($booking->check_out); $d = $d->addDay()) {
+                $key = $booking->accommodations->first()->id.'|'.$d->toDateString();
+                $this->assertArrayNotHasKey($key, $nights);
+                $nights[$key] = true;
+            }
+        }
+
+        // O mesmo sorteio a cada dia: os números das estatísticas não pulam.
+        $total = $history->sum('total');
+        app(DemoService::class)->reset($this->property);
+        $this->assertSame($total, Booking::where('property_id', $this->property->id)->where('guest_phone', '11999990001')->sum('total'));
     }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { AdminTab } from '~/composables/useAdminApi'
-import { BedDouble, CalendarCheck, CalendarX2, ExternalLink, House, Inbox, LogOut, Menu, X } from 'lucide-vue-next'
+import { BedDouble, CalendarCheck, CalendarX2, ChartColumn, ExternalLink, House, Inbox, LogOut, Menu, X } from 'lucide-vue-next'
 
 // Moldura do painel: barra lateral com ícones no computador; no celular, barra no alto com o
 // nome da pousada e navegação embaixo (as quatro abas do dia a dia e "Mais" com o resto).
@@ -12,6 +12,7 @@ const items: { tab: AdminTab, label: string, icon: Component, mobile?: boolean }
   { tab: 'inicio', label: 'Início', icon: House, mobile: true },
   { tab: 'pedidos', label: 'Pedidos', icon: Inbox, mobile: true },
   { tab: 'reservas', label: 'Reservas', icon: CalendarCheck, mobile: true },
+  { tab: 'estatisticas', label: 'Estatísticas', icon: ChartColumn },
   { tab: 'acomodacoes', label: 'Acomodações', icon: BedDouble, mobile: true },
   { tab: 'bloqueios', label: 'Datas bloqueadas', icon: CalendarX2 },
 ]
