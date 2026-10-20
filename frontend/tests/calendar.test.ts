@@ -111,3 +111,12 @@ describe('datas', () => {
     assert.equal(monthsBetween('2026-10-20', '2027-01-05'), 3)
   })
 })
+
+describe('single day (hourly)', () => {
+  it('picks one day and never a check-out', async () => {
+    const { pickDay, dayNotes } = await import('../app/utils/calendar.ts')
+    const s = { today: '2026-10-20', checkIn: '2026-10-25', checkOut: '', blocked: new Set<string>(), single: true }
+    assert.deepEqual(pickDay('2026-10-27', s), { checkIn: '2026-10-27', checkOut: '' })
+    assert.deepEqual(dayNotes('2026-10-25', s), ['dia escolhido'])
+  })
+})

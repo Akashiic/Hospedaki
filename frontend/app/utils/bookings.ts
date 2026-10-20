@@ -10,12 +10,25 @@ interface Dated {
   status: 'pending' | 'confirmed' | 'declined' | 'cancelled'
   check_in: string
   check_out: string
+  /** Reserva por hora: começa e termina no mesmo dia. */
+  start_time?: string | null
+}
+
+/**
+ * Dia em que a reserva acaba de vez: a saída de uma estadia; numa reserva por hora, o dia seguinte
+ * (ela fica "em andamento" no próprio dia).
+ */
+function endDay(b: Dated): string {
+  if (!b.start_time) return b.check_out
+  const d = new Date(`${b.check_in}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + 1)
+  return d.toISOString().slice(0, 10)
 }
 
 export function bookingPhase(b: Dated, today: string): BookingPhase {
   if (b.status === 'declined' || b.status === 'cancelled') return b.status
   if (b.status === 'pending') return b.check_in < today ? 'expired' : 'request'
-  if (b.check_out <= today) return 'completed'
+  if (endDay(b) <= today) return 'completed'
   return b.check_in <= today ? 'ongoing' : 'upcoming'
 }
 
@@ -26,7 +39,7 @@ export function inScope(b: Dated, scope: BookingScope, today: string): boolean {
     case 'upcoming': return phase === 'upcoming'
     case 'ongoing': return phase === 'ongoing'
     case 'completed': return phase === 'completed'
-    case 'past': return b.check_out <= today || phase === 'expired'
+    case 'past': return endDay(b) <= today || phase === 'expired'
     case 'cancelled': return phase === 'declined' || phase === 'cancelled'
     default: return true
   }

@@ -7,6 +7,11 @@ export interface AdminBooking {
   check_in: string
   check_out: string
   nights: number
+  /** Estadia: horário previsto de chegada. Por hora: início, fim e horas. */
+  arrival_time?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  hours?: number
   guests: number
   guest_name: string
   guest_email: string | null
@@ -61,6 +66,18 @@ export interface AdminAccommodation {
   min_nights: number
   best_for: 'casal' | 'familia' | null
   shared_unit: string | null
+  /** Por diária (estadia) ou por hora (day use, eventos). */
+  booking_mode: 'nightly' | 'hourly'
+  /** Horários próprios ("15:00"); null = os da pousada (property_check_*_time). */
+  check_in_time: string | null
+  check_out_time: string | null
+  property_check_in_time?: string
+  property_check_out_time?: string
+  /** Por hora: preço da hora (centavos), mínimo de horas e funcionamento. */
+  hourly_price: number | null
+  min_hours: number
+  opens_at: string
+  closes_at: string
   active: boolean
   sort_order: number
   photos: { id: number, url: string, caption: string | null }[]
@@ -72,7 +89,8 @@ export interface AdminAccommodation {
 /** Campos que o formulário envia ao criar ou salvar. */
 export type AccommodationInput = Pick<AdminAccommodation,
   'name' | 'description' | 'amenities' | 'max_guests' | 'included_guests' | 'base_price' | 'weekend_price'
-  | 'extra_guest_price' | 'cleaning_fee' | 'weekly_discount' | 'monthly_discount' | 'min_nights' | 'best_for' | 'active'>
+  | 'extra_guest_price' | 'cleaning_fee' | 'weekly_discount' | 'monthly_discount' | 'min_nights' | 'best_for' | 'active'
+  | 'booking_mode' | 'check_in_time' | 'check_out_time' | 'hourly_price' | 'min_hours' | 'opens_at' | 'closes_at'>
 
 export interface AdminMe {
   user: { name: string, email: string }

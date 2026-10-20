@@ -194,6 +194,6 @@ class AdminAccommodationsTest extends TestCase
         $this->assertSame(55500, $chale->fresh()->base_price);
         $this->assertSame(10, $chale->photos()->count());
         // O que foi excluído volta só se estiver faltando no catálogo inicial (o seed cria o que falta).
-        $this->assertSame(4, $property->accommodations()->count());
+        $this->assertSame(5, $property->accommodations()->count());
     }
 }

@@ -6,7 +6,8 @@ import { formatIso, todayIn } from '~/utils/dates'
 // As regras (o que pode ser entrada ou saída, rótulos) ficam em utils/calendar.ts.
 // `unavailable` traz as noites ocupadas ou bloqueadas; `maxDate` é o fim (exclusivo) da janela de
 // disponibilidade buscada, e o calendário não passa dela.
-const props = defineProps<{ unavailable: string[], timezone: string, maxDate?: string }>()
+// Com `single`, é um dia só (reserva por hora): o dia escolhido vai em checkIn e checkOut fica vazio.
+const props = defineProps<{ unavailable: string[], timezone: string, maxDate?: string, single?: boolean }>()
 const checkIn = defineModel<string>('checkIn', { default: '' })
 const checkOut = defineModel<string>('checkOut', { default: '' })
 
@@ -30,6 +31,7 @@ const calendar = computed<CalendarState>(() => ({
   checkOut: checkOut.value,
   blocked: blocked.value,
   maxDate: props.maxDate,
+  single: props.single,
 }))
 
 const lastOffset = computed(() => maxMonthOffset(today.value, props.maxDate))

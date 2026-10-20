@@ -35,7 +35,7 @@ if (property.value.seo?.structured_data !== false) {
   <div v-if="acc">
     <SitePageHeader eyebrow="Acomodação" :title="acc.name" :image="acc.photos[0]?.url">
       <div class="header-actions">
-        <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn btn-amber">Ver datas e reservar <span class="arrow">→</span></NuxtLink>
+        <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn btn-amber">{{ isHourly(acc) ? 'Ver horários e reservar' : 'Ver datas e reservar' }} <span class="arrow">→</span></NuxtLink>
       </div>
     </SitePageHeader>
 
@@ -48,6 +48,15 @@ if (property.value.seo?.structured_data !== false) {
       </div>
 
       <aside v-reveal class="facts" style="--i: 2">
+        <template v-if="isHourly(acc)">
+          <div><span>Por hora</span><strong>{{ formatMoney(acc.hourly_price ?? 0) }}</strong><small class="extra">para eventos e day use</small></div>
+          <div><span>Funcionamento</span><strong>{{ formatHour(acc.opens_at) }} às {{ formatHour(acc.closes_at) }}</strong></div>
+          <div v-if="(acc.min_hours ?? 1) > 1"><span>Mínimo</span><strong>{{ acc.min_hours }} horas</strong></div>
+          <div><span>Pessoas</span><strong>até {{ acc.max_guests }}</strong></div>
+          <div v-if="acc.cleaning_fee"><span>Taxa de limpeza</span><strong>{{ formatMoney(acc.cleaning_fee) }}</strong><small class="extra">uma vez por reserva</small></div>
+          <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver horários <span class="arrow">→</span></NuxtLink>
+        </template>
+        <template v-else>
         <!-- Mesma regra do PricingService: só as noites de sexta e sábado são de fim de semana. -->
         <div><span>Diária{{ priceFor }} {{ acc.weekend_price ? '(dom. a qui.)' : '' }}</span><strong>{{ formatMoney(acc.base_price) }}</strong></div>
         <div v-if="acc.weekend_price"><span>Diária{{ priceFor }} (sex. e sáb.)</span><strong>{{ formatMoney(acc.weekend_price) }}</strong></div>
@@ -62,8 +71,9 @@ if (property.value.seo?.structured_data !== false) {
           <strong v-if="acc.weekly_discount" class="small">{{ acc.weekly_discount }}% off a partir de 7 diárias</strong>
           <strong v-if="acc.monthly_discount" class="small">{{ acc.monthly_discount }}% off a partir de 28 diárias</strong>
         </div>
-        <div><span>Entrada e saída</span><strong>{{ property.check_in_time }} · {{ property.check_out_time }}</strong></div>
+        <div><span>Check-in e check-out</span><strong>{{ formatHour(acc.check_in_time ?? property.check_in_time) }} · {{ formatHour(acc.check_out_time ?? property.check_out_time) }}</strong></div>
         <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver datas <span class="arrow">→</span></NuxtLink>
+        </template>
       </aside>
     </section>
 

@@ -43,3 +43,13 @@ describe('initialsOf', () => {
     assert.equal(initialsOf(''), '?')
   })
 })
+
+describe('hourly bookings', () => {
+  it('are ongoing on their day and completed the next', () => {
+    const event = { status: 'confirmed' as const, check_in: '2026-10-20', check_out: '2026-10-20', start_time: '14:00' }
+    assert.equal(bookingPhase(event, '2026-10-19'), 'upcoming')
+    assert.equal(bookingPhase(event, '2026-10-20'), 'ongoing')
+    assert.equal(bookingPhase(event, '2026-10-21'), 'completed')
+    assert.equal(inScope(event, 'past', '2026-10-20'), false)
+  })
+})

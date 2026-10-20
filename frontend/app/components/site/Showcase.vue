@@ -37,17 +37,26 @@ const photoIndex = reactive<Record<number, number>>({})
       <div class="text">
         <h2 v-reveal>{{ acc.name }}</h2>
         <p v-reveal class="desc" style="--i: 2">{{ acc.description }}</p>
-        <ul v-reveal class="tags" style="--i: 3">
+        <ul v-if="isHourly(acc)" v-reveal class="tags" style="--i: 3">
+          <li>até {{ acc.max_guests }} pessoas</li>
+          <li>das {{ formatHour(acc.opens_at) }} às {{ formatHour(acc.closes_at) }}</li>
+          <li v-if="(acc.min_hours ?? 1) > 1">mínimo {{ acc.min_hours }} horas</li>
+        </ul>
+        <ul v-else v-reveal class="tags" style="--i: 3">
           <li>até {{ acc.max_guests }} pessoas<template v-if="guestPricing(acc)"> (valor {{ guestCopy.forPeople(guestPricing(acc)!.included) }})</template></li>
           <li v-if="acc.min_nights > 1">mínimo {{ acc.min_nights }} diárias</li>
           <li v-if="acc.weekend_price">fim de semana {{ formatMoney(acc.weekend_price) }}</li>
         </ul>
         <div v-reveal class="buy" style="--i: 4">
-          <p class="price">
+          <p v-if="isHourly(acc)" class="price">
+            <small>por hora, para eventos e day use</small>
+            <strong>{{ formatMoney(acc.hourly_price ?? 0) }}</strong>
+          </p>
+          <p v-else class="price">
             <small>{{ guestPricing(acc) ? `diária ${guestCopy.forPeople(guestPricing(acc)!.included)}, a partir de` : 'diárias a partir de' }}</small>
             <strong>{{ formatMoney(acc.base_price) }}</strong>
           </p>
-          <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">Ver datas <span class="arrow">→</span></NuxtLink>
+          <NuxtLink :to="`/reservar?acomodacao=${acc.slug}`" class="btn">{{ isHourly(acc) ? 'Ver horários' : 'Ver datas' }} <span class="arrow">→</span></NuxtLink>
           <NuxtLink :to="`/acomodacoes/${acc.slug}`" class="text-link">Ver detalhes <span class="sr-only">de {{ acc.name }}</span></NuxtLink>
         </div>
       </div>

@@ -115,7 +115,7 @@ class DemoService
                 app(DatabaseSeeder::class)->restoreAccommodations($property);
             }
 
-            $accommodations = $property->accommodations()->where('active', true)->get();
+            $accommodations = $property->accommodations()->where('active', true)->where('booking_mode', Accommodation::NIGHTLY)->get();
 
             if ($accommodations->isEmpty()) {
                 return;
@@ -127,13 +127,19 @@ class DemoService
 
             // Uma de cada situação da aba Reservas: cancelada antiga, concluída, hospedados agora...
             $this->sample($property, $second, -15, -13, BookingStatus::Cancelled, 'Bruno Teixeira', 2, null, hoursAgo: 24 * 25);
-            $this->sample($property, $second, -8, -5, BookingStatus::Confirmed, 'Família Rocha', 4, 'Chegamos depois das 20h.', hoursAgo: 24 * 20);
-            $this->sample($property, $first, -1, 2, BookingStatus::Confirmed, 'Marina e Paulo', 2, 'Lua de mel!', hoursAgo: 24 * 12);
+            $this->sample($property, $second, -8, -5, BookingStatus::Confirmed, 'Família Rocha', 4, 'Chegamos depois das 20h.', hoursAgo: 24 * 20, arrival: '20:30');
+            $this->sample($property, $first, -1, 2, BookingStatus::Confirmed, 'Marina e Paulo', 2, 'Lua de mel!', hoursAgo: 24 * 12, arrival: '15:00');
             // ...e as que estão por vir.
-            $this->sample($property, $first, 3, 4, BookingStatus::Declined, 'Ricardo Alves', 2, 'Dá para fazer o check-in às 22h?', hoursAgo: 52);
-            $this->sample($property, $second, 5, 7, BookingStatus::Confirmed, 'Ana Souza', 2, 'Aniversário de casamento.', hoursAgo: 30);
-            $this->sample($property, $first, 9, 12, BookingStatus::Pending, 'Família Oliveira', 5, 'Vamos com um cachorro pequeno, pode?', hoursAgo: 5);
+            $this->sample($property, $first, 3, 4, BookingStatus::Declined, 'Ricardo Alves', 2, 'Dá para fazer o check-in às 22h?', hoursAgo: 52, arrival: '22:00');
+            $this->sample($property, $second, 5, 7, BookingStatus::Confirmed, 'Ana Souza', 2, 'Aniversário de casamento.', hoursAgo: 30, arrival: '16:30');
+            $this->sample($property, $first, 9, 12, BookingStatus::Pending, 'Família Oliveira', 5, 'Vamos com um cachorro pequeno, pode?', hoursAgo: 5, arrival: '19:00');
             $this->sample($property, $second, 12, 14, BookingStatus::Pending, 'Carlos Lima', 2, null, hoursAgo: 1);
+
+            // Uma festa no espaço reservado por hora, se a pousada tiver um.
+            $hall = $property->accommodations()->where('active', true)->where('booking_mode', Accommodation::HOURLY)->first();
+            if ($hall) {
+                $this->sampleEvent($property, $hall, 17, '14:00', '20:00', 'Aniversário da Júlia', 30, hoursAgo: 48);
+            }
 
             $today = $property->today();
             BlockedDate::create([
@@ -155,7 +161,7 @@ class DemoService
      * Pedido de exemplo com o valor calculado pelas regras de preço de verdade.
      * Não passa por BookingService::request para não mandar e-mail ao dono.
      */
-    private function sample(Property $property, Accommodation $accommodation, int $inDays, int $outDays, BookingStatus $status, string $name, int $guests, ?string $notes, int $hoursAgo): void
+    private function sample(Property $property, Accommodation $accommodation, int $inDays, int $outDays, BookingStatus $status, string $name, int $guests, ?string $notes, int $hoursAgo, ?string $arrival = null): void
     {
         $today = $property->today();
         $guests = min($guests, $accommodation->max_guests);
@@ -165,6 +171,7 @@ class DemoService
             'status' => $status,
             'check_in' => $quote['check_in'],
             'check_out' => $quote['check_out'],
+            'arrival_time' => $arrival,
             'guests' => $guests,
             'extra_guests_unpriced' => $quote['extra_guests_unpriced'],
             'guest_name' => $name,
@@ -177,6 +184,31 @@ class DemoService
         $booking->accommodations()->attach($accommodation->id, ['subtotal' => $quote['items'][0]['subtotal']]);
 
         // Pedidos chegando em horas diferentes, como num dia normal.
+        $booking->forceFill(['created_at' => now()->subHours($hoursAgo)])->saveQuietly();
+    }
+
+    /**
+     * Festa de exemplo num espaço reservado por hora, já confirmada.
+     */
+    private function sampleEvent(Property $property, Accommodation $hall, int $inDays, string $start, string $end, string $name, int $guests, int $hoursAgo): void
+    {
+        $date = $property->today()->addDays($inDays)->toDateString();
+        $quote = $this->bookings->quote($property, [$hall->id], $date, null, min($guests, $hall->max_guests), $start, $end);
+
+        $booking = $property->bookings()->create([
+            'status' => BookingStatus::Confirmed,
+            'check_in' => $date,
+            'check_out' => $date,
+            'start_time' => $start,
+            'end_time' => $end,
+            'guests' => min($guests, $hall->max_guests),
+            'guest_name' => $name,
+            'guest_phone' => '11999990000',
+            'notes' => 'Vamos levar o bolo e os doces.',
+            'total' => $quote['total'],
+            'confirmed_at' => now()->subHours($hoursAgo - 1),
+        ]);
+        $booking->accommodations()->attach($hall->id, ['subtotal' => $quote['total']]);
         $booking->forceFill(['created_at' => now()->subHours($hoursAgo)])->saveQuietly();
     }
 }

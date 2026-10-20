@@ -79,6 +79,25 @@ class PricingService
     }
 
     /**
+     * Valor de uma reserva por hora: horas × preço da hora, mais a taxa de limpeza (uma vez).
+     *
+     * @return array{total: int, hours: int, hourly_price: int, hours_total: int, cleaning_fee: int}
+     */
+    public function hourlyQuote(Accommodation $accommodation, int $hours): array
+    {
+        $price = $accommodation->hourly_price ?? 0;
+        $cleaning = $accommodation->cleaning_fee ?? 0;
+
+        return [
+            'total' => $hours * $price + $cleaning,
+            'hours' => $hours,
+            'hourly_price' => $price,
+            'hours_total' => $hours * $price,
+            'cleaning_fee' => $cleaning,
+        ];
+    }
+
+    /**
      * Desconto por estadia longa: o mensal vale a partir de 28 noites, o semanal a partir de 7.
      */
     public function discountPercent(Accommodation $accommodation, int $nights): int

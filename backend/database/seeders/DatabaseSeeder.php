@@ -116,7 +116,7 @@ class DatabaseSeeder extends Seeder
     }
 
     /**
-     * As quatro acomodações do site da pousada. Cria só as que não existem (pelo slug), com fotos e
+     * As acomodações do site da pousada: as quatro de estadia e o salão de festas, reservado por hora. Cria só as que não existem (pelo slug), com fotos e
      * a diária de réveillon; as que já existem ficam como o dono deixou.
      */
     public function accommodations(Property $property): void
@@ -202,6 +202,31 @@ class DatabaseSeeder extends Seeder
             ['/fotos/suite-3.jpg', 'Banheiro com chuveiro quente'],
             ['/fotos/lugar-1.jpg', 'A represa vista da pousada'],
         ], holiday: 99700);
+
+        // O salão do Espaço também é alugado para festas, por hora. Fica no mesmo imóvel do Espaço
+        // e do apartamento: um evento ocupa a noite deles naquele dia. Preço e horários de exemplo.
+        $this->accommodation($property, 'salao-de-festas', [
+            'name' => 'Salão de Festas',
+            'shared_unit' => 'apartamento-bela',
+            'booking_mode' => 'hourly',
+            'description' => 'Para aniversários, chá de bebê e confraternizações: salão com cozinha, churrasqueira, sinuca, TV e luzes de festa, com a piscina, o deck iluminado e a área da fogueira do Espaço Bela Vista. Reservado por hora.',
+            'amenities' => ['Salão com cozinha e churrasqueira', 'Mesa de sinuca', 'Piscina e deck com LED', 'Área de fogueira', 'TV e luzes de festa', 'Até 40 pessoas'],
+            'max_guests' => 40,
+            'base_price' => 0,
+            'hourly_price' => 15000,
+            'min_hours' => 4,
+            'opens_at' => '09:00',
+            'closes_at' => '23:00',
+            'cleaning_fee' => 20000,
+            'sort_order' => 5,
+        ], [
+            ['/fotos/espaco-6.jpg', 'Salão com churrasqueira, cozinha e luzes de festa'],
+            ['/fotos/espaco-5.jpg', 'Salão de festas com churrasqueira e sinuca'],
+            ['/fotos/espaco-12.jpg', 'Sinuca com vista para a piscina'],
+            ['/fotos/espaco-1.jpg', 'Piscina e salão à noite'],
+            ['/fotos/espaco-9.jpg', 'Deck iluminado'],
+            ['/fotos/espaco-7.jpg', 'Área da fogueira'],
+        ]);
     }
 
     /**

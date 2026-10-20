@@ -24,6 +24,14 @@ class AccommodationResource extends JsonResource
             'shared_unit' => $this->shared_unit,
             'amenities' => $this->amenities ?? [],
             'max_guests' => $this->max_guests,
+            // Por diária (estadia) ou por hora (day use, eventos).
+            'booking_mode' => $this->booking_mode,
+            'check_in_time' => $this->checkInTime(),
+            'check_out_time' => $this->checkOutTime(),
+            'hourly_price' => $this->hourly_price,
+            'min_hours' => $this->min_hours,
+            'opens_at' => $this->opensAt(),
+            'closes_at' => $this->closesAt(),
             // Pessoas incluídas na diária e acréscimo por pessoa a mais, por diária (centavos); nulo = não informado.
             'included_guests' => $this->included_guests,
             'base_price' => $this->base_price,

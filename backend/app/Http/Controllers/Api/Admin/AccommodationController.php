@@ -218,7 +218,8 @@ class AccommodationController extends Controller
             'description' => ['nullable', 'string', 'max:3000'],
             'amenities' => ['nullable', 'array', 'max:30'],
             'amenities.*' => ['nullable', 'string', 'max:80'],
-            'max_guests' => ['required', 'integer', 'min:1', 'max:50'],
+            // Espaços de evento recebem bem mais gente que um quarto.
+            'max_guests' => ['required', 'integer', 'min:1', 'max:500'],
             'included_guests' => ['nullable', 'integer', 'min:1', 'lte:max_guests'],
             'base_price' => ['required', 'integer', 'min:0', 'max:100000000'],
             'weekend_price' => ['nullable', 'integer', 'min:0', 'max:100000000'],
@@ -229,6 +230,17 @@ class AccommodationController extends Controller
             'min_nights' => ['required', 'integer', 'min:1', 'max:90'],
             'active' => ['required', 'boolean'],
             'best_for' => ['nullable', Rule::in(['casal', 'familia'])],
+            // Por diária ou por hora (day use, eventos), e os horários de cada modo.
+            'booking_mode' => ['sometimes', Rule::in([Accommodation::NIGHTLY, Accommodation::HOURLY])],
+            'check_in_time' => ['nullable', 'date_format:H:i'],
+            'check_out_time' => ['nullable', 'date_format:H:i'],
+            'hourly_price' => ['nullable', 'required_if:booking_mode,'.Accommodation::HOURLY, 'integer', 'min:0', 'max:100000000'],
+            'min_hours' => ['sometimes', 'integer', 'min:1', 'max:24'],
+            'opens_at' => ['nullable', 'date_format:H:i'],
+            'closes_at' => ['nullable', 'date_format:H:i', 'after:opens_at'],
+        ], [
+            'hourly_price.required_if' => 'Informe o preço da hora.',
+            'closes_at.after' => 'O horário de fechar precisa ser depois do de abrir.',
         ]);
 
         // Linhas em branco somem e repetidas viram uma só.

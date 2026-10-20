@@ -19,7 +19,7 @@ class BookingRequestController extends Controller
         $data = $request->validated();
 
         return response()->json(
-            $this->bookings->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'], $data['guests'])
+            $this->bookings->quote($property, $data['accommodation_ids'], $data['check_in'], $data['check_out'] ?? null, $data['guests'], $data['start_time'] ?? null, $data['end_time'] ?? null)
         );
     }
 

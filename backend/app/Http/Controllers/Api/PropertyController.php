@@ -41,10 +41,40 @@ class PropertyController extends Controller
         return response()->json([
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
+            // Por diária: as noites ocupadas. Por hora: os dias em que não cabe mais nenhuma reserva.
             'accommodations' => $accommodations->map(fn ($accommodation) => [
                 'id' => $accommodation->id,
-                'unavailable' => $availability->unavailableNights($accommodation, $from, $to),
+                'unavailable' => $accommodation->isHourly()
+                    ? $availability->unavailableHourDays($accommodation, $from, $to)
+                    : $availability->unavailableNights($accommodation, $from, $to),
             ]),
+        ]);
+    }
+
+    /**
+     * Horários de um dia para uma acomodação reservada por hora: funcionamento e faixas já reservadas.
+     */
+    public function hours(Request $request, Property $property, AvailabilityService $availability): JsonResponse
+    {
+        $validated = $request->validate([
+            'accommodation_id' => ['required', 'integer'],
+            'date' => ['required', 'date_format:Y-m-d'],
+        ]);
+
+        $accommodation = $property->accommodations()->where('active', true)->findOrFail($validated['accommodation_id']);
+        abort_unless($accommodation->isHourly(), 404);
+        $date = CarbonImmutable::parse($validated['date']);
+        $now = CarbonImmutable::now($property->timezone ?: Property::DEFAULT_TIMEZONE);
+
+        return response()->json([
+            'date' => $date->toDateString(),
+            'opens_at' => $accommodation->opensAt(),
+            'closes_at' => $accommodation->closesAt(),
+            'min_hours' => $accommodation->min_hours,
+            'closed' => $date->lt($property->today()) || $availability->dayClosedForHours($accommodation, $date),
+            'taken' => $availability->takenHours($accommodation, $date),
+            // Hoje, os horários que já passaram não podem ser escolhidos.
+            'not_before' => $date->isSameDay($property->today()) ? $now->format('H:i') : null,
         ]);
     }
 }

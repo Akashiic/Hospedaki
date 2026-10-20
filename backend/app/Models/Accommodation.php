@@ -13,11 +13,30 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 #[Fillable([
     'property_id', 'name', 'slug', 'shared_unit', 'best_for', 'description', 'amenities', 'max_guests', 'included_guests', 'base_price',
     'weekend_price', 'extra_guest_price', 'cleaning_fee', 'weekly_discount', 'monthly_discount', 'min_nights', 'sort_order', 'active',
+    'booking_mode', 'check_in_time', 'check_out_time', 'hourly_price', 'min_hours', 'opens_at', 'closes_at',
 ])]
 class Accommodation extends Model
 {
     /** @use HasFactory<AccommodationFactory> */
     use HasFactory;
+
+    /** Reservada por diária (estadia) ou por hora (day use, eventos). */
+    public const NIGHTLY = 'nightly';
+
+    public const HOURLY = 'hourly';
+
+    /** Horário de funcionamento padrão de quem é reservado por hora. */
+    public const DEFAULT_OPENS_AT = '08:00';
+
+    public const DEFAULT_CLOSES_AT = '22:00';
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'booking_mode' => self::NIGHTLY,
+        'min_hours' => 1,
+    ];
 
     protected function casts(): array
     {
@@ -32,8 +51,37 @@ class Accommodation extends Model
             'weekly_discount' => 'integer',
             'monthly_discount' => 'integer',
             'min_nights' => 'integer',
+            'hourly_price' => 'integer',
+            'min_hours' => 'integer',
             'active' => 'boolean',
         ];
+    }
+
+    public function isHourly(): bool
+    {
+        return $this->booking_mode === self::HOURLY;
+    }
+
+    /** Check-in desta acomodação ("15:00"); sem horário próprio, o da pousada. */
+    public function checkInTime(): string
+    {
+        return substr((string) ($this->check_in_time ?? $this->property->check_in_time), 0, 5);
+    }
+
+    public function checkOutTime(): string
+    {
+        return substr((string) ($this->check_out_time ?? $this->property->check_out_time), 0, 5);
+    }
+
+    /** Janela em que pode ser reservada por hora ("08:00" a "22:00"). */
+    public function opensAt(): string
+    {
+        return substr((string) ($this->opens_at ?? self::DEFAULT_OPENS_AT), 0, 5);
+    }
+
+    public function closesAt(): string
+    {
+        return substr((string) ($this->closes_at ?? self::DEFAULT_CLOSES_AT), 0, 5);
     }
 
     public function property(): BelongsTo

@@ -11,10 +11,11 @@ export function formatMoney(cents: number): string {
  * Quantas pessoas a pousada recebe ao mesmo tempo. Acomodações que dividem o imóvel (shared_unit)
  * não são reservadas juntas: delas conta só a maior.
  */
-export function totalGuests(accs: Pick<Accommodation, 'max_guests' | 'shared_unit'>[]): number {
+export function totalGuests(accs: Pick<Accommodation, 'max_guests' | 'shared_unit' | 'booking_mode'>[]): number {
   const units = new Map<string, number>()
   let total = 0
-  for (const a of accs) {
+  // Espaços reservados por hora (salão de festas) não hospedam ninguém.
+  for (const a of accs.filter(x => !isHourly(x))) {
     if (!a.shared_unit) total += a.max_guests
     else units.set(a.shared_unit, Math.max(units.get(a.shared_unit) ?? 0, a.max_guests))
   }
@@ -56,6 +57,9 @@ export function inputFromCents(cents: number | null | undefined): string {
   return cents == null ? '' : (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+/** Reservada por hora (day use, eventos) em vez de por diária. */
+export const isHourly = (acc: Pick<Accommodation, 'booking_mode'>) => acc.booking_mode === 'hourly'
+
 /** "1 diária", "2 diárias". */
 export function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -89,13 +93,19 @@ export const guestCopy = {
     : `+ ${formatMoney(g.perPerson)} por pessoa a mais, por diária.`,
 
   /** Cartões: "a partir de R$ 497,00/diária para 2 pessoas · até 6 com acréscimo". */
-  card: (acc: Pick<Accommodation, 'max_guests' | 'base_price' | 'included_guests' | 'extra_guest_price'>) => {
+  card: (acc: Pick<Accommodation, 'max_guests' | 'base_price' | 'included_guests' | 'extra_guest_price' | 'booking_mode' | 'hourly_price' | 'min_hours'>) => {
+    if (isHourly(acc)) return guestCopy.hourly(acc)
     const g = guestPricing(acc)
     const from = `a partir de ${formatMoney(acc.base_price)}/diária`
     return g
       ? `${from} ${guestCopy.forPeople(g.included)} · até ${acc.max_guests} com acréscimo`
       : `até ${acc.max_guests} pessoas · ${from}`
   },
+
+  /** Por hora: "R$ 150,00/hora · mínimo 4 horas · até 40 pessoas". */
+  hourly: (acc: Pick<Accommodation, 'max_guests' | 'hourly_price' | 'min_hours'>) =>
+    [acc.hourly_price != null && `${formatMoney(acc.hourly_price)}/hora`, (acc.min_hours ?? 1) > 1 && `mínimo ${plural(acc.min_hours!, 'hora', 'horas')}`, `até ${acc.max_guests} pessoas`]
+      .filter(Boolean).join(' · '),
 
   /** Orçamento: "Total para 2 pessoas" quando há pessoas a mais sem valor informado. */
   quoteTotal: (people: number) => `Total ${guestCopy.forPeople(people)}`,

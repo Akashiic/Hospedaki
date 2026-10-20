@@ -78,3 +78,15 @@ describe('money inputs', () => {
     assert.equal(inputFromCents(null), '')
   })
 })
+
+describe('hourly spaces', () => {
+  it('are not lodging and have their own copy', async () => {
+    const { totalGuests, guestCopy } = await import('../app/utils/pricing.ts')
+    assert.equal(totalGuests([
+      { max_guests: 4, shared_unit: null, booking_mode: 'nightly' },
+      { max_guests: 40, shared_unit: 'espaco', booking_mode: 'hourly' },
+      { max_guests: 6, shared_unit: 'espaco', booking_mode: 'nightly' },
+    ]), 10)
+    assert.equal(guestCopy.card({ max_guests: 40, base_price: 0, included_guests: null, extra_guest_price: null, booking_mode: 'hourly', hourly_price: 15000, min_hours: 4 }), 'R$ 150,00/hora · mínimo 4 horas · até 40 pessoas')
+  })
+})
