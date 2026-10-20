@@ -20,7 +20,8 @@ const tracking = useTracking()
 const isoDate = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '')
 const checkIn = ref(isoDate(route.query.entrada))
 const checkOut = ref(isoDate(route.query.saida))
-const guests = ref(2)
+// Pessoas também podem vir do link (?hospedes=4), como na busca da página de acomodações.
+const guests = ref(Math.min(200, Math.max(1, Number(route.query.hospedes) || 2)))
 const form = reactive({ guest_name: '', guest_phone: '', guest_email: '', notes: '' })
 
 // Janela de disponibilidade: de hoje (no fuso da pousada, o mesmo "hoje" do calendário) até

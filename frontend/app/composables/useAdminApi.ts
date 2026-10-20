@@ -138,17 +138,35 @@ export interface AdminSite {
 
 export type PaymentProvider = 'mercadopago' | 'stripe' | 'simulated'
 
-/** "Seu site → Configurações → Pagamentos". As chaves secretas voltam só com o final (hint). */
+/** Chaves de um modo (teste ou produção) de um gateway; a secreta volta só com o final (hint). */
+export interface GatewayKeys {
+  configured: boolean
+  public_key: string | null
+  secret_hint: string | null
+  webhook_secret: boolean
+}
+
+export type GatewayMode = 'test' | 'live'
+
+/** Um gateway: ligado ou não, o modo em uso e as chaves de cada modo. */
+export interface AdminGateway {
+  enabled: boolean
+  mode: GatewayMode
+  /** Ligado e com as chaves do modo em uso: é o que pode cobrar. */
+  active: boolean
+  test: GatewayKeys
+  live: GatewayKeys
+  webhook_url: string
+}
+
+/** "Seu site → Configurações → Pagamentos". */
 export interface AdminPayments {
   demo: boolean
   configured: PaymentProvider[]
   pix: PaymentProvider | null
   card: PaymentProvider | null
   installments: number
-  gateways: {
-    mercadopago: { configured: boolean, public_key: string | null, access_token_hint: string | null, webhook_secret: boolean, test: boolean, webhook_url: string }
-    stripe: { configured: boolean, publishable_key: string | null, secret_key_hint: string | null, webhook_secret: boolean, test: boolean, webhook_url: string }
-  }
+  gateways: Record<'mercadopago' | 'stripe', AdminGateway>
 }
 
 export type SiteImageKind = 'logo' | 'icon' | 'share'

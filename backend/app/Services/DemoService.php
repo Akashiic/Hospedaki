@@ -12,6 +12,8 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Random\Engine\Mt19937;
+use Random\Randomizer;
 
 /**
  * Pousada de demonstração (config/demo.php): login aberto no painel e dados que voltam
@@ -27,6 +29,9 @@ class DemoService
      * regiões diferentes cada uma leva uns 250 ms: passa dos 30 s padrão do PHP.
      */
     private const RESET_TIME_LIMIT = 180;
+
+    /** Sorteio do histórico (ver history()). */
+    private Randomizer $rng;
 
     public function __construct(private readonly BookingService $bookings) {}
 
@@ -245,7 +250,9 @@ class DemoService
         $today = $property->today();
         $start = $today->subMonths(12)->startOfMonth();
         $end = $today;
-        mt_srand(2026);
+        // Sorteio próprio, com semente fixa: o mesmo histórico todo dia. O mt_rand global não serve:
+        // qualquer código pode ressemeá-lo no meio (o Faker faz isso ao ser coletado pelo GC).
+        $rng = $this->rng = new Randomizer(new Mt19937(2026));
 
         $names = ['Patrícia Gomes', 'Rafael e Bia', 'Família Martins', 'Juliana Rocha', 'Thiago Nunes', 'Camila e Pedro', 'Família Souza', 'Fernanda Lima',
             'Lucas Andrade', 'Marcos e Ana', 'Família Costa', 'Beatriz Alves', 'Gustavo Pires', 'Larissa e João', 'Família Ribeiro', 'Renata Dias'];
@@ -281,9 +288,9 @@ class DemoService
 
         // Estadias: cada imóvel recebe hóspedes em intervalos sorteados, sem sobrepor.
         foreach ($accommodations->reject(fn (Accommodation $a) => $a->isHourly())->groupBy(fn ($a) => $a->shared_unit ?? "a{$a->id}") as $unit => $members) {
-            $day = $start->addDays(mt_rand(0, 6));
+            $day = $start->addDays($rng->getInt(0, 6));
             while ($day->lt($end)) {
-                $nights = [1, 2, 2, 2, 3, 3, 4, 5, 7][mt_rand(0, 8)];
+                $nights = [1, 2, 2, 2, 3, 3, 4, 5, 7][$rng->getInt(0, 8)];
                 $checkOut = $day->addDays($nights);
                 if ($checkOut->gt($end)) {
                     break;
@@ -293,22 +300,22 @@ class DemoService
 
                     continue;
                 }
-                $acc = $members[mt_rand(0, $members->count() - 1)];
+                $acc = $members[$rng->getInt(0, $members->count() - 1)];
                 $total = 0;
                 for ($d = $day; $d->lt($checkOut); $d = $d->addDay()) {
                     $total += in_array($d->dayOfWeek, PricingService::WEEKEND_NIGHTS, true) && $acc->weekend_price ? $acc->weekend_price : $acc->base_price;
                     $takenByUnit[$unit][$d->toDateString()] = true;
                 }
                 $total += $acc->cleaning_fee ?? 0;
-                $roll = mt_rand(1, 100);
+                $roll = $rng->getInt(1, 100);
                 $status = $roll <= 86 ? BookingStatus::Confirmed : ($roll <= 93 ? BookingStatus::Cancelled : BookingStatus::Declined);
-                $created = $day->subDays(mt_rand(2, 50))->setTime(mt_rand(8, 22), mt_rand(0, 59));
-                $rows[] = $this->historyRow($property, $status, $day, $checkOut, $names[mt_rand(0, count($names) - 1)], mt_rand(2, $acc->max_guests), $total, $created,
-                    arrival: mt_rand(1, 10) <= 7 ? sprintf('%02d:%02d', mt_rand(14, 21), [0, 30][mt_rand(0, 1)]) : null);
+                $created = $day->subDays($rng->getInt(2, 50))->setTime($rng->getInt(8, 22), $rng->getInt(0, 59));
+                $rows[] = $this->historyRow($property, $status, $day, $checkOut, $names[$rng->getInt(0, count($names) - 1)], $rng->getInt(2, $acc->max_guests), $total, $created,
+                    arrival: $rng->getInt(1, 10) <= 7 ? sprintf('%02d:%02d', $rng->getInt(14, 21), [0, 30][$rng->getInt(0, 1)]) : null);
                 $links[] = [$acc->id, $total];
 
                 // Próxima chegada: mais cedo nos meses de férias.
-                $gap = (int) round(mt_rand(2, 12) / ($busy[$day->month] ?? 1));
+                $gap = (int) round($rng->getInt(2, 12) / ($busy[$day->month] ?? 1));
                 $day = $checkOut->addDays(max(0, $gap));
             }
         }
@@ -317,17 +324,17 @@ class DemoService
         foreach ($accommodations->filter(fn (Accommodation $a) => $a->isHourly()) as $hall) {
             $unit = $hall->shared_unit ?? "a{$hall->id}";
             for ($month = $start; $month->lt($end); $month = $month->addMonth()) {
-                for ($n = mt_rand(1, 2); $n > 0; $n--) {
-                    $date = $month->addDays(mt_rand(0, $month->daysInMonth - 1));
+                for ($n = $rng->getInt(1, 2); $n > 0; $n--) {
+                    $date = $month->addDays($rng->getInt(0, $month->daysInMonth - 1));
                     if ($date->gte($end) || isset($takenByUnit[$unit][$date->toDateString()])) {
                         continue;
                     }
                     $takenByUnit[$unit][$date->toDateString()] = true;
-                    $hours = mt_rand(max(4, $hall->min_hours), 8);
-                    $startHour = mt_rand(11, 23 - $hours);
+                    $hours = $rng->getInt(max(4, $hall->min_hours), 8);
+                    $startHour = $rng->getInt(11, 23 - $hours);
                     $total = $hours * ($hall->hourly_price ?? 0) + ($hall->cleaning_fee ?? 0);
-                    $rows[] = $this->historyRow($property, BookingStatus::Confirmed, $date, $date, $names[mt_rand(0, count($names) - 1)], mt_rand(15, $hall->max_guests), $total,
-                        $date->subDays(mt_rand(10, 60))->setTime(10, 0), start: sprintf('%02d:00', $startHour), end: sprintf('%02d:00', $startHour + $hours));
+                    $rows[] = $this->historyRow($property, BookingStatus::Confirmed, $date, $date, $names[$rng->getInt(0, count($names) - 1)], $rng->getInt(15, $hall->max_guests), $total,
+                        $date->subDays($rng->getInt(10, 60))->setTime(10, 0), start: sprintf('%02d:00', $startHour), end: sprintf('%02d:00', $startHour + $hours));
                     $links[] = [$hall->id, $total];
                 }
             }
@@ -348,7 +355,6 @@ class DemoService
         foreach (array_chunk($pivot, 200) as $chunk) {
             DB::table('booking_accommodation')->insert($chunk);
         }
-        mt_srand(); // devolve o sorteio ao normal para o resto da requisição
     }
 
     /**
@@ -356,7 +362,7 @@ class DemoService
      */
     private function historyRow(Property $property, BookingStatus $status, CarbonImmutable $in, CarbonImmutable $out, string $name, int $guests, int $total, CarbonImmutable $created, ?string $arrival = null, ?string $start = null, ?string $end = null): array
     {
-        $decided = $created->addHours(mt_rand(1, 20))->utc();
+        $decided = $created->addHours($this->rng->getInt(1, 20))->utc();
 
         return [
             'property_id' => $property->id,
@@ -374,7 +380,7 @@ class DemoService
             'guest_phone' => '11999990001',
             'total' => $total,
             'confirmed_at' => $status === BookingStatus::Declined ? null : $decided,
-            'cancelled_at' => $status === BookingStatus::Confirmed ? null : $decided->addDays(mt_rand(1, 10)),
+            'cancelled_at' => $status === BookingStatus::Confirmed ? null : $decided->addDays($this->rng->getInt(1, 10)),
             'created_at' => $created->utc(),
             'updated_at' => $created->utc(),
         ];
