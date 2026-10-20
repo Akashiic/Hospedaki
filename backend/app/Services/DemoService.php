@@ -7,6 +7,7 @@ use App\Models\Accommodation;
 use App\Models\BlockedDate;
 use App\Models\Property;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -154,6 +155,10 @@ class DemoService
                 'ends_on' => $today->addDays(26)->toDateString(),
                 'reason' => 'Manutenção',
             ]);
+
+            // Um ano de reservas passadas (até ontem), nas datas livres que sobraram, para as
+            // Estatísticas terem o que mostrar.
+            $this->history($property);
         });
     }
 
@@ -210,5 +215,152 @@ class DemoService
         ]);
         $booking->accommodations()->attach($hall->id, ['subtotal' => $quote['total']]);
         $booking->forceFill(['created_at' => now()->subHours($hoursAgo)])->saveQuietly();
+    }
+
+    /**
+     * Histórico de exemplo: estadias e festas dos últimos 12 meses, até hoje, nas datas que os
+     * exemplos do dia a dia e os bloqueios deixaram livres. Sorteio com semente fixa;
+     * mais movimento em dezembro, janeiro e julho. Gravado em lote (poucas consultas), porque o
+     * reset roda numa requisição e o banco fica longe da API.
+     */
+    private function history(Property $property): void
+    {
+        $accommodations = $property->accommodations()->where('active', true)->get();
+        $today = $property->today();
+        $start = $today->subMonths(12)->startOfMonth();
+        $end = $today;
+        mt_srand(2026);
+
+        $names = ['Patrícia Gomes', 'Rafael e Bia', 'Família Martins', 'Juliana Rocha', 'Thiago Nunes', 'Camila e Pedro', 'Família Souza', 'Fernanda Lima',
+            'Lucas Andrade', 'Marcos e Ana', 'Família Costa', 'Beatriz Alves', 'Gustavo Pires', 'Larissa e João', 'Família Ribeiro', 'Renata Dias'];
+        $busy = [1 => 1.6, 7 => 1.5, 12 => 1.7, 2 => 1.2, 10 => 1.1];
+        $rows = [];
+        $links = [];
+        $takenByUnit = [];
+        $unitOf = $accommodations->mapWithKeys(fn (Accommodation $a) => [$a->id => $a->shared_unit ?? "a{$a->id}"]);
+
+        // Datas já ocupadas pelos exemplos do dia a dia (e pelos bloqueios): o histórico não passa por cima.
+        foreach ($property->bookings()->with('accommodations:id')->get() as $booking) {
+            $last = $booking->isHourly() ? $booking->check_in : $booking->check_out->subDay();
+            foreach ($booking->accommodations as $acc) {
+                for ($d = $booking->check_in->toImmutable(); $d->lte($last); $d = $d->addDay()) {
+                    $takenByUnit[$unitOf[$acc->id] ?? "a{$acc->id}"][$d->toDateString()] = true;
+                }
+            }
+        }
+        foreach (BlockedDate::whereIn('accommodation_id', $accommodations->pluck('id'))->get() as $block) {
+            for ($d = $block->starts_on->toImmutable(); $d->lte($block->ends_on); $d = $d->addDay()) {
+                $takenByUnit[$unitOf[$block->accommodation_id]][$d->toDateString()] = true;
+            }
+        }
+        $free = function (string $unit, CarbonImmutable $from, CarbonImmutable $to) use (&$takenByUnit): bool {
+            for ($d = $from; $d->lt($to); $d = $d->addDay()) {
+                if (isset($takenByUnit[$unit][$d->toDateString()])) {
+                    return false;
+                }
+            }
+
+            return true;
+        };
+
+        // Estadias: cada imóvel recebe hóspedes em intervalos sorteados, sem sobrepor.
+        foreach ($accommodations->reject(fn (Accommodation $a) => $a->isHourly())->groupBy(fn ($a) => $a->shared_unit ?? "a{$a->id}") as $unit => $members) {
+            $day = $start->addDays(mt_rand(0, 6));
+            while ($day->lt($end)) {
+                $nights = [1, 2, 2, 2, 3, 3, 4, 5, 7][mt_rand(0, 8)];
+                $checkOut = $day->addDays($nights);
+                if ($checkOut->gt($end)) {
+                    break;
+                }
+                if (! $free($unit, $day, $checkOut)) {
+                    $day = $day->addDay();
+
+                    continue;
+                }
+                $acc = $members[mt_rand(0, $members->count() - 1)];
+                $total = 0;
+                for ($d = $day; $d->lt($checkOut); $d = $d->addDay()) {
+                    $total += in_array($d->dayOfWeek, PricingService::WEEKEND_NIGHTS, true) && $acc->weekend_price ? $acc->weekend_price : $acc->base_price;
+                    $takenByUnit[$unit][$d->toDateString()] = true;
+                }
+                $total += $acc->cleaning_fee ?? 0;
+                $roll = mt_rand(1, 100);
+                $status = $roll <= 86 ? BookingStatus::Confirmed : ($roll <= 93 ? BookingStatus::Cancelled : BookingStatus::Declined);
+                $created = $day->subDays(mt_rand(2, 50))->setTime(mt_rand(8, 22), mt_rand(0, 59));
+                $rows[] = $this->historyRow($property, $status, $day, $checkOut, $names[mt_rand(0, count($names) - 1)], mt_rand(2, $acc->max_guests), $total, $created,
+                    arrival: mt_rand(1, 10) <= 7 ? sprintf('%02d:%02d', mt_rand(14, 21), [0, 30][mt_rand(0, 1)]) : null);
+                $links[] = [$acc->id, $total];
+
+                // Próxima chegada: mais cedo nos meses de férias.
+                $gap = (int) round(mt_rand(2, 12) / ($busy[$day->month] ?? 1));
+                $day = $checkOut->addDays(max(0, $gap));
+            }
+        }
+
+        // Festas no espaço por hora: uma ou duas por mês, em dias livres no imóvel.
+        foreach ($accommodations->filter(fn (Accommodation $a) => $a->isHourly()) as $hall) {
+            $unit = $hall->shared_unit ?? "a{$hall->id}";
+            for ($month = $start; $month->lt($end); $month = $month->addMonth()) {
+                for ($n = mt_rand(1, 2); $n > 0; $n--) {
+                    $date = $month->addDays(mt_rand(0, $month->daysInMonth - 1));
+                    if ($date->gte($end) || isset($takenByUnit[$unit][$date->toDateString()])) {
+                        continue;
+                    }
+                    $takenByUnit[$unit][$date->toDateString()] = true;
+                    $hours = mt_rand(max(4, $hall->min_hours), 8);
+                    $startHour = mt_rand(11, 23 - $hours);
+                    $total = $hours * ($hall->hourly_price ?? 0) + ($hall->cleaning_fee ?? 0);
+                    $rows[] = $this->historyRow($property, BookingStatus::Confirmed, $date, $date, $names[mt_rand(0, count($names) - 1)], mt_rand(15, $hall->max_guests), $total,
+                        $date->subDays(mt_rand(10, 60))->setTime(10, 0), start: sprintf('%02d:00', $startHour), end: sprintf('%02d:00', $startHour + $hours));
+                    $links[] = [$hall->id, $total];
+                }
+            }
+        }
+
+        if (! $rows) {
+            return;
+        }
+
+        foreach (array_chunk($rows, 200) as $chunk) {
+            DB::table('bookings')->insert($chunk);
+        }
+        $ids = DB::table('bookings')->whereIn('code', array_column($rows, 'code'))->pluck('id', 'code');
+        $pivot = [];
+        foreach ($rows as $i => $row) {
+            $pivot[] = ['booking_id' => $ids[$row['code']], 'accommodation_id' => $links[$i][0], 'subtotal' => $links[$i][1], 'created_at' => $row['created_at'], 'updated_at' => $row['created_at']];
+        }
+        foreach (array_chunk($pivot, 200) as $chunk) {
+            DB::table('booking_accommodation')->insert($chunk);
+        }
+        mt_srand(); // devolve o sorteio ao normal para o resto da requisição
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function historyRow(Property $property, BookingStatus $status, CarbonImmutable $in, CarbonImmutable $out, string $name, int $guests, int $total, CarbonImmutable $created, ?string $arrival = null, ?string $start = null, ?string $end = null): array
+    {
+        $decided = $created->addHours(mt_rand(1, 20))->utc();
+
+        return [
+            'property_id' => $property->id,
+            'code' => strtoupper(Str::random(8)),
+            'status' => $status->value,
+            'check_in' => $in->toDateString(),
+            'check_out' => $out->toDateString(),
+            'arrival_time' => $arrival,
+            'start_time' => $start,
+            'end_time' => $end,
+            'guests' => $guests,
+            'extra_guests_unpriced' => 0,
+            'guest_name' => $name,
+            // Telefone próprio do histórico: separa dos exemplos do dia a dia.
+            'guest_phone' => '11999990001',
+            'total' => $total,
+            'confirmed_at' => $status === BookingStatus::Declined ? null : $decided,
+            'cancelled_at' => $status === BookingStatus::Confirmed ? null : $decided->addDays(mt_rand(1, 10)),
+            'created_at' => $created->utc(),
+            'updated_at' => $created->utc(),
+        ];
     }
 }

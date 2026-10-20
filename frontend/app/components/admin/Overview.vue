@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminBooking, AdminMe, AdminTab } from '~/composables/useAdminApi'
-import { ArrowRight, BedDouble, CalendarX2, Inbox, LayoutTemplate, LogIn, LogOut, Moon, PartyPopper, Sun, Sunrise, Users, Wallet } from 'lucide-vue-next'
+import { ArrowRight, BedDouble, CalendarX2, ChartColumn, Inbox, LayoutTemplate, LogIn, LogOut, Moon, PartyPopper, Sun, Sunrise, Users, Wallet } from 'lucide-vue-next'
 
 // Tela Início: saudação, os números que importam hoje (contando até o valor), a agenda do dia
 // e atalhos. Tudo sai de uma lista só (/bookings?scope=all), filtrada aqui com o "hoje" da pousada.
@@ -169,6 +169,7 @@ const accNames = (b: AdminBooking) => b.accommodations.map(a => a.name).join(' +
     </div>
 
     <section class="quick a-rise" style="--i: 7" aria-label="Atalhos">
+      <button type="button" class="a-card a-lift" @click="emit('go', 'estatisticas')"><ChartColumn :size="20" /> Estatísticas</button>
       <button type="button" class="a-card a-lift" @click="emit('go', 'bloqueios')"><CalendarX2 :size="20" /> Bloquear datas</button>
       <button type="button" class="a-card a-lift" @click="emit('go', 'acomodacoes')"><BedDouble :size="20" /> Acomodações e preços</button>
       <button type="button" class="a-card a-lift" @click="emit('go', 'paginas')"><LayoutTemplate :size="20" /> Personalizar o site</button>

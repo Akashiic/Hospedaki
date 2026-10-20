@@ -31,6 +31,7 @@ Route::prefix('admin')->group(function () {
         Route::get('me', [Admin\AuthController::class, 'me']);
         Route::post('logout', [Admin\AuthController::class, 'logout']);
         Route::get('bookings', [Admin\BookingController::class, 'index']);
+        Route::get('stats', Admin\StatsController::class);
         Route::post('bookings/{booking}/confirm', [Admin\BookingController::class, 'confirm']);
         Route::post('bookings/{booking}/decline', [Admin\BookingController::class, 'decline']);
         Route::get('blocked-dates', [Admin\BlockedDateController::class, 'index']);

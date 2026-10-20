@@ -12,7 +12,7 @@ const route = useRoute()
 const router = useRouter()
 
 // A aba fica no endereço (/painel?aba=reservas): recarregar a página ou voltar não perde o lugar.
-const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'bloqueios', 'acomodacoes', 'paginas', 'identidade', 'contato', 'seo', 'integracoes']
+const TABS: AdminTab[] = ['inicio', 'pedidos', 'reservas', 'estatisticas', 'bloqueios', 'acomodacoes', 'paginas', 'identidade', 'contato', 'seo', 'integracoes']
 // Links antigos: ?aba=pagina (antes do "Seu site") abre o Início em Páginas, e
 // ?aba=configuracoes (antes de virar submenu) abre Identidade.
 const LEGACY: Record<string, Record<string, string>> = { pagina: { aba: 'paginas', pagina: 'inicio' }, configuracoes: { aba: 'identidade' } }
@@ -140,6 +140,7 @@ const notify = (text: string) => toast.show(text, /não|erro|falh/i.test(text) ?
         </section>
 
         <AdminBookings v-else-if="tab === 'reservas'" :today="today" @message="notify" @changed="load" />
+        <AdminStats v-else-if="tab === 'estatisticas'" />
         <AdminBlocks v-else-if="tab === 'bloqueios'" :me="me" />
         <AdminAccommodations v-else-if="tab === 'acomodacoes'" :demo="me?.property.demo" @message="notify" @changed="load" />
         <AdminSitePages v-else-if="tab === 'paginas'" :me="me" :demo="me?.property.demo" @message="notify" />
