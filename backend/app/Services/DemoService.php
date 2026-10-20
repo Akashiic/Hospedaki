@@ -126,7 +126,7 @@ class DemoService
             // Layout da home, textos das páginas e SEO voltam ao padrão: um visitante pode ter
             // escondido tudo ou trocado o nome da pousada.
             $settings = $property->settings ?? [];
-            unset($settings['home_sections'], $settings['pages'], $settings['seo'], $settings['payments']);
+            unset($settings['home_sections'], $settings['pages'], $settings['seo'], $settings['payments'], $settings['social'], $settings['themes_waitlist']);
             $property->update(['settings' => $settings ?: null]);
 
             // Visitantes podem editar, ocultar ou excluir acomodações pelo painel: voltam as originais.

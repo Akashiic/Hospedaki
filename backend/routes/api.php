@@ -72,6 +72,12 @@ Route::prefix('admin')->group(function () {
         Route::get('site', [Admin\SiteController::class, 'show']);
         Route::put('site/identity', [Admin\SiteController::class, 'updateIdentity']);
         Route::put('site/seo', [Admin\SiteController::class, 'updateSeo']);
+        Route::put('site/social', [Admin\SiteController::class, 'updateSocial']);
+        Route::get('site/domain', [Admin\DomainController::class, 'show']);
+        Route::put('site/domain', [Admin\DomainController::class, 'update'])->middleware('throttle:10,1,domain');
+        Route::post('site/domain/check', [Admin\DomainController::class, 'check'])->middleware('throttle:20,1,domain-check');
+        Route::delete('site/domain', [Admin\DomainController::class, 'destroy']);
+        Route::put('site/themes/notify', [Admin\SiteController::class, 'notifyThemes']);
         Route::put('site/pages/{page}', [Admin\SiteController::class, 'updatePage']);
         Route::get('payments', [Admin\PaymentController::class, 'show']);
         Route::put('payments/settings', [Admin\PaymentController::class, 'updateSettings']);

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AllowSiteDomains;
 use App\Http\Middleware\NoIndex;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // No Render o pedido chega por um proxy: sem isto o limite por IP valeria para todos juntos.
         $middleware->trustProxies(at: '*');
         $middleware->append(NoIndex::class);
+        // Antes do CORS: o domínio próprio de uma pousada também pode chamar a API.
+        $middleware->prepend(AllowSiteDomains::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
