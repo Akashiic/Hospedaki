@@ -163,4 +163,19 @@ class DemoModeTest extends TestCase
             ->assertJsonValidationErrors('photo');
         $this->assertNull($this->property->fresh()->logo_path);
     }
+
+    public function test_daily_reset_keeps_the_visitor_who_just_logged_in(): void
+    {
+        $old = $this->postJson('/api/admin/demo-login')->assertOk()->json('token');
+
+        // Dia seguinte: o primeiro login dispara o reset, que roda depois da resposta.
+        $this->travelTo(CarbonImmutable::now($this->property->timezone)->addDay()->setTime(0, 30));
+        $token = $this->postJson('/api/admin/demo-login')->assertOk()->json('token');
+        $this->app['auth']->forgetGuards();
+
+        $this->withToken($token)->getJson('/api/admin/bookings')->assertOk()->assertJsonCount(7, 'data');
+        // A sessão de ontem foi encerrada pelo reset.
+        $this->app['auth']->forgetGuards();
+        $this->withToken($old)->getJson('/api/admin/me')->assertUnauthorized();
+    }
 }
