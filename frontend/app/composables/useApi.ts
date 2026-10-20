@@ -1,4 +1,5 @@
 import type { PageKey, PageSettings, SiteSeo } from '~/utils/sitePages'
+import type { SocialNetwork } from '~/utils/social'
 
 export interface Photo {
   url: string
@@ -92,6 +93,10 @@ export interface Property {
   /** Textos, SEO e presença no menu de cada página, escolhidos em "Seu site" no painel. */
   pages?: Record<PageKey, PageSettings>
   seo?: SiteSeo
+  /** Perfis nas redes sociais (rede → endereço), na ordem do rodapé. */
+  social?: Partial<Record<SocialNetwork, string>>
+  /** Domínio próprio já no ar (endereço canônico do site); null = o endereço do Hospedaki. */
+  domain?: string | null
   primary_color: string
   /** Fuso da pousada (IANA): define o "hoje" do calendário, igual ao do backend. */
   timezone: string

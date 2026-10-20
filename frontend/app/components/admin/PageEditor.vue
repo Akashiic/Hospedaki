@@ -99,6 +99,26 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
             />
             <AdminTextField id="page-seo-title" v-model="draft.seo_title" label="Título na busca" :max="PAGE_LIMITS.seo_title" :placeholder="defaults.seoTitle" hint="Até uns 60 caracteres aparecem inteiros." :error="errors.seo_title?.[0]" />
             <AdminTextField id="page-seo-desc" v-model="draft.seo_description" label="Descrição na busca" :max="PAGE_LIMITS.seo_description" :rows="3" :placeholder="defaults.seoDescription ?? 'Ex.: Pousada com piscina e vista para as montanhas. Reserve direto, sem taxa.'" hint="Até uns 160 caracteres aparecem inteiros." :error="errors.seo_description?.[0]" />
+            <AdminTextField id="page-keywords" v-model="draft.keywords" label="Palavras-chave" :max="PAGE_LIMITS.keywords" :placeholder="site?.seo.keywords ?? 'Ex.: pousada em Mairiporã, chalé com hidromassagem'" hint="Separadas por vírgula. Vazio, a página usa as do site (em SEO)." :error="errors.keywords?.[0]" />
+          </section>
+
+          <section v-if="pageKey === 'acomodacoes'" class="a-section a-rise" style="--i: 4">
+            <h2>Fotos de cada acomodação</h2>
+            <p class="a-hint">Como as fotos aparecem na página de cada acomodação.</p>
+            <div class="layouts" role="radiogroup" aria-label="Fotos de cada acomodação">
+              <label class="layout" :class="{ on: (draft.photos ?? 'grid') === 'grid' }">
+                <input v-model="draft.photos" type="radio" name="photos-layout" value="grid" class="native">
+                <span class="mini grid" aria-hidden="true"><i /><i /><i /><i /><i /></span>
+                <strong>Grade</strong>
+                <small>Todas as fotos à vista, a primeira em destaque.</small>
+              </label>
+              <label class="layout" :class="{ on: draft.photos === 'carousel' }">
+                <input v-model="draft.photos" type="radio" name="photos-layout" value="carousel" class="native">
+                <span class="mini carousel" aria-hidden="true"><i /><b /><b /><b /><b /></span>
+                <strong>Carrossel</strong>
+                <small>Uma foto grande por vez, com miniaturas e setas; arrasta no celular.</small>
+              </label>
+            </div>
           </section>
         </div>
 
@@ -152,4 +172,22 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', beforeUnload))
 .eyebrow { @include eyebrow(var(--amber-soft), sm); }
 .h { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.1rem); line-height: 1.05; overflow-wrap: anywhere; }
 .lead { color: rgb(255 255 255 / .82); font-size: .88rem; }
+// Grade ou carrossel: dois cartões com um desenho do layout.
+.layouts { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+.layout {
+  position: relative; display: grid; gap: .3rem; padding: .8rem; border-radius: 14px; cursor: pointer; box-shadow: inset 0 0 0 1.5px var(--line);
+  strong { font-size: .95rem; }
+  small { color: var(--muted); font-size: .82rem; }
+  &.on { box-shadow: inset 0 0 0 2px var(--brand); background: color-mix(in srgb, var(--brand) 7%, white); }
+  &:has(.native:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+}
+.native { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.mini { display: grid; gap: 3px; height: 64px; margin-bottom: .2rem; }
+.mini i, .mini b { display: block; border-radius: 4px; background: color-mix(in srgb, var(--brand) 35%, var(--a-sunk)); }
+.mini.grid { grid-template-columns: 1fr 1fr; grid-template-rows: 1.4fr 1fr 1fr; }
+.mini.grid i:first-child { grid-column: 1 / -1; }
+.mini.carousel { grid-template-columns: repeat(4, 1fr); grid-template-rows: 1fr 14px; }
+.mini.carousel i { grid-column: 1 / -1; }
+.mini.carousel b { opacity: .55; }
+.mini.carousel b:first-of-type { opacity: 1; }
 </style>

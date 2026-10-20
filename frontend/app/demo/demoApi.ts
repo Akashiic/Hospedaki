@@ -331,13 +331,14 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
   }
 
   // Painel: "Seu site" (na prévia, as mudanças valem só enquanto a aba estiver aberta).
-  const siteMatch = route.match(/^\/admin\/site(?:\/(identity|seo|pages|images)(?:\/(\w+))?)?$/)
+  const siteMatch = route.match(/^\/admin\/site(?:\/(identity|seo|pages|images|social)(?:\/(\w+))?)?$/)
   if (siteMatch) {
     const [, part, key] = siteMatch
-    const pages = (property.pages ??= Object.fromEntries(SITE_PAGES.map(p => [p.key, { menu: true, index: true, eyebrow: null, title: null, lead: null, seo_title: null, seo_description: null }])) as NonNullable<Property['pages']>)
-    const seo = (property.seo ??= { description: null, indexable: true, separator: '·', ai_bots: 'allow', structured_data: true, schema_type: 'BedAndBreakfast', sitemap_images: true, google_verification: null, ga_id: null, meta_pixel_id: null })
+    const pages = (property.pages ??= Object.fromEntries(SITE_PAGES.map(p => [p.key, { menu: true, index: true, eyebrow: null, title: null, lead: null, seo_title: null, seo_description: null, keywords: null }])) as NonNullable<Property['pages']>)
+    const seo = (property.seo ??= { description: null, keywords: null, author: null, latitude: null, longitude: null, indexable: true, separator: '·', ai_bots: 'allow', structured_data: true, schema_type: 'BedAndBreakfast', sitemap_images: true, google_verification: null, ga_id: null, meta_pixel_id: null })
     if (part === 'identity' && method === 'PUT') Object.assign(property, body)
     if (part === 'seo' && method === 'PUT') Object.assign(seo, body)
+    if (part === 'social' && method === 'PUT') property.social = Object.fromEntries(Object.entries(body).filter(([, v]) => v)) as Property['social']
     if (part === 'pages' && method === 'PUT') {
       const page = pages[key as PageKey] ?? notFound()
       Object.assign(page, body)
@@ -354,6 +355,8 @@ export async function demoFetch<T>(path: string, options: { method?: string, bod
       identity: { name, tagline, description, primary_color, email, phone, whatsapp, address, city, state, logo_url, icon_url: property.icon_url ?? null, share_image_url: property.share_image_url ?? null },
       pages,
       seo,
+      social: property.social ?? {},
+      themes_waitlist: false,
     } as T
   }
 

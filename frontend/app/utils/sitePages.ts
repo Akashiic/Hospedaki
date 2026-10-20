@@ -16,11 +16,22 @@ export interface PageSettings {
   lead: string | null
   seo_title: string | null
   seo_description: string | null
+  /** Palavras-chave (meta keywords), separadas por vírgula; vazio = as do site. */
+  keywords: string | null
+  /** Só em Acomodações: fotos de cada acomodação em grade ou em carrossel. */
+  photos?: 'grid' | 'carousel'
 }
 
 /** SEO avançado da pousada. */
 export interface SiteSeo {
   description: string | null
+  /** Palavras-chave do site inteiro (meta keywords), separadas por vírgula. */
+  keywords: string | null
+  /** Meta author: quem assina o site. */
+  author: string | null
+  /** Posição da pousada no mapa (geo.position, ICBM e dados estruturados). */
+  latitude: number | null
+  longitude: number | null
   indexable: boolean
   /** Separador dos títulos: "O lugar · Pousada". */
   separator: string
@@ -73,7 +84,7 @@ export const SITE_PAGES: SitePageInfo[] = [
   { key: 'contato', path: '/contato', label: 'Contato', description: 'WhatsApp, telefone, e-mail, endereço e como funciona a reserva.', menuOptional: true, searchOptional: true, header: true },
 ]
 
-export const PAGE_LIMITS = { eyebrow: 40, title: 80, lead: 240, seo_title: 70, seo_description: 170 } as const
+export const PAGE_LIMITS = { eyebrow: 40, title: 80, lead: 240, seo_title: 70, seo_description: 170, keywords: 255 } as const
 
 /** Dados da pousada usados nos textos padrão. */
 export interface PageSource {
@@ -87,7 +98,7 @@ export interface PageSource {
   email: string | null
   address: string | null
   accommodations: { name: string }[]
-  seo?: Partial<Pick<SiteSeo, 'description' | 'separator'>> | null
+  seo?: Partial<Pick<SiteSeo, 'description' | 'separator' | 'keywords'>> | null
 }
 
 export interface PageContent {
@@ -96,6 +107,8 @@ export interface PageContent {
   lead: string | null
   seoTitle: string
   seoDescription: string | null
+  /** Palavras-chave da página ou, sem elas, as do site. */
+  keywords?: string | null
 }
 
 /** "A, B e C" (sem artigo: "o"/"a" depende do nome de cada pousada). */
@@ -161,6 +174,7 @@ export function pageContent(key: PageKey, p: PageSource, saved?: Partial<PageSet
     lead: saved?.lead || base.lead,
     seoTitle: saved?.seo_title || base.seoTitle,
     seoDescription: saved?.seo_description || base.seoDescription || p.seo?.description || null,
+    keywords: saved?.keywords || p.seo?.keywords || null,
   }
 }
 
